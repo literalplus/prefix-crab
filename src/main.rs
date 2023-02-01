@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{bail, Context};
 use clap::{Parser, Subcommand};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use flexi_logger::{colored_default_format, detailed_format, Logger, LoggerHandle, WriteMode};
@@ -17,6 +17,9 @@ struct Cli {
     /// Path to log spec
     #[arg(long, value_name="TOML FILE", default_value="logspec.toml")]
     log_spec_file: std::path::PathBuf,
+
+    #[arg(long="🤪", hide=true)]
+    use_zany: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -58,6 +61,11 @@ fn main() -> anyhow::Result<()> {
     let cli: Cli = Cli::parse();
     let logger_handle = configure_logging(&cli)
         .context("Unable to configure logging")?;
+
+    if cli.use_zany {
+        info!("Oh... I'm sorry... I'm just in a silly goofy mood 🤪");
+        bail!("oop")
+    }
 
     match cli.command {
         Commands::Greet { name } => {
