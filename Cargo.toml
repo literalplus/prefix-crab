@@ -1,19 +1,28 @@
-[package]
-name = "prefix-crab"
+[workspace]
+members = ["zmap-buddy"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 authors = ["Philipp Nowak <prefixcrab@phnowak.eu>"]
-description = "Friendly multi-call binary crab that inspects IPv6 prefixes to reveal all their secrets"
 license = "MIT"
 rust-version = "1.59.0" # flexi_logger
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
+[workspace.dependencies]
 # To enable backtrace printing, set RUST_BACKTRACE=1 (see anyhow docs)
 anyhow = { version = "1.0.68", features = ["backtrace"] }
 clap = { version = "4.1", features = ["derive", "unicode"] }
 clap-verbosity-flag = "2.0.0"
 # TODO: Add async feature once we need it for MUCH improved performance (but slightly less confusing behaviour)
-flexi_logger = { version = "0.24.2", features = ["specfile"] }
+flexi_logger = { version = "0.25.0", features = ["specfile"] }
+human-panic = "1.1.0"
 log = "0.4.17"
+
+[package]
+name = "prefix-crab"
+description = "Friendly multi-binary crab that inspects IPv6 prefixes to reveal all their secrets"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true

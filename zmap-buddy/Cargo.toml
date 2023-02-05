@@ -1,0 +1,16 @@
+[package]
+name = "zmap-buddy"
+description = "Best friend of ZMAP, nudging it to do the things we want"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+clap-verbosity-flag = { workspace = true }
+flexi_logger = { workspace = true }
+human-panic = { workspace = true }
+log = { workspace = true }

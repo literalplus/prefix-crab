@@ -2,6 +2,7 @@ use anyhow::{bail, Context};
 use clap::{Parser, Subcommand};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use flexi_logger::{colored_default_format, detailed_format, Logger, LoggerHandle, WriteMode};
+use human_panic::setup_panic;
 use log::{debug, info, Level};
 
 #[derive(Parser, Debug)]
@@ -57,6 +58,8 @@ fn configure_logging(cli: &Cli) -> anyhow::Result<LoggerHandle> {
 }
 
 fn main() -> anyhow::Result<()> {
+    setup_panic!();
+
     // need explicit type annotation for IntelliJ
     let cli: Cli = Cli::parse();
     let logger_handle = configure_logging(&cli)
