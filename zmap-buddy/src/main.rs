@@ -5,6 +5,8 @@ use flexi_logger::{colored_default_format, detailed_format, Logger, LoggerHandle
 use human_panic::setup_panic;
 use log::{debug, info, Level};
 
+mod zmap_call;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 struct Cli {
@@ -28,11 +30,15 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Performs a greeting
-    Greet {
-        /// Who to greet
-        #[arg(default_value = "world")]
-        name: String,
+    /// Perform a single call to zmap.
+    SingleCall {
+        /// FQ path to zmap binary
+        #[arg(default_value = "/usr/local/sbin/zmap")]
+        bin_path: String,
+
+        /// FQ path to sudo binary
+        #[arg(default_value = "/usr/bin/sudo")]
+        sudo_path: String,
     }
 }
 
@@ -70,17 +76,18 @@ fn main() -> anyhow::Result<()> {
         bail!("oop")
     }
 
-    match cli.command {
-        Commands::Greet { name } => {
-            println!("Henlo {}", name.as_str());
-            debug!("HELLO {}!!", name.as_str());
-            info!("Greeting performed successfully.")
+    let command_result = match cli.command {
+        Commands::SingleCall { sudo_path, bin_path } => {
+            let caller = zmap_call::Caller::new(sudo_path, bin_path);
+            debug!("Using zmap caller: {:?}", caller);
+            caller.consume_run()
         }
-    }
+    };
+    debug!("Finished command execution. Result: {:?}", command_result);
 
     // Important with non-direct write mode
     // Handle needs to be kept alive until end of program
     logger_handle.flush();
 
-    Ok(())
+    command_result
 }
