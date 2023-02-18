@@ -14,14 +14,14 @@ struct Cli {
     verbose: Verbosity<InfoLevel>,
 
     /// Use a flexi_logger configuration file
-    #[arg(long="log-spec")]
+    #[arg(long = "log-spec")]
     use_log_spec: bool,
 
     /// Path to log spec
-    #[arg(long, value_name="TOML FILE", default_value="logspec.toml")]
+    #[arg(long, value_name = "TOML FILE", default_value = "logspec.toml")]
     log_spec_file: std::path::PathBuf,
 
-    #[arg(long="🤪", hide=true)]
+    #[arg(long = "🤪", hide = true)]
     use_zany: bool,
 
     #[command(subcommand)]
@@ -32,12 +32,15 @@ struct Cli {
 enum Commands {
     /// Perform a single call to zmap.
     SingleCall {
+        #[arg(long)]
+        source_address: String,
+
         /// FQ path to zmap binary
-        #[arg(default_value = "/usr/local/sbin/zmap")]
+        #[arg(long, default_value = "/usr/local/sbin/zmap")]
         bin_path: String,
 
         /// FQ path to sudo binary
-        #[arg(default_value = "/usr/bin/sudo")]
+        #[arg(long, default_value = "/usr/bin/sudo")]
         sudo_path: String,
     }
 }
@@ -77,9 +80,12 @@ fn main() -> anyhow::Result<()> {
     }
 
     let command_result = match cli.command {
-        Commands::SingleCall { sudo_path, bin_path } => {
-            let caller = zmap_call::Caller::new(sudo_path, bin_path);
+        Commands::SingleCall { source_address, sudo_path, bin_path } => {
+            let mut caller = zmap_call::Caller::new(sudo_path, bin_path);
             debug!("Using zmap caller: {:?}", caller);
+            caller.verify_sudo_access()
+                .with_context(|| "If not using NOPASSWD, you might need to re-run sudo manually.")?;
+            caller.push_source_address(source_address)?;
             caller.consume_run()
         }
     };

@@ -1,25 +1,51 @@
 use std::{fs, io};
 use std::borrow::Cow;
 use std::io::{BufRead, Read};
+use std::net::Ipv6Addr;
 use std::process::{Command, Stdio};
 
-use anyhow::Context;
-use log::debug;
+use anyhow::{bail, Context};
+use log::{debug, log_enabled};
+use log::Level::Debug;
 
 /// Base config for calling zmap
 #[derive(Debug)]
 pub struct Caller {
     cmd: Command,
+    bin_path: String,
 }
 
 impl Caller {
     pub fn new(sudo_path: String, bin_path: String) -> Self {
         let mut cmd = Command::new(sudo_path);
-        cmd.arg("--non-interactive").arg("--").arg(bin_path);
-        return Caller { cmd };
+        cmd.arg("--non-interactive").arg("--").arg(bin_path.to_string());
+        return Caller { cmd, bin_path };
     }
 
-    // Runs the configured command, consuming this instance.
+    pub fn verify_sudo_access(&self) -> anyhow::Result<()> {
+        let mut check_cmd = Command::new(self.cmd.get_program());
+        check_cmd.arg("--non-interactive").arg("--list").arg("--").arg(self.bin_path.to_string());
+        let mut child = check_cmd.spawn()
+            .with_context(|| "Failed to spawn sudo check process")?;
+        let exit_status = child.wait()
+            .with_context(|| "Failed to wait for sudo check process to exit")?;
+        debug!("Sudo checker exited with {}", exit_status);
+        if !exit_status.success() {
+            bail!("No sudo access detected, {}", exit_status)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Pushes an IPv6 source address to the generated command. Should only be called once.
+    pub fn push_source_address(&mut self, source_address_string: String) -> anyhow::Result<()> {
+        let parsed_source_address: Ipv6Addr = source_address_string.parse()
+            .with_context(|| format!("Failed to parse source IPv6: {}", source_address_string))?;
+        self.cmd.arg(format!("--ipv6-source-ip={}", parsed_source_address));
+        Ok(())
+    }
+
+    /// Runs the configured command, consuming this instance.
     pub fn consume_run(mut self) -> anyhow::Result<()> {
         self.set_base();
         self.set_logging()?;
@@ -28,10 +54,12 @@ impl Caller {
     }
 
     fn do_call(&mut self) -> anyhow::Result<()> {
-        let args: Vec<Cow<'_, str>> = self.cmd.get_args()
-            .map(|os_str| os_str.to_string_lossy())
-            .collect();
-        debug!("Calling zmap with arguments: {}", args.join(" "));
+        if log_enabled!(Debug) {
+            let args: Vec<Cow<'_, str>> = self.cmd.get_args()
+                .map(|os_str| os_str.to_string_lossy())
+                .collect();
+            debug!("Calling zmap with arguments: {}", args.join(" "));
+        }
 
         let mut child = self.cmd.spawn()
             .with_context(|| "Failed to spawn zmap process")?;
@@ -42,8 +70,12 @@ impl Caller {
         let exit_status = child.wait()
             .with_context(|| "Failed to wait for child to exit")?;
 
-        debug!("zmap call exited with {}", exit_status);
-        Ok(())
+        if exit_status.success() {
+            debug!("zmap call exited successfully");
+            Ok(())
+        } else {
+            bail!("zmap call exited with non-successful status {:?}", exit_status)
+        }
     }
 
     fn prefix_out_fd<R: Read + Send + 'static>(&self, fd: &mut Option<R>) {
@@ -67,7 +99,6 @@ impl Caller {
             .arg("--verbosity=5")
             .arg("--cooldown-time=4") // wait for responses for n secs after sending
             //.arg("--seed=n") // TODO this permutes addresses?
-            .arg("--ipv6-source-ip=fdf9:d3a4:2fff:96ec::1b")
             //.arg("--gateway-mac=addr")
             //.arg("--source-mac=addr")
             //.arg("--interface=name")
@@ -101,7 +132,7 @@ impl Caller {
     }
 
     fn set_targets(&mut self) -> anyhow::Result<()> {
-        let target_addrs = "fdf9:d3a4:2fff:96ec::a\n";
+        let target_addrs = "fdf9:d3a4:2fff:96ec::a\nfd00:aff1:3::a\nfd00:aff1:3::3a\nfd00:aff1:3::c\n";
         let addr_lst_path = "out/zmap-addr-list.txt";
         fs::write(addr_lst_path, target_addrs)
             .with_context(|| format!("Unable to write address list to {:?}", addr_lst_path))?;
@@ -111,4 +142,3 @@ impl Caller {
         Ok(())
     }
 }
-
