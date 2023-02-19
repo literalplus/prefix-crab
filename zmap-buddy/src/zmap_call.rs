@@ -2,6 +2,7 @@ use std::{fs, io};
 use std::borrow::Cow;
 use std::io::{BufRead, Read};
 use std::net::Ipv6Addr;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use anyhow::{bail, Context};
@@ -45,11 +46,27 @@ impl Caller {
         Ok(())
     }
 
+    pub fn push_targets_vec(&mut self, targets: Vec<String>) -> anyhow::Result<()> {
+        let addr_lst_path: PathBuf = ["out", "zmap-addr-list.txt"].iter().collect();
+        fs::create_dir_all("out")
+            .with_context(|| "Failed to create targets directory")?;
+        fs::write(&addr_lst_path, targets.join("\n"))
+            .with_context(|| format!("Unable to write address list to {:?}", addr_lst_path))?;
+
+        self.push_targets_file(addr_lst_path)
+    }
+
+    pub fn push_targets_file(&mut self, targets_path: PathBuf) -> anyhow::Result<()> {
+        let path_as_str = targets_path.to_str()
+            .with_context(|| "Non-UTF-8 path provided for targets file")?;
+        self.cmd.arg(format!("--ipv6-target-file={}", path_as_str)); // or - for stdin
+        Ok(())
+    }
+
     /// Runs the configured command, consuming this instance.
     pub fn consume_run(mut self) -> anyhow::Result<()> {
         self.set_base();
         self.set_logging()?;
-        self.set_targets()?;
         self.do_call()
     }
 
@@ -64,8 +81,8 @@ impl Caller {
         let mut child = self.cmd.spawn()
             .with_context(|| "Failed to spawn zmap process")?;
 
-        self.prefix_out_fd(&mut child.stdout);
-        self.prefix_out_fd(&mut child.stderr);
+        self.prefix_out_fd(&mut child.stdout, "-[zmap]-");
+        self.prefix_out_fd(&mut child.stderr, "#[zmap]#");
 
         let exit_status = child.wait()
             .with_context(|| "Failed to wait for child to exit")?;
@@ -78,13 +95,13 @@ impl Caller {
         }
     }
 
-    fn prefix_out_fd<R: Read + Send + 'static>(&self, fd: &mut Option<R>) {
+    fn prefix_out_fd<R: Read + Send + 'static>(&self, fd: &mut Option<R>, prefix: &'static str) {
         let taken = fd.take().expect("Failed to open output stream of child");
         std::thread::spawn(move || {
             let reader = io::BufReader::new(taken);
             for line in reader.lines() {
                 if let Ok(ln) = line {
-                    println!(" -[zmap]- {}", ln)
+                    println!(" {} {}", prefix, ln)
                 }
             }
         });
@@ -94,11 +111,11 @@ impl Caller {
         self.cmd
             .arg("--bandwidth=10K")
             .arg("--max-targets=10")
-            .arg("--output-file=out/results.csv")
+            //.arg("--output-file=out/results.csv")
             //.arg("--dryrun")
             .arg("--verbosity=5")
             .arg("--cooldown-time=4") // wait for responses for n secs after sending
-            //.arg("--seed=n") // TODO this permutes addresses?
+            // TODO: Permute addresses manually, as --seed is not supported for v6
             //.arg("--gateway-mac=addr")
             //.arg("--source-mac=addr")
             //.arg("--interface=name")
@@ -113,6 +130,7 @@ impl Caller {
             //.arg("--cores=idx,idx,idx") // cores to pin to
             .arg("--sender-threads=1")
             .arg("--ignore-blacklist-errors");
+        // TODO: check that blocklist is actually used with --ipv6-target-file ?
 
 
         self.cmd.stdin(Stdio::piped()); // Allow password entry for sudo (local debug)
@@ -127,17 +145,6 @@ impl Caller {
 
         //.arg(format!("--log-directory={}", zmap_log_dir))
         self.cmd.arg(format!("--log-file={}/latest.log", log_dir));
-
-        Ok(())
-    }
-
-    fn set_targets(&mut self) -> anyhow::Result<()> {
-        let target_addrs = "fdf9:d3a4:2fff:96ec::a\nfd00:aff1:3::a\nfd00:aff1:3::3a\nfd00:aff1:3::c\n";
-        let addr_lst_path = "out/zmap-addr-list.txt";
-        fs::write(addr_lst_path, target_addrs)
-            .with_context(|| format!("Unable to write address list to {:?}", addr_lst_path))?;
-
-        self.cmd.arg(format!("--ipv6-target-file={}", addr_lst_path)); // or - for stdin
 
         Ok(())
     }

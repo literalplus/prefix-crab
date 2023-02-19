@@ -1,13 +1,13 @@
 use anyhow::{bail, Context};
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use flexi_logger::{colored_default_format, detailed_format, Logger, LoggerHandle, WriteMode};
 use human_panic::setup_panic;
-use log::{debug, info, Level};
+use log::{info, Level};
 
 mod zmap_call;
 
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(author, version, about)]
 struct Cli {
     #[clap(flatten)]
@@ -25,24 +25,29 @@ struct Cli {
     use_zany: bool,
 
     #[command(subcommand)]
-    command: Commands,
+    command: cmd_logic::Commands,
 }
 
-#[derive(Subcommand, Debug)]
-enum Commands {
-    /// Perform a single call to zmap.
-    SingleCall {
-        #[arg(long)]
-        source_address: String,
+fn main() -> anyhow::Result<()> {
+    setup_panic!();
 
-        /// FQ path to zmap binary
-        #[arg(long, default_value = "/usr/local/sbin/zmap")]
-        bin_path: String,
+    // need explicit type annotation for IntelliJ
+    let cli: Cli = Cli::parse();
+    let logger_handle = configure_logging(&cli)
+        .context("Unable to configure logging")?;
 
-        /// FQ path to sudo binary
-        #[arg(long, default_value = "/usr/bin/sudo")]
-        sudo_path: String,
+    if cli.use_zany {
+        info!("Oh... I'm sorry... I'm just in a silly goofy mood 🤪");
+        bail!("oop")
     }
+
+    let command_result = cmd_logic::handle(cli.command);
+
+    // Important with non-direct write mode
+    // Handle needs to be kept alive until end of program
+    logger_handle.flush();
+
+    command_result
 }
 
 fn configure_logging(cli: &Cli) -> anyhow::Result<LoggerHandle> {
@@ -66,34 +71,60 @@ fn configure_logging(cli: &Cli) -> anyhow::Result<LoggerHandle> {
     };
 }
 
-fn main() -> anyhow::Result<()> {
-    setup_panic!();
+mod cmd_logic {
+    use anyhow::Context;
+    use clap::{Args, Subcommand};
+    use log::debug;
 
-    // need explicit type annotation for IntelliJ
-    let cli: Cli = Cli::parse();
-    let logger_handle = configure_logging(&cli)
-        .context("Unable to configure logging")?;
-
-    if cli.use_zany {
-        info!("Oh... I'm sorry... I'm just in a silly goofy mood 🤪");
-        bail!("oop")
+    pub fn handle(cmd: Commands) -> anyhow::Result<()> {
+        let command_result = match cmd {
+            Commands::SingleCall(data) => handle_single(data),
+        };
+        debug!("Finished command execution. Result: {:?}", command_result);
+        command_result
     }
 
-    let command_result = match cli.command {
-        Commands::SingleCall { source_address, sudo_path, bin_path } => {
-            let mut caller = zmap_call::Caller::new(sudo_path, bin_path);
-            debug!("Using zmap caller: {:?}", caller);
-            caller.verify_sudo_access()
-                .with_context(|| "If not using NOPASSWD, you might need to re-run sudo manually.")?;
-            caller.push_source_address(source_address)?;
-            caller.consume_run()
-        }
-    };
-    debug!("Finished command execution. Result: {:?}", command_result);
+    fn handle_single(cmd: SingleCallData) -> anyhow::Result<()> {
+        let mut caller = super::zmap_call::Caller::new(cmd.sudo_path, cmd.bin_path);
+        debug!("Using zmap caller: {:?}", caller);
+        caller.verify_sudo_access()
+            .with_context(|| "If not using NOPASSWD, you might need to re-run sudo manually.")?;
 
-    // Important with non-direct write mode
-    // Handle needs to be kept alive until end of program
-    logger_handle.flush();
+        let targets = if cmd.target_addresses.is_empty() {
+            [
+                "fdf9:d3a4:2fff:96ec::a", "fd00:aff1:3::a", "fd00:aff1:3::3a",
+                "fd00:aff1:3::c", "fd00:aff1:678::b", "2a02:8388:8280:ec80:3a43:7dff:febe:998",
+                "2a02:8388:8280:ec80:3a43:7dff:febe:999"
+            ].iter().map(|static_str| static_str.to_string()).collect()
+        } else {
+            cmd.target_addresses
+        };
 
-    command_result
+        caller.push_targets_vec(targets)
+            .with_context(|| "Failed to write target addresses")?;
+        caller.push_source_address(cmd.source_address)?;
+        caller.consume_run()
+    }
+
+    #[derive(Subcommand)]
+    pub enum Commands {
+        /// Perform a single call to zmap.
+        SingleCall(SingleCallData),
+    }
+
+    #[derive(Args)]
+    pub struct SingleCallData {
+        #[arg(long)]
+        source_address: String,
+
+        /// FQ path to zmap binary
+        #[arg(long, default_value = "/usr/local/sbin/zmap")]
+        bin_path: String,
+
+        /// FQ path to sudo binary
+        #[arg(long, default_value = "/usr/bin/sudo")]
+        sudo_path: String,
+
+        target_addresses: Vec<String>,
+    }
 }
