@@ -122,7 +122,7 @@ impl Caller {
             .arg("--probe-module=icmp6_echoscan")
             .arg("--probe-ttl=255")
 
-            .arg("--output-fields=type,code,original_ttl,orig-dest-ip,classification")
+            .arg("--output-fields=type,code,original_ttl,orig-dest-ip,saddr,classification")
             .arg("--output-module=csv")
 
             .arg("--disable-syslog")
