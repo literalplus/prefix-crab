@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use clap::Args;
 
+use crate::zmap_call::TargetCollector;
+
 #[derive(Args)]
 pub struct Params {
     #[clap(flatten)]
@@ -21,7 +23,7 @@ pub fn handle(params: Params) -> Result<()> {
         params.target_addresses
     };
 
-    caller.push_targets_vec(targets)
-        .with_context(|| "Failed to write target addresses")?;
+    let mut collector = TargetCollector::from_vec(targets)?;
+    caller.push_targets(collector)?;
     caller.consume_run()
 }
