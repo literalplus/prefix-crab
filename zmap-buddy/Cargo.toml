@@ -13,5 +13,6 @@ clap = { workspace = true }
 clap-verbosity-flag = { workspace = true }
 flexi_logger = { workspace = true }
 human-panic = { workspace = true }
+ipnet = "2.7.1"
 log = { workspace = true }
 prefix-crab = { path = ".." }

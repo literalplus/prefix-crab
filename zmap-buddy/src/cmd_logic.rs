@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{Context, Result};
 use clap::{Args, Subcommand};
 use log::debug;
 
@@ -7,7 +7,7 @@ use crate::zmap_call::Caller;
 pub mod one_shot;
 pub mod prefix_scan;
 
-pub fn handle(cmd: Commands) -> anyhow::Result<()> {
+pub fn handle(cmd: Commands) -> Result<()> {
     let command_result = match cmd {
         Commands::OneShot(data) => one_shot::handle(data),
         Commands::PrefixScan(data) => prefix_scan::handle(data),
@@ -41,7 +41,7 @@ pub struct ZmapBaseParams {
 }
 
 impl ZmapBaseParams {
-    fn into_caller(self) -> anyhow::Result<Caller> {
+    fn into_caller(self) -> Result<Caller> {
         let mut caller = Caller::new(self.sudo_path, self.bin_path);
         debug!("Using zmap caller: {:?}", caller);
         caller.verify_sudo_access()

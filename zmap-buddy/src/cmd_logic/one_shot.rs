@@ -1,5 +1,5 @@
-use anyhow::Context;
-use clap::{Args, Subcommand};
+use anyhow::{Context, Result};
+use clap::Args;
 
 #[derive(Args)]
 pub struct Params {
@@ -9,7 +9,7 @@ pub struct Params {
     target_addresses: Vec<String>,
 }
 
-pub fn handle(params: Params) -> anyhow::Result<()> {
+pub fn handle(params: Params) -> Result<()> {
     let mut caller = params.base.into_caller()?;
     let targets = if params.target_addresses.is_empty() {
         [

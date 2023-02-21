@@ -5,7 +5,7 @@ use std::net::Ipv6Addr;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-use anyhow::{bail, Context};
+use anyhow::{bail, Context, Result};
 use log::{debug, log_enabled};
 use log::Level::Debug;
 
@@ -23,7 +23,7 @@ impl Caller {
         return Caller { cmd, bin_path };
     }
 
-    pub fn verify_sudo_access(&self) -> anyhow::Result<()> {
+    pub fn verify_sudo_access(&self) -> Result<()> {
         let mut check_cmd = Command::new(self.cmd.get_program());
         check_cmd.arg("--non-interactive").arg("--list").arg("--").arg(self.bin_path.to_string());
         let mut child = check_cmd.spawn()
@@ -39,14 +39,14 @@ impl Caller {
     }
 
     /// Pushes an IPv6 source address to the generated command. Should only be called once.
-    pub fn push_source_address(&mut self, source_address_string: String) -> anyhow::Result<()> {
+    pub fn push_source_address(&mut self, source_address_string: String) -> Result<()> {
         let parsed_source_address: Ipv6Addr = source_address_string.parse()
             .with_context(|| format!("Failed to parse source IPv6: {}", source_address_string))?;
         self.cmd.arg(format!("--ipv6-source-ip={}", parsed_source_address));
         Ok(())
     }
 
-    pub fn push_targets_vec(&mut self, targets: Vec<String>) -> anyhow::Result<()> {
+    pub fn push_targets_vec(&mut self, targets: Vec<String>) -> Result<()> {
         let addr_lst_path: PathBuf = ["out", "zmap-addr-list.txt"].iter().collect();
         fs::create_dir_all("out")
             .with_context(|| "Failed to create targets directory")?;
@@ -56,7 +56,7 @@ impl Caller {
         self.push_targets_file(addr_lst_path)
     }
 
-    pub fn push_targets_file(&mut self, targets_path: PathBuf) -> anyhow::Result<()> {
+    pub fn push_targets_file(&mut self, targets_path: PathBuf) -> Result<()> {
         let path_as_str = targets_path.to_str()
             .with_context(|| "Non-UTF-8 path provided for targets file")?;
         self.cmd.arg(format!("--ipv6-target-file={}", path_as_str)); // or - for stdin
@@ -64,13 +64,13 @@ impl Caller {
     }
 
     /// Runs the configured command, consuming this instance.
-    pub fn consume_run(mut self) -> anyhow::Result<()> {
+    pub fn consume_run(mut self) -> Result<()> {
         self.set_base();
         self.set_logging()?;
         self.do_call()
     }
 
-    fn do_call(&mut self) -> anyhow::Result<()> {
+    fn do_call(&mut self) -> Result<()> {
         if log_enabled!(Debug) {
             let args: Vec<Cow<'_, str>> = self.cmd.get_args()
                 .map(|os_str| os_str.to_string_lossy())
@@ -138,7 +138,7 @@ impl Caller {
         self.cmd.env_clear();
     }
 
-    fn set_logging(&mut self) -> anyhow::Result<()> {
+    fn set_logging(&mut self) -> Result<()> {
         let log_dir = "out/zmap-logs";
         fs::create_dir_all(log_dir)
             .with_context(|| format!("Unable to create zmap log directory {:?}", log_dir))?;

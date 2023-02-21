@@ -1,4 +1,4 @@
-use anyhow::{bail, Context};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use flexi_logger::{colored_default_format, detailed_format, Logger, LoggerHandle, WriteMode};
@@ -29,7 +29,7 @@ struct Cli {
     command: cmd_logic::Commands,
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     setup_panic!();
 
     // need explicit type annotation for IntelliJ
@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
     command_result
 }
 
-fn configure_logging(cli: &Cli) -> anyhow::Result<LoggerHandle> {
+fn configure_logging(cli: &Cli) -> Result<LoggerHandle> {
     // log_level() returns None iff verbosity < 0, i.e. being most quiet seems reasonable
     let cli_level = cli.verbose.log_level()
         .unwrap_or(Level::Error);
