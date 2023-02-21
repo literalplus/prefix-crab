@@ -14,14 +14,14 @@ pub struct Params {
 }
 
 pub fn handle(params: Params) -> Result<()> {
-    let mut caller = params.base.into_caller()?;
+    let caller = params.base.into_caller()?;
     let splits = prefix_split::process(params.target_prefix)?;
     trace!("Subnet splits: {:?}", splits);
     let mut targets = TargetCollector::new()?;
     for split in splits {
         // TODO permute these to spread load a bit
         for address in split.addresses {
-            targets.push(address.to_string())
+            targets.push(address.to_string())?;
         }
     }
     caller.consume_run(targets)

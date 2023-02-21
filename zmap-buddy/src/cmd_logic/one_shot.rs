@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Args;
 
 use crate::zmap_call::TargetCollector;
@@ -12,7 +12,7 @@ pub struct Params {
 }
 
 pub fn handle(params: Params) -> Result<()> {
-    let mut caller = params.base.into_caller()?;
+    let caller = params.base.into_caller()?;
     let targets = if params.target_addresses.is_empty() {
         [
             "fdf9:d3a4:2fff:96ec::a", "fd00:aff1:3::a", "fd00:aff1:3::3a",
@@ -23,6 +23,6 @@ pub fn handle(params: Params) -> Result<()> {
         params.target_addresses
     };
 
-    let mut collector = TargetCollector::from_vec(targets)?;
+    let collector = TargetCollector::from_vec(targets)?;
     caller.consume_run(collector)
 }

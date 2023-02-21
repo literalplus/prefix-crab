@@ -1,8 +1,7 @@
 use std::{fs, io};
 use std::borrow::Cow;
-use std::fmt::format;
 use std::fs::File;
-use std::io::{BufRead, BufWriter, LineWriter, Read, Write};
+use std::io::{BufRead, BufWriter, Read, Write};
 use std::net::Ipv6Addr;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -49,7 +48,7 @@ impl Caller {
     }
 
     /// Runs the configured command, consuming this instance.
-    pub fn consume_run(mut self, mut targets: TargetCollector) -> Result<()> {
+    pub fn consume_run(mut self, targets: TargetCollector) -> Result<()> {
         self.set_base();
         self.push_targets(targets)?;
         self.set_logging()?;
@@ -161,9 +160,10 @@ pub struct TargetCollector {
 impl TargetCollector {
     pub fn new() -> Result<Self> {
         let path = PathBuf::from("out/zmap-addr-list.txt");
-        let parent_dir = path[-1];
+        let parent_dir = path.parent()
+            .with_context(|| format!("targets file has no parent {:?}", path))?;
         fs::create_dir_all(parent_dir)
-            .with_context(|| format!("while creating targets parent directory {:?}", parent_dir))?;
+            .with_context(|| format!("while creating targets parent directory ({:?})", path))?;
         let file = File::create(&path)
             .with_context(|| format!("while creating targets file {:?}", path))?;
         let writer = BufWriter::new(file);
