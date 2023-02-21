@@ -24,6 +24,5 @@ pub fn handle(params: Params) -> Result<()> {
     };
 
     let mut collector = TargetCollector::from_vec(targets)?;
-    caller.push_targets(collector)?;
-    caller.consume_run()
+    caller.consume_run(collector)
 }

@@ -48,7 +48,15 @@ impl Caller {
         Ok(())
     }
 
-    pub fn push_targets(&mut self, mut collector: TargetCollector) -> Result<()> {
+    /// Runs the configured command, consuming this instance.
+    pub fn consume_run(mut self, mut targets: TargetCollector) -> Result<()> {
+        self.set_base();
+        self.push_targets(targets)?;
+        self.set_logging()?;
+        self.do_call()
+    }
+
+    fn push_targets(&mut self, mut collector: TargetCollector) -> Result<()> {
         // Collector moved intentionally; Writing to it while the program is running
         // has undefined effect, so we prohibit that.
         collector.flush()?;
@@ -56,13 +64,6 @@ impl Caller {
             .with_context(|| "Non-UTF-8 path provided for targets file")?;
         self.cmd.arg(format!("--ipv6-target-file={}", path_as_str));
         Ok(())
-    }
-
-    /// Runs the configured command, consuming this instance.
-    pub fn consume_run(mut self) -> Result<()> {
-        self.set_base();
-        self.set_logging()?;
-        self.do_call()
     }
 
     fn do_call(&mut self) -> Result<()> {

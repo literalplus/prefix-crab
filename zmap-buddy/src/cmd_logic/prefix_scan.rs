@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Args;
 use ipnet::Ipv6Net;
 use log::trace;
+
 use crate::zmap_call::TargetCollector;
 
 #[derive(Args)]
@@ -13,17 +14,17 @@ pub struct Params {
 }
 
 pub fn handle(params: Params) -> Result<()> {
-    params.base.into_caller()?;
+    let mut caller = params.base.into_caller()?;
     let splits = prefix_split::process(params.target_prefix)?;
     trace!("Subnet splits: {:?}", splits);
-    let mut collector = TargetCollector::new()?;
+    let mut targets = TargetCollector::new()?;
     for split in splits {
         // TODO permute these to spread load a bit
         for address in split.addresses {
-            collector.push(address.to_string())
+            targets.push(address.to_string())
         }
     }
-    Ok(())
+    caller.consume_run(targets)
 }
 
 /// Handles splitting of prefixes & selection of addresses to scan in them.
