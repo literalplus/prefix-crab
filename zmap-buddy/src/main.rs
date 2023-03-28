@@ -7,6 +7,8 @@ use log::{info, Level};
 
 mod cmd_logic;
 mod zmap_call;
+/// Handles splitting of prefixes & selection of addresses to scan in them.
+mod prefix_split;
 
 #[derive(Parser)]
 #[command(author, version, about)]

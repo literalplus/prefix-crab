@@ -1,0 +1,33 @@
+---
+version: "3.2"
+#### local use only, do not put this into production (hard-coded credentials) ####
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "rabbit"
+      RABBITMQ_DEFAULT_PASS: "unwkuKKyYSFdHjZCqxuZhwUj1e8W3xq0pmvvbM03LU"
+    volumes:
+      - rmq-data:/var/lib/rabbitmq/
+      #- ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    networks:
+      rmq_net:
+        ipv4_address: 10.45.87.51
+        # http://10.45.87.51:15672/
+
+volumes:
+  rmq-data:
+    driver: local
+
+networks:
+  rmq_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.45.87.0/24
+          gateway: 10.45.87.1

@@ -8,6 +8,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+amqprs = { version = "1.2.0", features = ["traces", "urispec" ] }
 anyhow = { workspace = true }
 clap = { workspace = true }
 clap-verbosity-flag = { workspace = true }
@@ -17,3 +18,4 @@ ipnet = "2.7.1"
 log = { workspace = true }
 prefix-crab = { path = ".." }
 rand = "0.8.5"
+tokio = { version = "1.27.0", features = ["full"] }
