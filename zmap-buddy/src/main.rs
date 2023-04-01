@@ -1,9 +1,10 @@
+use std::time::Duration;
 use anyhow::{bail, Context, Result};
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use flexi_logger::{colored_default_format, detailed_format, Logger, LoggerHandle, WriteMode};
 use human_panic::setup_panic;
-use log::{info, Level};
+use log::{debug, info, Level};
 
 mod cmd_logic;
 mod zmap_call;
@@ -44,7 +45,16 @@ fn main() -> Result<()> {
         bail!("oop")
     }
 
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .with_context(|| "Failed to start Tokio runtime")?;
+    let _guard = runtime.enter();
+
     let command_result = cmd_logic::handle(cli.command);
+
+    debug!("Waiting up to 15 seconds for remaining tasks to finish");
+    runtime.shutdown_timeout(Duration::from_secs(15));
 
     // Important with non-direct write mode
     // Handle needs to be kept alive until end of program

@@ -1,14 +1,16 @@
 use std::{fs, io};
 use std::borrow::Cow;
-use std::fs::File;
-use std::io::{BufRead, BufWriter, Read, Write};
+use std::io::{BufRead, Read};
 use std::net::Ipv6Addr;
-use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use anyhow::{bail, Context, Result};
 use log::{debug, log_enabled, trace};
 use log::Level::Debug;
+
+pub use self::targets::TargetCollector;
+
+pub mod targets;
 
 /// Base config for calling zmap
 #[derive(Debug)]
@@ -147,73 +149,6 @@ impl Caller {
         //.arg(format!("--log-directory={}", zmap_log_dir))
         self.cmd.arg(format!("--log-file={}/latest.log", log_dir));
 
-        Ok(())
-    }
-}
-
-/// Abstracts target address provision for [Caller]. This has the effect that consumers can
-/// provide target addresses "on their own terms" and are not bound to provide them in a specific
-/// format or time (e.g. all at once, in a vector, or in a file).
-///
-/// Please note that no more than one [TargetCollector] can be in use at the same time, because
-/// there is no guarantee that different backends (e.g. a file) are used for each instance.
-pub struct TargetCollector {
-    path: PathBuf,
-    writer: BufWriter<File>,
-    count: u32,
-}
-
-impl TargetCollector {
-    pub fn new() -> Result<Self> {
-        let path = PathBuf::from("out/zmap-addr-list.txt");
-        let parent_dir = path.parent()
-            .with_context(|| format!("targets file has no parent {:?}", path))?;
-        fs::create_dir_all(parent_dir)
-            .with_context(|| format!("while creating targets parent directory ({:?})", path))?;
-        let file = File::create(&path)
-            .with_context(|| format!("while creating targets file {:?}", path))?;
-        let writer = BufWriter::new(file);
-        Ok(TargetCollector { path, writer, count: 0u32 })
-    }
-
-    /// Utility function that pre-fills a [TargetCollector] with a vector. This is most useful
-    /// when the set of addresses is already known and the flexibility provided by
-    /// [TargetCollector] is not needed.
-    pub fn from_vec(addrs: Vec<String>) -> Result<Self> {
-        let mut collector = Self::new()?;
-        collector.push_vec(addrs)?;
-        Ok(collector)
-    }
-
-    /// Pushes a single address to this collector.
-    ///
-    /// Note that, if a push() fails, the collector enters an undefined state and it should
-    /// no longer be used. Further note that there is no guarantee that writes are immediately
-    /// reflected in the target file, i.e. buffered I/O may be used.
-    pub fn push(&mut self, addr_str: String) -> Result<()> {
-        write!(&mut self.writer, "{}\n", addr_str)
-            .with_context(|| format!("while writing a target to {:?}", self.path))?;
-        self.count += 1;
-        Ok(())
-    }
-
-    /// Pushes a vector of addresses to this collector.
-    ///
-    /// See [TargetCollector::push] for usage notes!
-    pub fn push_vec(&mut self, addrs: Vec<String>) -> Result<()> {
-        for addr in addrs {
-            self.push(addr)?;
-        }
-        Ok(())
-    }
-
-    /// Flushes the writer backing this collector, dumping any unfinished output.
-    ///
-    /// This must be called before attempting to use the resulting target file, otherwise
-    /// the state of the file is undefined.
-    fn flush(&mut self) -> Result<()> {
-        self.writer.flush()
-            .with_context(|| format!("while flushing targets to {:?}", self.path))?;
         Ok(())
     }
 }

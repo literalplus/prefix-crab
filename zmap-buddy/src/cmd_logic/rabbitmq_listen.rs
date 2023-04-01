@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use clap::Args;
+use futures::executor;
 use log::debug;
 use tokio::sync::mpsc;
 
@@ -15,28 +16,19 @@ pub struct Params {
 }
 
 pub fn handle(params: Params) -> Result<()> {
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .with_context(|| "Failed to start Tokio runtime")?;
-
-
     let (task_tx, task_rx) = mpsc::channel(4096);
     // This task if shut down by the RabbitMQ receiver closing the channel
-    runtime.spawn(zmap_queue::start_handler(
+    tokio::spawn(zmap_queue::start_handler(
         task_rx, params.base.to_caller()?,
     ));
 
     let sig_handler = signal_handler::new();
     let stop_rx = sig_handler.subscribe_stop();
-    runtime.spawn(sig_handler.wait_for_signal());
+    tokio::spawn(sig_handler.wait_for_signal());
 
-    let receiver_result = runtime.block_on(rabbit_receiver::start_receiver(
+    let receiver_result = executor::block_on(rabbit_receiver::start_receiver(
         task_tx, stop_rx, params.rabbit,
     ));
-
-    debug!("Waiting up to 15 seconds for remaining tasks to finish");
-    runtime.shutdown_timeout(Duration::from_secs(15));
 
     receiver_result
 }
@@ -79,8 +71,6 @@ mod signal_handler {
 }
 
 mod rabbit_receiver {
-    use std::time::Duration;
-
     use amqprs::channel::{BasicAckArguments, BasicConsumeArguments, Channel, ConsumerMessage, QueueDeclareArguments};
     use amqprs::connection::{Connection, OpenConnectionArguments};
     use amqprs::Deliver;

@@ -18,7 +18,7 @@ pub fn handle(params: Params) -> Result<()> {
     let caller = params.base.to_caller()?;
     let splits = prefix_split::process(params.target_prefix)?;
     trace!("Subnet splits: {:?}", splits);
-    let mut targets = TargetCollector::new()?;
+    let mut targets = TargetCollector::new_default()?;
     for split in splits {
         // TODO permute these to spread load a bit
         for address in split.addresses {
