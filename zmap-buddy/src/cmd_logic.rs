@@ -33,6 +33,7 @@ pub enum Commands {
 
 
 #[derive(Args)]
+#[derive(Clone)]
 pub struct ZmapBaseParams {
     #[arg(long)]
     source_address: String,
