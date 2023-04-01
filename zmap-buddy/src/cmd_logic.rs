@@ -48,12 +48,14 @@ pub struct ZmapBaseParams {
 }
 
 impl ZmapBaseParams {
-    fn into_caller(self) -> Result<Caller> {
-        let mut caller = Caller::new(self.sudo_path, self.bin_path);
+    fn to_caller(&self) -> Result<Caller> {
+        let mut caller = Caller::new(
+            self.sudo_path.to_string(), self.bin_path.to_string()
+        );
         debug!("Using zmap caller: {:?}", caller);
         caller.verify_sudo_access()
             .with_context(|| "If not using NOPASSWD, you might need to re-run sudo manually.")?;
-        caller.push_source_address(self.source_address)?;
+        caller.push_source_address(self.source_address.to_string())?;
         return Ok(caller);
     }
 }

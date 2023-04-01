@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use anyhow::{bail, Context, Result};
-use log::{debug, log_enabled};
+use log::{debug, log_enabled, trace};
 use log::Level::Debug;
 
 /// Base config for calling zmap
@@ -15,16 +15,21 @@ use log::Level::Debug;
 pub struct Caller {
     cmd: Command,
     bin_path: String,
+    sudo_verified: bool,
 }
 
 impl Caller {
     pub fn new(sudo_path: String, bin_path: String) -> Self {
         let mut cmd = Command::new(sudo_path);
         cmd.arg("--non-interactive").arg("--").arg(bin_path.to_string());
-        return Caller { cmd, bin_path };
+        return Caller { cmd, bin_path, sudo_verified: false };
     }
 
-    pub fn verify_sudo_access(&self) -> Result<()> {
+    pub fn verify_sudo_access(&mut self) -> Result<()> {
+        if self.sudo_verified {
+            trace!("sudo access already checked and present.");
+            return Ok(());
+        }
         let mut check_cmd = Command::new(self.cmd.get_program());
         check_cmd.arg("--non-interactive").arg("--list").arg("--").arg(self.bin_path.to_string());
         let mut child = check_cmd.spawn()
@@ -35,6 +40,7 @@ impl Caller {
         if !exit_status.success() {
             bail!("No sudo access detected, {}", exit_status)
         } else {
+            self.sudo_verified = true;
             Ok(())
         }
     }

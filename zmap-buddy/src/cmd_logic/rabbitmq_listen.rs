@@ -15,21 +15,22 @@ pub struct Params {
 }
 
 pub fn handle(params: Params) -> Result<()> {
-    // FIXME
-
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .with_context(|| "Failed to start Tokio runtime")?;
 
-    let sig_handler = signal_handler::new();
 
     let (task_tx, task_rx) = mpsc::channel(4096);
     // This task if shut down by the RabbitMQ receiver closing the channel
-    runtime.spawn(zmap_queue::start_handler(task_rx));
+    runtime.spawn(zmap_queue::start_handler(
+        task_rx, params.base.to_caller()?,
+    ));
 
+    let sig_handler = signal_handler::new();
     let stop_rx = sig_handler.subscribe_stop();
     runtime.spawn(sig_handler.wait_for_signal());
+
     let receiver_result = runtime.block_on(rabbit_receiver::start_receiver(
         task_tx, stop_rx, params.rabbit,
     ));
@@ -218,12 +219,13 @@ mod rabbit_receiver {
 mod zmap_queue {
     use log::info;
     use tokio::sync::mpsc::Receiver;
+    use crate::zmap_call::Caller;
 
     struct QueueHandler {
         work_receiver: Receiver<String>,
     }
 
-    pub async fn start_handler(work_receiver: Receiver<String>) {
+    pub async fn start_handler(work_receiver: Receiver<String>, caller: Caller) {
         QueueHandler { work_receiver }.run().await
     }
 
