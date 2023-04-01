@@ -12,7 +12,7 @@ pub struct Params {
 }
 
 pub fn handle(params: Params) -> Result<()> {
-    let caller = params.base.to_caller()?;
+    let caller = params.base.to_caller_verifying_sudo()?;
     let targets = if params.target_addresses.is_empty() {
         [
             "fdf9:d3a4:2fff:96ec::a", "fd00:aff1:3::a", "fd00:aff1:3::3a",

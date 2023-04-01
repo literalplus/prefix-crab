@@ -47,6 +47,10 @@ impl Caller {
         }
     }
 
+    pub fn assume_sudo_access(&mut self) {
+        self.sudo_verified = true;
+    }
+
     /// Pushes an IPv6 source address to the generated command. Should only be called once.
     pub fn push_source_address(&mut self, source_address_string: String) -> Result<()> {
         let parsed_source_address: Ipv6Addr = source_address_string.parse()

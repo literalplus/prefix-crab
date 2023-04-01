@@ -1,5 +1,6 @@
 use std::cmp::min;
 use std::net::Ipv6Addr;
+use std::iter::IntoIterator;
 
 use anyhow::{Context, Result};
 use ipnet::{IpAdd, Ipv6Net};
@@ -9,6 +10,15 @@ use rand::distributions::{Distribution, Uniform};
 pub struct SubnetSample {
     pub subnet: Ipv6Net,
     pub addresses: Vec<Ipv6Addr>,
+}
+
+impl IntoIterator for SubnetSample {
+    type Item = Ipv6Addr;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.addresses.into_iter()
+    }
 }
 
 pub fn process(base_net: Ipv6Net) -> Result<Vec<SubnetSample>> {

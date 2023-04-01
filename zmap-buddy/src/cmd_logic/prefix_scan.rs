@@ -15,7 +15,7 @@ pub struct Params {
 }
 
 pub fn handle(params: Params) -> Result<()> {
-    let caller = params.base.to_caller()?;
+    let caller = params.base.to_caller_verifying_sudo()?;
     let splits = prefix_split::process(params.target_prefix)?;
     trace!("Subnet splits: {:?}", splits);
     let mut targets = TargetCollector::new_default()?;
