@@ -79,6 +79,7 @@ mod signal_handler {
 
 mod rabbit_receiver {
     use std::time::Duration;
+
     use amqprs::channel::{BasicAckArguments, BasicConsumeArguments, Channel, ConsumerMessage, QueueDeclareArguments};
     use amqprs::connection::{Connection, OpenConnectionArguments};
     use amqprs::Deliver;
@@ -153,10 +154,19 @@ mod rabbit_receiver {
     impl RabbitReceiver {
         async fn run(mut self, queue_name: String) -> Result<()> {
             let mut rabbit_rx = self.start_consumer(&queue_name).await?;
-            let res = select! {
-                biased;
-                _ = self.stop_rx.recv() => Ok(()),
-                opt_msg = rabbit_rx.recv() => self.handle_msg(opt_msg).await
+            let res = loop {
+                select! {
+                    biased;
+                    _ = self.stop_rx.recv() => {
+                        break Ok(());
+                    },
+                    opt_msg = rabbit_rx.recv() => {
+                        match self.handle_msg(opt_msg).await {
+                            Ok(()) => {},
+                            Err(e) => break Err(e),
+                        }
+                    }
+                }
             };
             drop(self.work_sender);
             res
@@ -183,7 +193,6 @@ mod rabbit_receiver {
             } else {
                 info!("RabbitMQ channel was closed");
             }
-            tokio::time::sleep(Duration::from_secs(1)).await; // deliver acks
             Ok(())
         }
 
