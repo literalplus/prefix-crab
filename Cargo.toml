@@ -13,8 +13,7 @@ rust-version = "1.59.0" # flexi_logger
 anyhow = { version = "1.0.68", features = ["backtrace"] }
 clap = { version = "4.1", features = ["derive", "unicode", "env"] }
 clap-verbosity-flag = "2.0.0"
-# TODO: Add async feature once we need it for MUCH improved performance (but slightly more confusing behaviour)
-flexi_logger = { version = "0.25.0", features = ["specfile"] }
+flexi_logger = { version = "0.25.0", features = ["specfile", "async"] }
 human-panic = "1.1.0"
 log = "0.4.17"
 

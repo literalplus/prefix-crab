@@ -28,7 +28,7 @@ struct RabbitReceiver {
     channel: Channel,
 }
 
-pub async fn start_receiver(
+pub async fn start(
     work_sender: mpsc::Sender<String>,
     mut stop_rx: broadcast::Receiver<()>,
     rabbit_params: RabbitParams,

@@ -70,8 +70,7 @@ fn configure_logging(cli: &Cli) -> Result<LoggerHandle> {
 
     let log_builder = Logger::try_with_env_or_str(cli_level.to_string())
         .context("Failed to parse logger spec from env RUST_LOG or cli level")?
-        // TODO: switch to async in release builds https://stackoverflow.com/a/39205417 ?
-        .write_mode(WriteMode::BufferAndFlush)
+        .write_mode(WriteMode::Async)
         .format_for_stdout(colored_default_format)
         .format_for_files(detailed_format);
 
