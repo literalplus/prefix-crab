@@ -2,14 +2,15 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use ipnet::Ipv6Net;
-use log::{error, info, trace, warn};
+use log::{error, info, trace, warn, debug};
+use tokio::select;
 use tokio::sync::mpsc::Receiver;
 use tokio_stream::{Stream, StreamExt};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
 
 use crate::cmd_logic::ZmapBaseParams;
 use crate::prefix_split;
-use crate::zmap_call::TargetCollector;
+use crate::zmap_call::{ProbeResponse, TargetCollector};
 
 struct Scheduler {
     zmap_params: ZmapBaseParams,
@@ -86,13 +87,36 @@ impl Scheduler {
     }
 
     async fn spawn_and_await_blocking_caller(&self, addresses: Vec<String>) -> Result<()> {
-        let caller = self.zmap_params.to_caller_assuming_sudo()?;
+        let mut caller = self.zmap_params.to_caller_assuming_sudo()?;
+        let response_stream = UnboundedReceiverStream::new(caller.request_responses())
+            .fuse();
         trace!("Addresses: {:?}", addresses);
-        tokio::task::spawn_blocking(move || {
+        let mut join_handle = tokio::task::spawn_blocking(move || {
             let mut targets = TargetCollector::new_default()?;
             targets.push_vec(addresses)?;
             trace!("Now calling zmap");
             caller.consume_run(targets)
-        }).await.with_context(|| "during blocking zmap call (await)")?
+        });
+        tokio::pin!(response_stream);
+        loop {
+            select! {
+                biased; // handle all responses before exiting TODO: is this really safe?
+                untyped = response_stream.next() => {
+                    let res: Option<ProbeResponse> = untyped;
+                    debug!("Received from zmap: {:?}", res);
+                },
+                untyped = &mut join_handle => {
+                    let res: Result<()> = untyped?.with_context(|| "failed to join zmap");
+                    if let Err(e) = res {
+                        error!("zmap call failed: {}", e);
+                        return Err(e).with_context(|| "during zmap call");
+                    } else {
+                        break; // important; otherwise panic
+                    }
+                }
+            }
+        }
+        // TODO: handle missing responses
+        Ok(())
     }
 }

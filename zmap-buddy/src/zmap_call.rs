@@ -2,11 +2,13 @@ use std::{fs, io};
 use std::borrow::Cow;
 use std::io::{BufRead, Read};
 use std::net::Ipv6Addr;
-use std::process::{Command, Stdio};
+use std::process::{ChildStdout, Command, Stdio};
 
 use anyhow::{bail, Context, Result};
-use log::{debug, log_enabled, trace};
+use log::{debug, log_enabled, trace, warn};
 use log::Level::Debug;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 pub use self::targets::TargetCollector;
 
@@ -18,13 +20,28 @@ pub struct Caller {
     cmd: Command,
     bin_path: String,
     sudo_verified: bool,
+    response_tx: Option<UnboundedSender<ProbeResponse>>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ProbeResponse {
+    #[serde(rename = "type")]
+    pub icmp_type: u8,
+    #[serde(rename = "code")]
+    pub icmp_code: u8,
+    pub original_ttl: u8,
+    #[serde(rename = "orig-dest-ip")] // unknown why only this field is kebab-case
+    pub original_dest_ip: String,
+    #[serde(rename = "saddr")]
+    pub source_ip: String,
+    pub classification: String,
 }
 
 impl Caller {
     pub fn new(sudo_path: String, bin_path: String) -> Self {
         let mut cmd = Command::new(sudo_path);
         cmd.arg("--non-interactive").arg("--").arg(bin_path.to_string());
-        return Caller { cmd, bin_path, sudo_verified: false };
+        return Caller { cmd, bin_path, sudo_verified: false, response_tx: None };
     }
 
     pub fn verify_sudo_access(&mut self) -> Result<()> {
@@ -59,6 +76,15 @@ impl Caller {
         Ok(())
     }
 
+    /// Request responses to be captured instead of just printed.
+    /// Responses will be provided to the returned [Receiver].
+    /// The sender will be dropped once zmap closes stdout (i.e. exits).
+    pub fn request_responses(&mut self) -> UnboundedReceiver<ProbeResponse> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.response_tx = Some(tx);
+        rx
+    }
+
     /// Runs the configured command, consuming this instance.
     pub fn consume_run(mut self, targets: TargetCollector) -> Result<()> {
         self.set_base();
@@ -88,8 +114,11 @@ impl Caller {
         let mut child = self.cmd.spawn()
             .with_context(|| "Failed to spawn zmap process")?;
 
-        self.prefix_out_fd(&mut child.stdout, "-[zmap]-");
         self.prefix_out_fd(&mut child.stderr, "#[zmap]#");
+        match self.response_tx.take() {
+            Some(tx) => self.watch_stdout(&mut child.stdout, tx),
+            None => self.prefix_out_fd(&mut child.stdout, "-[zmap]-"),
+        }
 
         let exit_status = child.wait()
             .with_context(|| "Failed to wait for child to exit")?;
@@ -111,6 +140,30 @@ impl Caller {
                     println!(" {} {}", prefix, ln)
                 }
             }
+        });
+    }
+
+    fn watch_stdout(&mut self, fd: &mut Option<ChildStdout>, tx: UnboundedSender<ProbeResponse>) {
+        let taken_fd = fd.take().expect("Failed to open output stream of child");
+        std::thread::spawn(move || {
+            let mut reader = csv::Reader::from_reader(taken_fd);
+            for record_res in reader.deserialize::<ProbeResponse>() {
+                match record_res {
+                    Ok(record) => {
+                        trace!("[[zmap result]] {:?}", record);
+                        if let Err(e) = tx.send(record) {
+                            warn!(
+                                "Unable to send response over channel; \
+                                maybe the receiver disconnected? {}", e
+                            );
+                            break;
+                        }
+                    }
+                    Err(e) => warn!("Failed to parse CSV record from zmap: {}", e)
+                }
+            }
+            trace!("Done reading from zmap stdout");
+            drop(tx);
         });
     }
 
@@ -151,6 +204,7 @@ impl Caller {
             .with_context(|| format!("Unable to create zmap log directory {:?}", log_dir))?;
 
         //.arg(format!("--log-directory={}", zmap_log_dir))
+        // TODO this should be managed differently in prod somehow (history, logrotate)
         self.cmd.arg(format!("--log-file={}/latest.log", log_dir));
 
         Ok(())
