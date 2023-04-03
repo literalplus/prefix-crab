@@ -10,7 +10,7 @@ use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
 
 use crate::cmd_logic::ZmapBaseParams;
 use crate::prefix_split;
-use crate::zmap_call::{ProbeResponse, TargetCollector};
+use crate::zmap_call::TargetCollector;
 
 struct Scheduler {
     zmap_params: ZmapBaseParams,
@@ -88,33 +88,19 @@ impl Scheduler {
 
     async fn spawn_and_await_blocking_caller(&self, addresses: Vec<String>) -> Result<()> {
         let mut caller = self.zmap_params.to_caller_assuming_sudo()?;
-        let response_stream = UnboundedReceiverStream::new(caller.request_responses())
-            .fuse();
+        let mut response_rx = caller.request_responses();
         trace!("Addresses: {:?}", addresses);
-        let mut join_handle = tokio::task::spawn_blocking(move || {
+        tokio::task::spawn_blocking(move || {
             let mut targets = TargetCollector::new_default()?;
             targets.push_vec(addresses)?;
             trace!("Now calling zmap");
             caller.consume_run(targets)
-        });
-        tokio::pin!(response_stream);
-        loop {
-            select! {
-                biased; // handle all responses before exiting TODO: is this really safe?
-                untyped = response_stream.next() => {
-                    let res: Option<ProbeResponse> = untyped;
-                    debug!("Received from zmap: {:?}", res);
-                },
-                untyped = &mut join_handle => {
-                    let res: Result<()> = untyped?.with_context(|| "failed to join zmap");
-                    if let Err(e) = res {
-                        error!("zmap call failed: {}", e);
-                        return Err(e).with_context(|| "during zmap call");
-                    } else {
-                        break; // important; otherwise panic
-                    }
-                }
-            }
+        }).await.with_context(|| "during blocking zmap call (await)")??;
+        response_rx.close(); // ensure nothing else is sent
+        while let Some(record) = response_rx.recv().await {
+            trace!("response from zmap: {:?}", record);
+            // TODO: forward to a result handler (which can also interpret missing responses?)
+            // (or should we do that here, where we know it directly?)
         }
         // TODO: handle missing responses
         Ok(())
