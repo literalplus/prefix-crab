@@ -11,7 +11,7 @@ mod zmap_scheduler;
 #[derive(Args)]
 pub struct Params {
     #[clap(flatten)]
-    base: super::ZmapBaseParams,
+    scheduler: zmap_scheduler::SchedulerParams,
 
     #[clap(flatten)]
     rabbit: rabbit_receiver::RabbitParams,
@@ -22,7 +22,7 @@ pub fn handle(params: Params) -> Result<()> {
     let (task_tx, task_rx) = mpsc::channel(4096);
     // This task if shut down by the RabbitMQ receiver closing the channel
     let scheduler_handle = tokio::spawn(zmap_scheduler::start(
-        task_rx, params.base.clone(),
+        task_rx, params.scheduler,
     ));
 
     let sig_handler = signal_handler::new();

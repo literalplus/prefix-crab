@@ -35,8 +35,13 @@ pub enum Commands {
 #[derive(Args)]
 #[derive(Clone)]
 pub struct ZmapBaseParams {
+    /// Source IPv6 address to use for zmap
     #[arg(long)]
     source_address: String,
+
+    /// Name of the source interface to use for zmap
+    #[arg(long)]
+    interface: Option<String>,
 
     /// FQ path to zmap binary
     #[arg(long, default_value = "/usr/local/sbin/zmap")]
@@ -59,6 +64,9 @@ impl ZmapBaseParams {
         let mut caller = Caller::new(
             self.sudo_path.to_string(), self.bin_path.to_string()
         );
+        if let Some(interface_name) = &self.interface {
+            caller.request_interface(interface_name.to_string());
+        }
         debug!("Using zmap caller: {:?}", caller);
         caller.push_source_address(self.source_address.to_string())?;
         Ok(caller)

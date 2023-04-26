@@ -55,7 +55,8 @@ async fn prepare(rabbit_params: &RabbitParams) -> Result<(Connection, Channel)> 
     ).with_context(|| format!("Invalid connection URI in {:?}", rabbit_params))?;
     let connection = Connection::open(&connection_args)
         .await
-        .with_context(|| format!("while opening RabbitMQ connection {:?}", rabbit_params))?;
+        .with_context(|| format!("while opening RabbitMQ connection {:?}", rabbit_params))
+        .with_context(|| "Maybe double-check credentials?")?;
     let channel = connection.open_channel(None)
         .await
         .with_context(|| "while opening RabbitMQ channel")?;

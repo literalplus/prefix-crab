@@ -2,15 +2,31 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use ipnet::Ipv6Net;
-use log::{error, info, trace, warn, debug};
-use tokio::select;
+use log::{error, info, trace, warn};
 use tokio::sync::mpsc::Receiver;
 use tokio_stream::{Stream, StreamExt};
-use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
+use clap::Args;
 
 use crate::cmd_logic::ZmapBaseParams;
 use crate::prefix_split;
 use crate::zmap_call::TargetCollector;
+
+#[derive(Args)]
+pub struct SchedulerParams {
+    #[clap(flatten)]
+    base: ZmapBaseParams,
+
+    /// How long to wait for enough probes to arrive before flushing the chunk anyways
+    /// and invoking zmap with less than the chunk size
+    #[arg(long, default_value = "60")]
+    chunk_timeout_secs: u64,
+
+    /// How many measurements to include in a chunk at most. If this many probes have been
+    /// buffered, a chunk is immediately created and zmap will be invoked.
+    #[arg(long, default_value = "16")]
+    max_chunk_size: usize,
+}
 
 struct Scheduler {
     zmap_params: ZmapBaseParams,
@@ -18,11 +34,14 @@ struct Scheduler {
 
 pub async fn start(
     work_rx: Receiver<String>,
-    zmap_params: ZmapBaseParams,
+    params: SchedulerParams,
 ) -> Result<()> {
     let work_stream = ReceiverStream::new(work_rx)
-        .chunks_timeout(16, Duration::from_secs(60));
-    Scheduler { zmap_params }.run(work_stream).await
+        .chunks_timeout(
+            params.max_chunk_size,
+            Duration::from_secs(params.chunk_timeout_secs)
+        );
+    Scheduler { zmap_params: params.base }.run(work_stream).await
 }
 
 impl Scheduler {

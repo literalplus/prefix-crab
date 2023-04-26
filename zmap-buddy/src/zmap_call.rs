@@ -86,6 +86,10 @@ impl Caller {
         rx
     }
 
+    pub fn request_interface(&mut self, interface_name: String) {
+        self.cmd.arg(format!("--interface={}", interface_name));
+    }
+
     /// Runs the configured command, consuming this instance.
     pub fn consume_run(mut self, targets: TargetCollector) -> Result<()> {
         self.set_base();
@@ -192,7 +196,6 @@ impl Caller {
             // TODO: Permute addresses manually, as --seed is not supported for v6
             //.arg("--gateway-mac=addr")
             //.arg("--source-mac=addr")
-            //.arg("--interface=name")
             .arg("--probe-module=icmp6_echoscan")
             .arg("--probe-ttl=255")
 
