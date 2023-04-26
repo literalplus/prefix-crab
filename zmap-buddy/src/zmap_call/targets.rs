@@ -83,13 +83,6 @@ impl TargetCollector {
             .with_context(|| format!("while flushing targets to {:?}", self.path))?;
         Ok(())
     }
-
-    /// Resets this collector's targets file by truncating it.
-    pub fn truncate_reset(&mut self) -> Result<()> {
-        drop(self.writer.take());
-        self.writer = Some(TargetCollector::create_or_truncate_file(self.path.as_path())?);
-        Ok(())
-    }
 }
 
 #[cfg(test)]

@@ -1,11 +1,11 @@
-use std::{fs, io};
 use std::borrow::Cow;
-use std::io::{BufRead, Read};
+use std::io::{self, BufRead, Read};
 use std::net::Ipv6Addr;
 use std::process::{ChildStdout, Command, Stdio};
 
 use anyhow::{bail, Context, Result};
-use log::{debug, log_enabled, trace, warn};
+use regex::Regex;
+use log::{debug, error, log_enabled, trace, warn};
 use log::Level::Debug;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -51,6 +51,7 @@ impl Caller {
         }
         let mut check_cmd = Command::new(self.cmd.get_program());
         check_cmd.arg("--non-interactive").arg("--list").arg("--").arg(self.bin_path.to_string());
+        check_cmd.stdout(Stdio::null()).stderr(Stdio::null());
         let mut child = check_cmd.spawn()
             .with_context(|| "Failed to spawn sudo check process")?;
         let exit_status = child.wait()
@@ -89,7 +90,6 @@ impl Caller {
     pub fn consume_run(mut self, targets: TargetCollector) -> Result<()> {
         self.set_base();
         self.push_targets(targets)?;
-        self.set_logging()?;
         self.do_call()
     }
 
@@ -114,10 +114,10 @@ impl Caller {
         let mut child = self.cmd.spawn()
             .with_context(|| "Failed to spawn zmap process")?;
 
-        self.prefix_out_fd(&mut child.stderr, "#[zmap]#");
+        self.watch_logger_fd(&mut child.stderr);
         match self.response_tx.take() {
             Some(tx) => self.watch_stdout(&mut child.stdout, tx),
-            None => self.prefix_out_fd(&mut child.stdout, "-[zmap]-"),
+            None => self.watch_logger_fd(&mut child.stdout),
         }
 
         let exit_status = child.wait()
@@ -131,13 +131,29 @@ impl Caller {
         }
     }
 
-    fn prefix_out_fd<R: Read + Send + 'static>(&self, fd: &mut Option<R>, prefix: &'static str) {
+    fn watch_logger_fd<R: Read + Send + 'static>(&self, fd: &mut Option<R>) {
         let taken = fd.take().expect("Failed to open output stream of child");
         std::thread::spawn(move || {
             let reader = io::BufReader::new(taken);
+            let logger_line_re = Regex::new(
+                r"^[a-zA-Z]{3} \d{1,2} [\d:.]+ \[(?P<level>[A-Z]+)]"
+            ).expect("Unable to compile logger line regex");
+            let mut locs = logger_line_re.capture_locations();
             for line in reader.lines() {
                 if let Ok(ln) = line {
-                    println!(" {} {}", prefix, ln)
+                    let ln_slice = ln.as_str();
+                    if let Some(_) = logger_line_re.captures_read(
+                        &mut locs, ln_slice
+                    ) {
+                        let (start, end) = locs.get(1).expect("First capture");
+                        match &ln[start..end] {
+                            "DEBUG" => trace!("zmap: {}", ln),
+                            "FATAL" => error!("zmap: {}", ln),
+                            _ => debug!("zmap: {}", ln)
+                        }
+                    } else {
+                        trace!("zmap: {}", ln);
+                    }
                 }
             }
         });
@@ -171,8 +187,6 @@ impl Caller {
         self.cmd
             .arg("--bandwidth=10K")
             .arg("--max-targets=10")
-            //.arg("--output-file=out/results.csv")
-            //.arg("--dryrun")
             .arg("--verbosity=5")
             .arg("--cooldown-time=4") // wait for responses for n secs after sending
             // TODO: Permute addresses manually, as --seed is not supported for v6
@@ -193,20 +207,8 @@ impl Caller {
         // TODO: check that blocklist is actually used with --ipv6-target-file ?
 
 
-        self.cmd.stdin(Stdio::piped()); // Allow password entry for sudo (local debug)
+        // self.cmd.stdin(Stdio::piped()); // Allow password entry for sudo (local debug)
         self.cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
         self.cmd.env_clear();
-    }
-
-    fn set_logging(&mut self) -> Result<()> {
-        let log_dir = "out/zmap-logs";
-        fs::create_dir_all(log_dir)
-            .with_context(|| format!("Unable to create zmap log directory {:?}", log_dir))?;
-
-        //.arg(format!("--log-directory={}", zmap_log_dir))
-        // TODO this should be managed differently in prod somehow (history, logrotate)
-        self.cmd.arg(format!("--log-file={}/latest.log", log_dir));
-
-        Ok(())
     }
 }
