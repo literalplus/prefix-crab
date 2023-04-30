@@ -31,9 +31,9 @@ pub struct ProbeResponse {
     pub icmp_code: u8,
     pub original_ttl: u8,
     #[serde(rename = "orig-dest-ip")] // unknown why only this field is kebab-case
-    pub original_dest_ip: String,
+    pub original_dest_ip: Ipv6Addr,
     #[serde(rename = "saddr")]
-    pub source_ip: String,
+    pub source_ip: Ipv6Addr,
     pub classification: String,
 }
 

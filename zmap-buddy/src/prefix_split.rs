@@ -42,7 +42,7 @@ impl Splitter {
         return Splitter {
             base_net: base_net.trunc(),
             subnet_prefix_len,
-            samples_per_subnet: 16,
+            samples_per_subnet: 4, // TODO increase again
             distribution: Uniform::from(host_range),
         };
     }
