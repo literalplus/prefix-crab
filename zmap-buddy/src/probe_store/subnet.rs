@@ -4,36 +4,47 @@ use std::collections::hash_map::Iter;
 use std::net::Ipv6Addr;
 use std::ops::Index;
 
+use queue_models::echo_response;
+use queue_models::echo_response::SplitResult;
+
 use crate::prefix_split::SubnetSample;
+use crate::probe_store::model::RoutableProbeStore;
 use crate::probe_store::ProbeStore;
 use crate::zmap_call::ProbeResponse;
 
-use super::model::{ResponseCount, ResponseKey};
+use super::model::ResponseKey;
 
 /// Stores aggregate information about responses.
 /// It is implied that this is somehow keyed, but it can also be used without that.
 #[derive(Debug)]
 pub struct Responses {
-    pub count: ResponseCount,
     pub intended_targets: Vec<Ipv6Addr>,
 }
 
 impl Responses {
     fn empty() -> Self {
         return Responses {
-            count: 0u8,
             intended_targets: vec![],
         };
     }
 
     fn add(&mut self, source: &ProbeResponse) {
-        self.count = self.count.saturating_add(1u8);
         self.intended_targets.push(source.original_dest_ip);
     }
 
     fn add_missed(&mut self, addr: Ipv6Addr) {
-        self.count = self.count.saturating_add(1u8);
         self.intended_targets.push(addr);
+    }
+
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.intended_targets.len()
+    }
+
+    fn to_model(self) -> echo_response::Responses {
+        echo_response::Responses {
+            intended_targets: self.intended_targets,
+        }
     }
 }
 
@@ -54,10 +65,6 @@ impl SubnetStore {
         }
     }
 
-    pub fn is_responsible_for(&self, response: &ProbeResponse) -> bool {
-        self.sample.subnet.contains(&response.original_dest_ip)
-    }
-
     #[cfg(test)]
     pub fn is_waiting_for_response(&self, addr: Ipv6Addr) -> bool {
         self.sample.addresses.contains(&addr)
@@ -73,6 +80,12 @@ impl SubnetStore {
     }
 }
 
+impl RoutableProbeStore for SubnetStore {
+    fn is_responsible_for(&self, response: &ProbeResponse) -> bool {
+        self.sample.subnet.contains(&response.original_dest_ip)
+    }
+}
+
 impl Index<ResponseKey> for SubnetStore {
     type Output = Responses;
 
@@ -83,7 +96,7 @@ impl Index<ResponseKey> for SubnetStore {
 
 impl ProbeStore for SubnetStore {
     fn register_response(&mut self, response: &ProbeResponse) {
-        let key = ResponseKey::from(&response);
+        let key = ResponseKey::from(response);
         let aggregate = self.entry(key);
         aggregate.add(&response);
         // Using a HashSet here is unlikely to provide a good trade-off, as there
@@ -97,6 +110,17 @@ impl ProbeStore for SubnetStore {
         let no_responses = self.entry(ResponseKey::NoResponse);
         for missing_addr in missing_addrs_uniq {
             no_responses.add_missed(missing_addr);
+        }
+    }
+}
+
+impl Into<SplitResult> for SubnetStore {
+    fn into(self) -> SplitResult {
+        SplitResult {
+            net: self.sample.subnet,
+            responses: self.responses.into_iter()
+                .map(|(k, v)| (k, v.to_model()))
+                .collect(),
         }
     }
 }
@@ -134,7 +158,7 @@ mod tests {
         // then
         let no_res = &store.responses[&ResponseKey::NoResponse];
         assert_that!(no_res.intended_targets).contains_exactly(target_addrs);
-        assert_eq!(no_res.count, 4);
+        assert_eq!(no_res.len(), 4);
         Ok(())
     }
 
@@ -149,7 +173,7 @@ mod tests {
         store.fill_missing();
         // then
         let no_res = &store.responses[&ResponseKey::NoResponse];
-        assert_eq!(no_res.count, 3);
+        assert_eq!(no_res.len(), 3);
         then_timxceed_registered(&mut store, responsive_addr);
         Ok(())
     }

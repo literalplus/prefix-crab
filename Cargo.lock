@@ -984,6 +984,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "queue-models"
+version = "0.1.0"
+dependencies = [
+ "ipnet",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1613,6 +1620,7 @@ dependencies = [
  "ipnet",
  "log",
  "prefix-crab",
+ "queue-models",
  "rand",
  "regex",
  "serde",

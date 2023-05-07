@@ -1,0 +1,11 @@
+[package]
+name = "queue-models"
+description = "API models to communicate with the best friend of ZMAP"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ipnet = { workspace = true }

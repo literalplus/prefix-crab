@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Args;
 use ipnet::Ipv6Net;
 use log::{error, info, trace, warn};
@@ -8,11 +8,12 @@ use tokio::sync::mpsc::Receiver;
 use tokio_stream::{Stream, StreamExt};
 use tokio_stream::wrappers::ReceiverStream;
 
-use crate::probe_store::{self, ProbeStore};
+use queue_models::echo_response::EchoProbeResponse;
+
 use crate::cmd_logic::ZmapBaseParams;
 use crate::prefix_split;
-use crate::prefix_split::SubnetSample;
-use crate::zmap_call::TargetCollector;
+use crate::probe_store::{self, PrefixSplitProbeStore, ProbeStore};
+use crate::zmap_call::{Caller, TargetCollector};
 
 #[derive(Args)]
 pub struct SchedulerParams {
@@ -58,7 +59,7 @@ impl Scheduler {
         loop {
             if let Some(chunks) = work_stream.next().await {
                 trace!("Received something: {:?}", chunks);
-                self.handle_scan_prefix_now(chunks).await
+                self.handle_scan_prefix(chunks).await
             } else {
                 info!("zmap scheduler shutting down.");
                 return Ok(());
@@ -66,17 +67,8 @@ impl Scheduler {
         }
     }
 
-    async fn handle_scan_prefix_now(&self, chunks: Vec<String>) {
-        let addrs = chunks.into_iter()
-            .flat_map(|pfx| self.split_prefix_to_addresses_or_log(&pfx).into_iter())
-            .collect::<Vec<SubnetSample>>();
-        // TODO permute addresses
-        if addrs.is_empty() {
-            warn!("Entire batch failed splitting; skipping.");
-            return;
-        }
-        let call_res = self.spawn_and_await_blocking_caller(addrs).await;
-        match call_res {
+    async fn handle_scan_prefix(&self, chunks: Vec<String>) {
+        match self.do_scan_prefix(chunks).await {
             Ok(_) => {
                 info!("zmap call was successful.");
                 // TODO handle results (:
@@ -88,52 +80,79 @@ impl Scheduler {
         }
     }
 
-    fn split_prefix_to_addresses_or_log(&self, received_str: &str) -> Vec<SubnetSample> {
-        match self.split_prefix_to_addresses(received_str) {
-            Ok(addrs) => addrs,
-            Err(e) => {
-                // TODO signal this somehow
-                warn!("Failed to split prefix {} into addresses; skipping: {}", received_str, e);
-                vec![]
+    async fn do_scan_prefix(&self, chunks: Vec<String>) -> Result<()> {
+        let mut task = SchedulerTask::new(self.zmap_params.clone())?;
+        let mut at_least_one_ok = false;
+        for chunk in chunks {
+            match task.push_work(&chunk) {
+                Err(e) => {
+                    warn!("Unable to push work {} to task due to {}", chunk, e);
+                }
+                Ok(_) => at_least_one_ok = true,
             }
         }
+        if !at_least_one_ok {
+            return Err(anyhow!("None of the work in this chunk could be pushed successfully"));
+        }
+        let results = task.run().await?;
+        info!("Temp results DTO: {:?}", results);
+        // TODO forward results to queue handler
+        Ok(())
+    }
+}
+
+struct SchedulerTask {
+    store: PrefixSplitProbeStore,
+    caller: Caller,
+    targets: TargetCollector,
+}
+
+type SchedulerWorkItem = String;
+
+impl SchedulerTask {
+    fn new(zmap_params: ZmapBaseParams) -> Result<Self> {
+        Ok(Self {
+            store: probe_store::create(),
+            caller: zmap_params.to_caller_assuming_sudo()?,
+            targets: TargetCollector::new_default()?,
+        })
     }
 
-    fn split_prefix_to_addresses(&self, received_str: &str) -> Result<Vec<SubnetSample>> {
-        let base_net = received_str.parse::<Ipv6Net>()
+    fn push_work(&mut self, item: &SchedulerWorkItem) -> Result<()> {
+        // TODO permute addresses
+        let base_net = item.parse::<Ipv6Net>()
             .with_context(|| "parsing IPv6 prefix")?;
-        let splits = prefix_split::process(base_net)
+        let samples = prefix_split::process(base_net)
             .with_context(|| "splitting IPv6 prefix")?;
-        Ok(splits)
+        for sample in samples.iter() {
+            self.targets.push_vec(sample.addresses.clone())?;
+        }
+        self.store.register_request(base_net, samples);
+        Ok(())
     }
 
     // TODO: Pass result in same/different data structure through channel s.t. it can be
     // TODO: sent out
     // TODO: test address: 2a01:4f9:6b:1280::2/126
     // TODO: Don't forget to set rabbitmq credentials in env
-    async fn spawn_and_await_blocking_caller(&self, samples: Vec<SubnetSample>) -> Result<()> {
-        let mut caller = self.zmap_params.to_caller_assuming_sudo()?;
-        let mut response_rx = caller.request_responses();
-        let addresses = samples.iter()
-            .flat_map(|it: &SubnetSample| it.addresses.iter())
-            .map(|it| it.clone())
-            .collect();
-        trace!("Addresses: {:?}", addresses);
+    async fn run(mut self) -> Result<Vec<EchoProbeResponse>> {
+        let mut response_rx = self.caller.request_responses();
+        self.targets.flush()?;
         let zmap_task = tokio::task::spawn_blocking(move || {
-            let mut targets = TargetCollector::new_default()?;
-            targets.push_vec(addresses)?;
             trace!("Now calling zmap");
-            caller.consume_run(targets)
+            self.caller.consume_run(self.targets)
         });
-        let mut stores = probe_store::create_for(samples);
+        let mut store = self.store;
         while let Some(record) = response_rx.recv().await {
             trace!("response from zmap: {:?}", record);
-            stores.register_response(&record);
+            store.register_response(&record);
         }
         response_rx.close(); // ensure nothing else is sent
         zmap_task.await.with_context(|| "during blocking zmap call (await)")??;
-        stores.fill_missing();
-        info!("Temp output of probe store -> {:?}", stores);
-        Ok(())
+        store.fill_missing();
+        let models = store.stores.into_iter()
+            .map(|it| it.into())
+            .collect();
+        Ok(models)
     }
 }

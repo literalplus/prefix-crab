@@ -1,10 +1,8 @@
-use std::fmt::Debug;
-
-use crate::prefix_split::SubnetSample;
 use crate::zmap_call::ProbeResponse;
 
 mod model;
 mod subnet;
+mod prefix;
 mod dispatch;
 #[cfg(test)]
 mod test_utils;
@@ -18,6 +16,8 @@ pub trait ProbeStore {
     fn fill_missing(&mut self);
 }
 
-pub fn create_for(samples: Vec<SubnetSample>) -> impl ProbeStore + Debug {
-    dispatch::ProbeStoreDispatcher::new(samples)
+pub type PrefixSplitProbeStore = dispatch::ProbeStoreDispatcher<prefix::PrefixStoreDispatcher>;
+
+pub fn create() -> PrefixSplitProbeStore {
+    dispatch::ProbeStoreDispatcher::new()
 }

@@ -18,7 +18,7 @@ flexi_logger = { workspace = true }
 futures = "0.3.28"
 futures-util = "0.3.28"
 human-panic = { workspace = true }
-ipnet = "2.7.1"
+ipnet = { workspace = true }
 log = { workspace = true }
 prefix-crab = { path = ".." }
 rand = "0.8.5"
@@ -27,3 +27,4 @@ serde = { version = "1.0.159", features = ["derive"] }
 tempfile = "3.5.0"
 tokio = { version = "1.27.0", features = ["full"] }
 tokio-stream = "0.1.12"
+queue-models = { path = "../queue-models" }

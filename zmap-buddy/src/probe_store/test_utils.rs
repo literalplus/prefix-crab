@@ -36,7 +36,7 @@ pub fn then_timxceed_registered(store: &mut SubnetStore, ip_addr: Ipv6Addr) {
         sent_ttl: 45,
     };
     let res = &store[key];
-    assert_eq!(res.count, 1);
+    assert_eq!(res.len(), 1);
     assert_eq!(res.intended_targets, vec![ip_addr]);
     assert!(!store.is_waiting_for_response(ip_addr));
 }
@@ -45,7 +45,7 @@ pub fn then_no_timxceed_registered(store: &mut SubnetStore) {
     for stored in store.iter() {
         let (key, responses) = stored;
         match *key {
-            ResponseKey::TimeExceeded { from: _, sent_ttl: _ } => assert_eq!(responses.count, 0),
+            ResponseKey::TimeExceeded { from: _, sent_ttl: _ } => assert_eq!(responses.len(), 0),
             _ => {}
         }
     }

@@ -1,18 +1,27 @@
+use std::fmt::Debug;
+
 use log::warn;
 
 use crate::prefix_split::SubnetSample;
+use crate::probe_store::model::RoutableProbeStore;
 use crate::probe_store::ProbeStore;
 use crate::zmap_call::ProbeResponse;
 
 use super::subnet::SubnetStore;
 
 #[derive(Debug)]
-pub struct ProbeStoreDispatcher {
-    stores: Vec<SubnetStore>,
+pub struct ProbeStoreDispatcher<T> where T: RoutableProbeStore + ProbeStore + Debug {
+    pub stores: Vec<T>,
 }
 
-impl ProbeStoreDispatcher {
-    pub fn new(samples: Vec<SubnetSample>) -> Self {
+impl<T> ProbeStoreDispatcher<T> where T: RoutableProbeStore + ProbeStore + Debug {
+    pub fn new() -> Self {
+        Self { stores: vec![] }
+    }
+}
+
+impl ProbeStoreDispatcher<SubnetStore> {
+    pub fn new_prefilled(samples: Vec<SubnetSample>) -> Self {
         let stores = samples.into_iter()
             .map(|it| SubnetStore::new(it))
             .collect();
@@ -20,14 +29,14 @@ impl ProbeStoreDispatcher {
     }
 }
 
-impl ProbeStore for ProbeStoreDispatcher {
+impl<T> ProbeStore for ProbeStoreDispatcher<T> where T: RoutableProbeStore + ProbeStore + Debug {
     fn register_response(&mut self, response: &ProbeResponse) {
         let mut already_found = false;
         for store in self.stores.iter_mut() {
             if store.is_responsible_for(&response) {
                 if already_found {
                     warn!(
-                        "A probe response {:?} was handled by more than one subnet sample. \
+                        "A probe response {:?} was handled by more than one subnet. \
                         This shouldn't be a huge issue in practice, but we should be \
                         aware that it happened.", response
                     );
@@ -49,6 +58,17 @@ impl ProbeStore for ProbeStoreDispatcher {
     }
 }
 
+impl<T> RoutableProbeStore for ProbeStoreDispatcher<T> where T: RoutableProbeStore + ProbeStore + Debug {
+    fn is_responsible_for(&self, probe: &ProbeResponse) -> bool {
+        for store in self.stores.iter() {
+            if store.is_responsible_for(probe) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use anyhow::*;
@@ -62,7 +82,7 @@ mod tests {
         let sample_a = gen_sample("2001:db8:cafe::/48")?;
         let addr_a = sample_a.addresses[0].clone();
         let sample_b = gen_sample("2001:db8:beef::/48")?;
-        let mut dispatcher = ProbeStoreDispatcher::new(
+        let mut dispatcher = ProbeStoreDispatcher::new_prefilled(
             vec![sample_a, sample_b]
         );
         // when
@@ -90,7 +110,7 @@ mod tests {
         let sample_b = gen_sample("2001:db8::/32")?;
         let addr_b = sample_b.addresses[0].clone();
         assert_ne!(addr_a, addr_b); // bad luck
-        let mut dispatcher = ProbeStoreDispatcher::new(
+        let mut dispatcher = ProbeStoreDispatcher::new_prefilled(
             vec![sample_a, sample_b]
         );
         // when
