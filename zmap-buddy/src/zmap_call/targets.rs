@@ -1,6 +1,7 @@
 use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::net::Ipv6Addr;
 use std::path::{Path, PathBuf};
 use anyhow::{Result, Context};
 
@@ -41,7 +42,7 @@ impl TargetCollector {
     /// Utility function that pre-fills a [TargetCollector] with a vector. This is most useful
     /// when the set of addresses is already known and the flexibility provided by
     /// [TargetCollector] is not needed.
-    pub fn from_vec(addrs: Vec<String>) -> Result<Self> {
+    pub fn from_vec(addrs: Vec<Ipv6Addr>) -> Result<Self> {
         let mut collector = Self::new_default()?;
         collector.push_vec(addrs)?;
         Ok(collector)
@@ -52,7 +53,7 @@ impl TargetCollector {
     /// Note that, if a push() fails, the collector enters an undefined state and it should
     /// no longer be used. Further note that there is no guarantee that writes are immediately
     /// reflected in the target file, i.e. buffered I/O may be used.
-    pub fn push(&mut self, addr_str: String) -> Result<()> {
+    pub fn push(&mut self, addr_str: Ipv6Addr) -> Result<()> {
         write!(self.borrow_writer(), "{}\n", addr_str)
             .with_context(|| format!("while writing a target to {:?}", self.path))?;
         self.count += 1;
@@ -67,7 +68,7 @@ impl TargetCollector {
     /// Pushes a vector of addresses to this collector.
     ///
     /// See [TargetCollector::push] for usage notes!
-    pub fn push_vec(&mut self, addrs: Vec<String>) -> Result<()> {
+    pub fn push_vec(&mut self, addrs: Vec<Ipv6Addr>) -> Result<()> {
         for addr in addrs {
             self.push(addr)?;
         }
@@ -104,14 +105,19 @@ mod tests {
         return (collector, tempdir);
     }
 
+    fn new_with_same_file(existing: &TargetCollector) -> TargetCollector {
+        TargetCollector::new(existing.path.clone())
+            .expect("collector creation to succeed")
+    }
+
     #[test]
     fn check_write_one() -> Result<()> {
         // given
         let (mut collector, tempdir) = new_with_tempfile();
-        let addr = "hi! it's me i'm an address";
+        let addr = "2001:db8:7777::13:7777".parse::<Ipv6Addr>()?;
 
         // when
-        collector.push(addr.to_string())?;
+        collector.push(addr)?;
 
         // then
         collector.flush()?;
@@ -125,11 +131,11 @@ mod tests {
     fn check_write_multiple() -> Result<()> {
         // given
         let (mut collector, tempdir) = new_with_tempfile();
-        let addr = "hi! it's me i'm an address";
-        let another_addr = "at tea time";
+        let addr = "2001:db8:aaaa::1".parse::<Ipv6Addr>()?;
+        let another_addr = "2001:db8:bbbb::0".parse::<Ipv6Addr>()?;
 
         // when
-        collector.push_vec(vec![addr.to_string(), another_addr.to_string()])?;
+        collector.push_vec(vec![addr, another_addr])?;
 
         // then
         collector.flush()?;
@@ -143,20 +149,20 @@ mod tests {
     #[test]
     fn check_reuse() -> Result<()> {
         // given
-        let (mut collector, tempdir) = new_with_tempfile();
-        let addr = "hi! it's me i'm an address";
-        let another_addr = "at tea time";
-        collector.push_vec(vec![addr.to_string(), another_addr.to_string()])?;
-        collector.flush()?;
-        let new_addr = "everybody agrees"; // shorter to test truncate()
+        let (mut first_collector, tempdir) = new_with_tempfile();
+        let addr = "2001:db8:abaf::1".parse::<Ipv6Addr>()?;
+        let another_addr = "2001:db8:caa7::0".parse::<Ipv6Addr>()?;
+        first_collector.push_vec(vec![addr, another_addr])?;
+        first_collector.flush()?;
+        let new_addr = "2001:db8:cafe::beef".parse::<Ipv6Addr>()?;
 
         // when
-        collector.truncate_reset()?;
-        collector.push(new_addr.to_string())?;
+        let mut new_collector = new_with_same_file(&first_collector);
+        new_collector.push(new_addr)?;
 
         // then
-        collector.flush()?;
-        let actual = std::io::read_to_string(File::open(collector.path)?)?;
+        new_collector.flush()?;
+        let actual = std::io::read_to_string(File::open(first_collector.path)?)?;
         assert_eq!(actual, format!("{}\n", new_addr));
         drop(tempdir);
         Ok(())

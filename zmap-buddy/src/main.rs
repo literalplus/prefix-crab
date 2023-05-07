@@ -7,9 +7,12 @@ use human_panic::setup_panic;
 use log::{debug, info, Level};
 
 mod cmd_logic;
+/// Performs the call to zmap.
 mod zmap_call;
 /// Handles splitting of prefixes & selection of addresses to scan in them.
 mod prefix_split;
+/// Stores probe results in memory for the duration of the scan.
+mod probe_store;
 
 #[derive(Parser)]
 #[command(author, version, about)]

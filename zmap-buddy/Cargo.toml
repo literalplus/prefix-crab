@@ -10,6 +10,7 @@ rust-version.workspace = true
 [dependencies]
 amqprs = { version = "1.2.0", features = ["traces", "urispec" ] }
 anyhow = { workspace = true }
+assertor = "0.0.2"
 clap = { workspace = true }
 clap-verbosity-flag = { workspace = true }
 csv = "1.2.1"
