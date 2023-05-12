@@ -4,12 +4,12 @@ use ipnet::Ipv6Net;
 use log::trace;
 use crate::prefix_split;
 
-use crate::zmap_call::TargetCollector;
+use crate::zmap_call::{self, TargetCollector};
 
 #[derive(Args)]
 pub struct Params {
     #[clap(flatten)]
-    base: super::ZmapBaseParams,
+    base: zmap_call::Params,
 
     target_prefix: Ipv6Net,
 }

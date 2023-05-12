@@ -10,7 +10,7 @@ use queue_models::echo_response::SplitResult;
 use crate::prefix_split::SubnetSample;
 use crate::probe_store::model::RoutableProbeStore;
 use crate::probe_store::ProbeStore;
-use crate::zmap_call::ProbeResponse;
+use crate::schedule::ProbeResponse;
 
 use super::model::ResponseKey;
 

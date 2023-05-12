@@ -12,8 +12,10 @@ mod zmap_call;
 mod prefix_split;
 /// Stores probe results in memory for the duration of the scan.
 mod probe_store;
-/// Handles reception, sending, & translation of messages from/to RabbitMQ
+/// Handles reception, sending, & translation of messages from/to RabbitMQ.
 mod rabbit;
+/// Handles batching of probe requests into ZMAP calls.
+mod schedule;
 
 #[derive(Parser)]
 #[command(author, version, about)]

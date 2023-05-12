@@ -9,16 +9,16 @@ use tokio_stream::{Stream, StreamExt};
 use tokio_stream::wrappers::ReceiverStream;
 
 use queue_models::echo_response::EchoProbeResponse;
+use std::net::Ipv6Addr;
 
-use crate::cmd_logic::ZmapBaseParams;
 use crate::prefix_split;
 use crate::probe_store::{self, PrefixSplitProbeStore, ProbeStore};
-use crate::zmap_call::{Caller, TargetCollector};
+use crate::zmap_call::{self, Caller, TargetCollector};
 
 #[derive(Args)]
-pub struct SchedulerParams {
+pub struct Params {
     #[clap(flatten)]
-    base: ZmapBaseParams,
+    base: zmap_call::Params,
 
     /// How long to wait for enough probes to arrive before flushing the chunk anyways
     /// and invoking zmap with less than the chunk size
@@ -31,13 +31,27 @@ pub struct SchedulerParams {
     max_chunk_size: usize,
 }
 
-struct Scheduler {
-    zmap_params: ZmapBaseParams,
+#[derive(Debug, serde::Deserialize)]
+pub struct ProbeResponse {
+    #[serde(rename = "type")]
+    pub icmp_type: u8,
+    #[serde(rename = "code")]
+    pub icmp_code: u8,
+    pub original_ttl: u8,
+    #[serde(rename = "orig-dest-ip")] // unknown why only this field is kebab-case
+    pub original_dest_ip: Ipv6Addr,
+    #[serde(rename = "saddr")]
+    pub source_ip: Ipv6Addr,
+    pub classification: String,
 }
 
-pub async fn start(
+struct Scheduler {
+    zmap_params: zmap_call::Params,
+}
+
+pub async fn run(
     work_rx: Receiver<String>,
-    params: SchedulerParams,
+    params: Params,
 ) -> Result<()> {
     let work_stream = ReceiverStream::new(work_rx)
         .chunks_timeout(
@@ -110,7 +124,7 @@ struct SchedulerTask {
 type SchedulerWorkItem = String;
 
 impl SchedulerTask {
-    fn new(zmap_params: ZmapBaseParams) -> Result<Self> {
+    fn new(zmap_params: zmap_call::Params) -> Result<Self> {
         Ok(Self {
             store: probe_store::create(),
             caller: zmap_params.to_caller_assuming_sudo()?,

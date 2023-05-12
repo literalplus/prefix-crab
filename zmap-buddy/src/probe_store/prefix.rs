@@ -3,7 +3,7 @@ use ipnet::Ipv6Net;
 use queue_models::echo_response::EchoProbeResponse;
 
 use crate::prefix_split::SubnetSample;
-use crate::zmap_call::ProbeResponse;
+use crate::schedule::ProbeResponse;
 
 use super::ProbeStore;
 use super::dispatch::ProbeStoreDispatcher;

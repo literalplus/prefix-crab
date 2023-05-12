@@ -1,6 +1,6 @@
 pub use queue_models::echo_response::{DestUnreachKind, ResponseCount, ResponseKey};
 
-use crate::zmap_call::ProbeResponse;
+use crate::schedule::ProbeResponse;
 
 impl From<&ProbeResponse> for ResponseKey {
     fn from(source: &ProbeResponse) -> Self {

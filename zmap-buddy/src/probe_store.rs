@@ -1,4 +1,4 @@
-use crate::zmap_call::ProbeResponse;
+use crate::schedule::ProbeResponse;
 
 mod model;
 mod subnet;

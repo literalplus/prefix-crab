@@ -3,12 +3,12 @@ use std::net::Ipv6Addr;
 use anyhow::Result;
 use clap::Args;
 
-use crate::zmap_call::TargetCollector;
+use crate::zmap_call::{self, TargetCollector};
 
 #[derive(Args)]
 pub struct Params {
     #[clap(flatten)]
-    base: super::ZmapBaseParams,
+    base: zmap_call::Params,
 
     target_addresses: Vec<Ipv6Addr>,
 }

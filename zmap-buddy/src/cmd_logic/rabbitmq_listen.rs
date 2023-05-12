@@ -4,26 +4,23 @@ use futures::executor;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-use crate::rabbit;
 
-use crate::rabbit::RabbitParams;
-
-mod zmap_scheduler;
+use crate::{rabbit, schedule};
 
 #[derive(Args)]
 pub struct Params {
     #[clap(flatten)]
-    scheduler: zmap_scheduler::SchedulerParams,
+    scheduler: schedule::Params,
 
     #[clap(flatten)]
-    rabbit: RabbitParams,
+    rabbit: rabbit::Params,
 }
 
 pub fn handle(params: Params) -> Result<()> {
     // TODO tune buffer size parameter
     let (task_tx, task_rx) = mpsc::channel(4096);
     // This task if shut down by the RabbitMQ receiver closing the channel
-    let scheduler_handle = tokio::spawn(zmap_scheduler::start(
+    let scheduler_handle = tokio::spawn(schedule::run(
         task_rx, params.scheduler,
     ));
 

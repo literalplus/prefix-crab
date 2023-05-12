@@ -6,7 +6,7 @@ use ipnet::Ipv6Net;
 use crate::prefix_split::{self, SubnetSample};
 use crate::probe_store::model::ResponseKey;
 use crate::probe_store::subnet::SubnetStore;
-use crate::zmap_call::ProbeResponse;
+use crate::schedule::ProbeResponse;
 
 pub fn gen_any_sample() -> Result<SubnetSample> {
     gen_sample("2001:db8::/32")

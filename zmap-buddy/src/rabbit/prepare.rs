@@ -3,14 +3,14 @@ use amqprs::connection::{Connection, OpenConnectionArguments};
 use anyhow::*;
 use log::debug;
 
-use super::RabbitParams;
+use super::Params;
 
 pub struct RabbitHandle {
     _connection: Connection,
     channel: Channel,
 }
 
-pub async fn prepare(params: &RabbitParams) -> Result<RabbitHandle> {
+pub async fn prepare(params: &Params) -> Result<RabbitHandle> {
     debug!("Setting up RabbitMQ receiver...");
     let connection_args = OpenConnectionArguments::try_from(
         params.amqp_uri.as_str(),
@@ -30,7 +30,7 @@ pub async fn prepare(params: &RabbitParams) -> Result<RabbitHandle> {
 
 impl RabbitHandle {
     async fn connect(
-        params: &RabbitParams, connection_args: &OpenConnectionArguments,
+        params: &Params, connection_args: &OpenConnectionArguments,
     ) -> Result<Self> {
         let connection = Connection::open(&connection_args)
             .await

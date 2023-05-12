@@ -24,7 +24,7 @@ mod send {
 
 #[derive(Args)]
 #[derive(Debug)]
-pub struct RabbitParams {
+pub struct Params {
     /// URI for AMQP (RabbitMQ) server to connect to.
     /// Environment variable: AMQP_URI
     /// If a password is required, it is recommended to specify the URL over the environment or
@@ -48,7 +48,7 @@ pub struct RabbitParams {
 pub async fn run(
     work_sender: mpsc::Sender<String>,
     mut stop_rx: broadcast::Receiver<()>,
-    params: RabbitParams,
+    params: Params,
 ) -> Result<()> {
     //let inner_run = run_without_stop(work_sender, params);
     select! {
@@ -60,7 +60,7 @@ pub async fn run(
 
 async fn run_without_stop(
     work_sender: mpsc::Sender<String>,
-    params: RabbitParams,
+    params: Params,
 ) -> Result<()> {
     let handle = prepare::prepare(&params)
         .await?;
