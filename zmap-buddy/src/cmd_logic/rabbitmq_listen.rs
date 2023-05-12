@@ -4,8 +4,10 @@ use futures::executor;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+use crate::rabbit;
 
-mod rabbit_receiver;
+use crate::rabbit::RabbitParams;
+
 mod zmap_scheduler;
 
 #[derive(Args)]
@@ -14,7 +16,7 @@ pub struct Params {
     scheduler: zmap_scheduler::SchedulerParams,
 
     #[clap(flatten)]
-    rabbit: rabbit_receiver::RabbitParams,
+    rabbit: RabbitParams,
 }
 
 pub fn handle(params: Params) -> Result<()> {
@@ -29,7 +31,7 @@ pub fn handle(params: Params) -> Result<()> {
     let stop_rx = sig_handler.subscribe_stop();
     tokio::spawn(sig_handler.wait_for_signal());
 
-    let rabbit_handle = tokio::spawn(rabbit_receiver::start(
+    let rabbit_handle = tokio::spawn(rabbit::run(
         task_tx, stop_rx, params.rabbit,
     ));
 
