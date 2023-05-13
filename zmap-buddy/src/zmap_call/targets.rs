@@ -44,7 +44,7 @@ impl TargetCollector {
     /// [TargetCollector] is not needed.
     pub fn from_vec(addrs: Vec<Ipv6Addr>) -> Result<Self> {
         let mut collector = Self::new_default()?;
-        collector.push_vec(addrs)?;
+        collector.push_slice(addrs.as_slice())?;
         Ok(collector)
     }
 
@@ -53,8 +53,8 @@ impl TargetCollector {
     /// Note that, if a push() fails, the collector enters an undefined state and it should
     /// no longer be used. Further note that there is no guarantee that writes are immediately
     /// reflected in the target file, i.e. buffered I/O may be used.
-    pub fn push(&mut self, addr_str: Ipv6Addr) -> Result<()> {
-        write!(self.borrow_writer(), "{}\n", addr_str)
+    pub fn push(&mut self, addr: &Ipv6Addr) -> Result<()> {
+        write!(self.borrow_writer(), "{}\n", addr)
             .with_context(|| format!("while writing a target to {:?}", self.path))?;
         self.count += 1;
         Ok(())
@@ -68,7 +68,7 @@ impl TargetCollector {
     /// Pushes a vector of addresses to this collector.
     ///
     /// See [TargetCollector::push] for usage notes!
-    pub fn push_vec(&mut self, addrs: Vec<Ipv6Addr>) -> Result<()> {
+    pub fn push_slice(&mut self, addrs: &[Ipv6Addr]) -> Result<()> {
         for addr in addrs {
             self.push(addr)?;
         }
@@ -117,7 +117,7 @@ mod tests {
         let addr = "2001:db8:7777::13:7777".parse::<Ipv6Addr>()?;
 
         // when
-        collector.push(addr)?;
+        collector.push(&addr)?;
 
         // then
         collector.flush()?;
@@ -135,7 +135,7 @@ mod tests {
         let another_addr = "2001:db8:bbbb::0".parse::<Ipv6Addr>()?;
 
         // when
-        collector.push_vec(vec![addr, another_addr])?;
+        collector.push_slice(&[addr, another_addr])?;
 
         // then
         collector.flush()?;
@@ -152,13 +152,13 @@ mod tests {
         let (mut first_collector, tempdir) = new_with_tempfile();
         let addr = "2001:db8:abaf::1".parse::<Ipv6Addr>()?;
         let another_addr = "2001:db8:caa7::0".parse::<Ipv6Addr>()?;
-        first_collector.push_vec(vec![addr, another_addr])?;
+        first_collector.push_slice(&[addr, another_addr])?;
         first_collector.flush()?;
         let new_addr = "2001:db8:cafe::beef".parse::<Ipv6Addr>()?;
 
         // when
         let mut new_collector = new_with_same_file(&first_collector);
-        new_collector.push(new_addr)?;
+        new_collector.push(&new_addr)?;
 
         // then
         new_collector.flush()?;

@@ -1,21 +1,22 @@
 use std::collections::HashMap;
 use std::net::Ipv6Addr;
+use serde::{Deserialize, Serialize};
 
 use ipnet::Ipv6Net;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct EchoProbeResponse {
     pub target_net: Ipv6Net,
     pub splits: Vec<SplitResult>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SplitResult {
     pub net: Ipv6Net,
     pub responses: HashMap<ResponseKey, Responses>,
 }
 
-#[derive(Eq, PartialEq, Hash, Debug)]
+#[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub enum ResponseKey {
     DestinationUnreachable { kind: DestUnreachKind },
     EchoReply { different_from: Option<Ipv6Addr> },
@@ -26,7 +27,7 @@ pub enum ResponseKey {
 
 pub type ResponseCount = usize;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Responses {
     pub intended_targets: Vec<Ipv6Addr>,
 }
@@ -38,7 +39,7 @@ impl Responses {
 }
 
 
-#[derive(Eq, PartialEq, Hash, Debug)]
+#[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub enum DestUnreachKind {
     /// 0 = no route, 2 = beyond scope, 7 = source routing error
     Other(u8),

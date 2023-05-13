@@ -2,25 +2,14 @@ use anyhow::*;
 use clap::Args;
 use tokio::select;
 use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc::UnboundedReceiver;
+
+use crate::schedule::{TaskRequest, TaskResponse};
 
 /// Handles configuration and connection setup.
 mod prepare;
 mod receive;
-
-mod send {
-    use anyhow::*;
-
-    use super::prepare::RabbitHandle;
-
-    pub async fn run(
-        _handle: &RabbitHandle,
-        _exchange_name: String,
-    ) -> Result<()> {
-        // FIXME implement
-        Ok(())
-    }
-}
-
+mod send;
 
 #[derive(Args)]
 #[derive(Debug)]
@@ -46,25 +35,28 @@ pub struct Params {
 }
 
 pub async fn run(
-    work_sender: mpsc::Sender<String>,
+    work_sender: mpsc::Sender<TaskRequest>,
+    result_receiver: UnboundedReceiver<TaskResponse>,
     mut stop_rx: broadcast::Receiver<()>,
     params: Params,
 ) -> Result<()> {
-    //let inner_run = run_without_stop(work_sender, params);
     select! {
         biased; // Needed to handle stops immediately
         _ = stop_rx.recv() => Ok(()),
-        exit_res = run_without_stop(work_sender, params) => exit_res,
+        exit_res = run_without_stop(work_sender, result_receiver, params) => exit_res,
     }
 }
 
 async fn run_without_stop(
-    work_sender: mpsc::Sender<String>,
+    work_sender: mpsc::Sender<TaskRequest>,
+    result_receiver: UnboundedReceiver<TaskResponse>,
     params: Params,
 ) -> Result<()> {
     let handle = prepare::prepare(&params)
         .await?;
-    let sender = send::run(&handle, params.in_exchange_name);
+    let sender = send::run(
+        &handle, result_receiver, params.in_exchange_name,
+    );
     let receiver = receive::run(
         &handle, params.in_queue_name, work_sender,
     );

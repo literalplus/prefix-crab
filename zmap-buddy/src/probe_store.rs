@@ -1,3 +1,5 @@
+pub use prefix::PrefixStoreDispatcher;
+
 use crate::schedule::ProbeResponse;
 
 mod model;
@@ -16,8 +18,10 @@ pub trait ProbeStore {
     fn fill_missing(&mut self);
 }
 
-pub type PrefixSplitProbeStore = dispatch::ProbeStoreDispatcher<prefix::PrefixStoreDispatcher>;
+pub type PrefixSplitProbeStore<ExtraData> = dispatch::ProbeStoreDispatcher<
+    PrefixStoreDispatcher<ExtraData>
+>;
 
-pub fn create() -> PrefixSplitProbeStore {
+pub fn create<ExtraData: Sized>() -> PrefixSplitProbeStore<ExtraData> {
     dispatch::ProbeStoreDispatcher::new()
 }

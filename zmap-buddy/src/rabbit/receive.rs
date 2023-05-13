@@ -1,20 +1,24 @@
-use amqprs::channel::{BasicAckArguments, BasicConsumeArguments, ConsumerMessage};
+use amqprs::channel::{BasicConsumeArguments, ConsumerMessage};
 use amqprs::Deliver;
-use anyhow::{Context, Result}; // Cannot * due to Ok()
-use log::{info, trace};
+// Cannot * due to Ok()
+use anyhow::{Context, Result};
+use log::{info, Level, log_enabled, trace, warn};
 use tokio::sync::mpsc;
+
+use crate::schedule;
+use crate::schedule::TaskRequest;
 
 use super::prepare::RabbitHandle;
 
 struct RabbitReceiver<'han> {
-    work_sender: mpsc::Sender<String>,
+    work_sender: mpsc::Sender<schedule::TaskRequest>,
     handle: &'han RabbitHandle,
 }
 
 pub async fn run(
     handle: &RabbitHandle,
     queue_name: String,
-    work_sender: mpsc::Sender<String>,
+    work_sender: mpsc::Sender<schedule::TaskRequest>,
 ) -> Result<()> {
     RabbitReceiver { work_sender, handle }
         .run(queue_name)
@@ -41,7 +45,7 @@ impl RabbitReceiver<'_> {
         &self, queue_name: &str,
     ) -> Result<mpsc::UnboundedReceiver<ConsumerMessage>> {
         let consume_args = BasicConsumeArguments::new(&queue_name, "zmap-buddy");
-        let (_, rabbit_rx) = self.handle.borrow()
+        let (_, rabbit_rx) = self.handle.chan()
             .basic_consume_rx(consume_args)
             .await
             .with_context(|| "while starting consumer")?;
@@ -49,33 +53,52 @@ impl RabbitReceiver<'_> {
     }
 
     async fn handle_msg(&mut self, opt_msg: Option<ConsumerMessage>) -> Result<()> {
+        // NOTE: By default, if a msg is un-ack'd for 30min, the consumer
+        // is assumed faulty and the connection is closed with an error.
+        // https://www.rabbitmq.com/consumers.html#acknowledgement-timeout
         if let Some(msg) = opt_msg {
             let content = msg.content
                 .expect("amqprs guarantees that received ConsumerMessage has content");
-            self.parse_and_pass(content).await?;
             let deliver = msg.deliver
                 .expect("amqprs guarantees that received ConsumerMessage has deliver");
-            self.ack(deliver).await?;
+            self.parse_and_pass(content, deliver).await?;
         } else {
             info!("RabbitMQ channel was closed");
         }
         Ok(())
     }
 
-    async fn parse_and_pass(&mut self, content: Vec<u8>) -> Result<()> {
-        let str_content = String::from_utf8(content)
-            .with_context(|| "while parsing Rabbit message to UTF-8")?;
-        trace!("got from rabbit: {:?}", str_content);
-        self.work_sender.send(str_content)
-            .await
-            .with_context(|| "while passing received message")?;
+    async fn parse_and_pass(&mut self, content: Vec<u8>, deliver: Deliver) -> Result<()> {
+        let content_slice = content.as_slice();
+        if log_enabled!(Level::Trace) {
+            trace!("Got from RabbitMQ: {:?}", self.try_parse_utf8(content_slice));
+        }
+        let parsed = serde_json::from_slice(content_slice);
+        match parsed {
+            Ok(model) => {
+                let request = TaskRequest {
+                    model,
+                    delivery_tag_to_ack: deliver.delivery_tag(),
+                };
+                self.work_sender.send(request)
+                    .await
+                    .with_context(|| "while passing received message")?;
+            }
+            Err(e) => {
+                warn!(
+                    "Unable to parse RabbitMQ message: {:?} - {:?}",
+                    e,
+                    self.try_parse_utf8(content_slice)
+                );
+            }
+        }
         Ok(())
     }
 
-    async fn ack(&self, deliver: Deliver) -> Result<()> {
-        self.handle.borrow().basic_ack(BasicAckArguments::new(
-            deliver.delivery_tag(), false,
-        )).await.with_context(|| "during ack")?;
-        Ok(())
+    fn try_parse_utf8<'a>(&'a self, content: &'a [u8]) -> &str {
+        match std::str::from_utf8(content) {
+            Ok(parsed) => parsed,
+            Err(_) => "<< not UTF-8 >>",
+        }
     }
 }

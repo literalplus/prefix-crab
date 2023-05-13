@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use derive_where::derive_where;
 
 use log::warn;
 
@@ -9,12 +10,12 @@ use crate::schedule::ProbeResponse;
 
 use super::subnet::SubnetStore;
 
-#[derive(Debug)]
-pub struct ProbeStoreDispatcher<T> where T: RoutableProbeStore + ProbeStore + Debug {
+#[derive_where(Debug; T: Debug)]
+pub struct ProbeStoreDispatcher<T> where T: RoutableProbeStore + ProbeStore {
     pub stores: Vec<T>,
 }
 
-impl<T> ProbeStoreDispatcher<T> where T: RoutableProbeStore + ProbeStore + Debug {
+impl<T> ProbeStoreDispatcher<T> where T: RoutableProbeStore + ProbeStore {
     pub fn new() -> Self {
         Self { stores: vec![] }
     }

@@ -23,8 +23,10 @@ log = { workspace = true }
 prefix-crab = { path = ".." }
 rand = "0.8.5"
 regex = "1.8.1"
-serde = { version = "1.0.159", features = ["derive"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 tempfile = "3.5.0"
 tokio = { version = "1.27.0", features = ["full"] }
 tokio-stream = "0.1.12"
 queue-models = { path = "../queue-models" }
+derive-where = "1.2.1"

@@ -2,18 +2,15 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Args;
-use ipnet::Ipv6Net;
 use log::{error, info, trace, warn};
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::{Receiver, UnboundedSender};
 use tokio_stream::{Stream, StreamExt};
 use tokio_stream::wrappers::ReceiverStream;
 
-use queue_models::echo_response::EchoProbeResponse;
-use std::net::Ipv6Addr;
+use crate::schedule::task::SchedulerTask;
+use crate::zmap_call;
 
-use crate::prefix_split;
-use crate::probe_store::{self, PrefixSplitProbeStore, ProbeStore};
-use crate::zmap_call::{self, Caller, TargetCollector};
+pub use self::model::{ProbeResponse, TaskRequest, TaskResponse};
 
 #[derive(Args)]
 pub struct Params {
@@ -31,26 +28,16 @@ pub struct Params {
     max_chunk_size: usize,
 }
 
-#[derive(Debug, serde::Deserialize)]
-pub struct ProbeResponse {
-    #[serde(rename = "type")]
-    pub icmp_type: u8,
-    #[serde(rename = "code")]
-    pub icmp_code: u8,
-    pub original_ttl: u8,
-    #[serde(rename = "orig-dest-ip")] // unknown why only this field is kebab-case
-    pub original_dest_ip: Ipv6Addr,
-    #[serde(rename = "saddr")]
-    pub source_ip: Ipv6Addr,
-    pub classification: String,
-}
+mod model;
 
 struct Scheduler {
     zmap_params: zmap_call::Params,
+    result_tx: UnboundedSender<TaskResponse>,
 }
 
 pub async fn run(
-    work_rx: Receiver<String>,
+    work_rx: Receiver<TaskRequest>,
+    result_tx: UnboundedSender<TaskResponse>,
     params: Params,
 ) -> Result<()> {
     let work_stream = ReceiverStream::new(work_rx)
@@ -58,11 +45,11 @@ pub async fn run(
             params.max_chunk_size,
             Duration::from_secs(params.chunk_timeout_secs),
         );
-    Scheduler { zmap_params: params.base }.run(work_stream).await
+    Scheduler { zmap_params: params.base, result_tx }.run(work_stream).await
 }
 
 impl Scheduler {
-    async fn run(&mut self, work_stream: impl Stream<Item=Vec<String>>) -> Result<()> {
+    async fn run(&mut self, work_stream: impl Stream<Item=Vec<TaskRequest>>) -> Result<()> {
         let params = self.zmap_params.clone();
         tokio::task::spawn_blocking(move || {
             params.to_caller_verifying_sudo()?.verify_sudo_access()?;
@@ -71,9 +58,9 @@ impl Scheduler {
         tokio::pin!(work_stream);
         info!("zmap scheduler up & running!");
         loop {
-            if let Some(chunks) = work_stream.next().await {
-                trace!("Received something: {:?}", chunks);
-                self.handle_scan_prefix(chunks).await
+            if let Some(batch) = work_stream.next().await {
+                trace!("Received something: {:?}", batch);
+                self.handle_scan_batch(batch).await
             } else {
                 info!("zmap scheduler shutting down.");
                 return Ok(());
@@ -81,12 +68,9 @@ impl Scheduler {
         }
     }
 
-    async fn handle_scan_prefix(&self, chunks: Vec<String>) {
-        match self.do_scan_prefix(chunks).await {
-            Ok(_) => {
-                info!("zmap call was successful.");
-                // TODO handle results (:
-            }
+    async fn handle_scan_batch(&self, batch: Vec<TaskRequest>) {
+        match self.do_scan_batch(batch).await {
+            Ok(_) => info!("zmap call was successful."),
             Err(e) => {
                 error!("zmap call failed: {}", e);
                 // TODO signal this somehow
@@ -94,14 +78,12 @@ impl Scheduler {
         }
     }
 
-    async fn do_scan_prefix(&self, chunks: Vec<String>) -> Result<()> {
+    async fn do_scan_batch(&self, chunks: Vec<TaskRequest>) -> Result<()> {
         let mut task = SchedulerTask::new(self.zmap_params.clone())?;
         let mut at_least_one_ok = false;
-        for chunk in chunks {
+        for chunk in chunks.iter() {
             match task.push_work(&chunk) {
-                Err(e) => {
-                    warn!("Unable to push work {} to task due to {}", chunk, e);
-                }
+                Err(e) => warn!("Unable to push work to task due to {}", e),
                 Ok(_) => at_least_one_ok = true,
             }
         }
@@ -109,64 +91,84 @@ impl Scheduler {
             return Err(anyhow!("None of the work in this chunk could be pushed successfully"));
         }
         let results = task.run().await?;
-        info!("Temp results DTO: {:?}", results);
-        // TODO forward results to queue handler
+        for result in results {
+            self.result_tx.send(result)
+                .with_context(|| "while sending response over channel")?;
+        }
         Ok(())
     }
 }
 
-struct SchedulerTask {
-    store: PrefixSplitProbeStore,
-    caller: Caller,
-    targets: TargetCollector,
-}
+mod task {
+    use anyhow::{Context, Result};
+    use log::trace;
 
-type SchedulerWorkItem = String;
+    use crate::prefix_split;
+    use crate::probe_store::{self, PrefixSplitProbeStore, PrefixStoreDispatcher, ProbeStore};
+    use crate::zmap_call::{self, Caller, TargetCollector};
 
-impl SchedulerTask {
-    fn new(zmap_params: zmap_call::Params) -> Result<Self> {
-        Ok(Self {
-            store: probe_store::create(),
-            caller: zmap_params.to_caller_assuming_sudo()?,
-            targets: TargetCollector::new_default()?,
-        })
+    use super::{TaskRequest, TaskResponse};
+
+    pub struct SchedulerTask<'req> {
+        store: PrefixSplitProbeStore<&'req TaskRequest>,
+        caller: Caller,
+        targets: TargetCollector,
     }
 
-    fn push_work(&mut self, item: &SchedulerWorkItem) -> Result<()> {
-        // TODO permute addresses
-        let base_net = item.parse::<Ipv6Net>()
-            .with_context(|| "parsing IPv6 prefix")?;
-        let samples = prefix_split::process(base_net)
-            .with_context(|| "splitting IPv6 prefix")?;
-        for sample in samples.iter() {
-            self.targets.push_vec(sample.addresses.clone())?;
+    impl<'req> SchedulerTask<'req> {
+        pub fn new(zmap_params: zmap_call::Params) -> Result<Self> {
+            Ok(Self {
+                store: probe_store::create(),
+                caller: zmap_params.to_caller_assuming_sudo()?,
+                targets: TargetCollector::new_default()?,
+            })
         }
-        self.store.register_request(base_net, samples);
-        Ok(())
+
+        pub fn push_work(&mut self, item: &'req TaskRequest) -> Result<()> {
+            self.push_work_internal(item).with_context(|| format!("for request: {:?}", item))
+        }
+
+        fn push_work_internal(&mut self, item: &'req TaskRequest) -> Result<()> {
+            // TODO permute addresses
+            let base_net = item.model.target_net;
+            let samples = prefix_split::process(base_net)
+                .with_context(|| "splitting IPv6 prefix")?;
+            for sample in samples.iter() {
+                self.targets.push_slice(sample.addresses.as_slice())?;
+            }
+            self.store.register_request(base_net, samples, &item);
+            Ok(())
+        }
+
+        // TODO: test address: 2a01:4f9:6b:1280::2/126
+        // TODO: Don't forget to set rabbitmq credentials in env
+        pub async fn run(mut self) -> Result<Vec<TaskResponse>> {
+            let mut response_rx = self.caller.request_responses();
+            self.targets.flush()?;
+            let zmap_task = tokio::task::spawn_blocking(move || {
+                trace!("Now calling zmap");
+                self.caller.consume_run(self.targets)
+            });
+            let mut not_moved_store = self.store;
+            while let Some(record) = response_rx.recv().await {
+                trace!("response from zmap: {:?}", record);
+                not_moved_store.register_response(&record);
+            }
+            response_rx.close(); // ensure nothing else is sent
+            zmap_task.await.with_context(|| "during blocking zmap call (await)")??;
+            not_moved_store.fill_missing();
+            Ok(map_into_responses(not_moved_store))
+        }
     }
 
-    // TODO: Pass result in same/different data structure through channel s.t. it can be
-    // TODO: sent out
-    // TODO: test address: 2a01:4f9:6b:1280::2/126
-    // TODO: Don't forget to set rabbitmq credentials in env
-    async fn run(mut self) -> Result<Vec<EchoProbeResponse>> {
-        let mut response_rx = self.caller.request_responses();
-        self.targets.flush()?;
-        let zmap_task = tokio::task::spawn_blocking(move || {
-            trace!("Now calling zmap");
-            self.caller.consume_run(self.targets)
-        });
-        let mut store = self.store;
-        while let Some(record) = response_rx.recv().await {
-            trace!("response from zmap: {:?}", record);
-            store.register_response(&record);
-        }
-        response_rx.close(); // ensure nothing else is sent
-        zmap_task.await.with_context(|| "during blocking zmap call (await)")??;
-        store.fill_missing();
-        let models = store.stores.into_iter()
-            .map(|it| it.into())
-            .collect();
-        Ok(models)
+    fn map_into_responses(store: PrefixSplitProbeStore<&TaskRequest>) -> Vec<TaskResponse> {
+        store.stores.into_iter()
+            .map(|it| map_into_response(it))
+            .collect()
+    }
+
+    fn map_into_response(store: PrefixStoreDispatcher<&TaskRequest>) -> TaskResponse {
+        let acks_delivery_tag = store.extra_data.delivery_tag_to_ack;
+        TaskResponse { model: store.into(), acks_delivery_tag }
     }
 }

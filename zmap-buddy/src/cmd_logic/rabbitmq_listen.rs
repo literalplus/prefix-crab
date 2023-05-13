@@ -18,10 +18,13 @@ pub struct Params {
 
 pub fn handle(params: Params) -> Result<()> {
     // TODO tune buffer size parameter
+    // bounded s.t. we don't keep consuming new work items when the scheduler is blocked for some reason.
     let (task_tx, task_rx) = mpsc::channel(4096);
+    let (res_tx, res_rx) = mpsc::unbounded_channel();
+
     // This task if shut down by the RabbitMQ receiver closing the channel
     let scheduler_handle = tokio::spawn(schedule::run(
-        task_rx, params.scheduler,
+        task_rx, res_tx, params.scheduler,
     ));
 
     let sig_handler = signal_handler::new();
@@ -29,7 +32,7 @@ pub fn handle(params: Params) -> Result<()> {
     tokio::spawn(sig_handler.wait_for_signal());
 
     let rabbit_handle = tokio::spawn(rabbit::run(
-        task_tx, stop_rx, params.rabbit,
+        task_tx, res_rx, stop_rx, params.rabbit,
     ));
 
     executor::block_on(wait_for_exit(scheduler_handle, rabbit_handle))

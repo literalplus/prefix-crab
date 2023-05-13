@@ -70,7 +70,7 @@ impl RabbitHandle {
         Ok(self)
     }
 
-    pub fn borrow(&self) -> &Channel {
+    pub fn chan(&self) -> &Channel {
         &self.channel
     }
 }

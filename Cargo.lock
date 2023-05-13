@@ -340,6 +340,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive-where"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bc1955a640c4464859ae700fbe48e666da6fdce99ce5fe1acd08dd295889d10"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.11",
+]
+
+[[package]]
 name = "errno"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -665,6 +676,9 @@ name = "ipnet"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30e22bd8629359895450b59ea7a776c850561b96a3b1d31321c1949d9e6c9146"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "is-terminal"
@@ -988,6 +1002,7 @@ name = "queue-models"
 version = "0.1.0"
 dependencies = [
  "ipnet",
+ "serde",
 ]
 
 [[package]]
@@ -1143,6 +1158,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.11",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.96"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "057d394a50403bcac12672b2b18fb387ab6d289d957dab67dd201875391e52f1"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]
@@ -1613,6 +1639,7 @@ dependencies = [
  "clap",
  "clap-verbosity-flag",
  "csv",
+ "derive-where",
  "flexi_logger",
  "futures",
  "futures-util",
@@ -1624,6 +1651,7 @@ dependencies = [
  "rand",
  "regex",
  "serde",
+ "serde_json",
  "tempfile",
  "tokio",
  "tokio-stream",

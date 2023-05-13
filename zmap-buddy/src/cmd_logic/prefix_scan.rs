@@ -22,7 +22,7 @@ pub fn handle(params: Params) -> Result<()> {
     for split in splits {
         // TODO permute these to spread load a bit
         for address in split.addresses {
-            targets.push(address)?;
+            targets.push(&address)?;
         }
     }
     caller.consume_run(targets)
