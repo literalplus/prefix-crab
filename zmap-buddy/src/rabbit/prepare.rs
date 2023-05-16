@@ -22,8 +22,8 @@ pub async fn prepare(params: &Params) -> Result<RabbitHandle> {
     let handle = RabbitHandle::connect(params, &connection_args).await?;
     handle
         .declare_queue(queue_name).await?
-        .declare_fanout_exchange(out_exchange_name).await?
-        .declare_fanout_exchange(in_exchange_name).await?
+        .declare_exchange(out_exchange_name, "fanout").await?
+        .declare_exchange(in_exchange_name, "direct").await?
         .bind_queue_to(queue_name, in_exchange_name).await?;
     Ok(handle)
 }
@@ -53,8 +53,8 @@ impl RabbitHandle {
         Ok(self)
     }
 
-    async fn declare_fanout_exchange(&self, name: &str) -> Result<&RabbitHandle> {
-        let args = ExchangeDeclareArguments::new(name, "fanout")
+    async fn declare_exchange(&self, name: &str, typ: &str) -> Result<&RabbitHandle> {
+        let args = ExchangeDeclareArguments::new(name, typ)
             .durable(true)
             .finish();
         self.channel.exchange_declare(args).await

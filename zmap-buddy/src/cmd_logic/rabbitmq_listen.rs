@@ -8,6 +8,7 @@ use tokio::task::JoinHandle;
 use crate::{rabbit, schedule};
 
 #[derive(Args)]
+#[group(id = "listen")]
 pub struct Params {
     #[clap(flatten)]
     scheduler: schedule::Params,

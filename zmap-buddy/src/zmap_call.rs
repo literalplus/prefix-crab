@@ -10,6 +10,7 @@ mod caller;
 
 #[derive(Args)]
 #[derive(Clone)]
+#[group(id = "zmap")]
 pub struct Params {
     /// Source IPv6 address to use for zmap
     #[arg(long)]

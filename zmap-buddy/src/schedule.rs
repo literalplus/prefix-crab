@@ -13,6 +13,7 @@ use crate::zmap_call;
 pub use self::model::{ProbeResponse, TaskRequest, TaskResponse};
 
 #[derive(Args)]
+#[group(id = "scheduler")]
 pub struct Params {
     #[clap(flatten)]
     base: zmap_call::Params,

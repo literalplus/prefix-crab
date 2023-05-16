@@ -13,6 +13,7 @@ mod send;
 
 #[derive(Args)]
 #[derive(Debug)]
+#[group(id = "rabbit")]
 pub struct Params {
     /// URI for AMQP (RabbitMQ) server to connect to.
     /// Environment variable: AMQP_URI

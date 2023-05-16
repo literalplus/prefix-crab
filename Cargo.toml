@@ -11,7 +11,7 @@ rust-version = "1.59.0" # flexi_logger
 [workspace.dependencies]
 # To enable backtrace printing, set RUST_BACKTRACE=1 (see anyhow docs)
 anyhow = { version = "1.0.68", features = ["backtrace"] }
-clap = { version = "4.1", features = ["derive", "unicode", "env"] }
+clap = { version = "4.2", features = ["derive", "unicode", "env"] }
 clap-verbosity-flag = "2.0.0"
 flexi_logger = { version = "0.25.0", features = ["specfile", "async"] }
 human-panic = "1.1.0"
