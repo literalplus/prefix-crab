@@ -56,7 +56,7 @@ async fn run_without_stop(
     let handle = prepare::prepare(&params)
         .await?;
     let sender = send::run(
-        &handle, result_receiver, params.in_exchange_name,
+        &handle, result_receiver, params.out_exchange_name,
     );
     let receiver = receive::run(
         &handle, params.in_queue_name, work_sender,
