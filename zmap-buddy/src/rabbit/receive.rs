@@ -1,4 +1,4 @@
-use amqprs::channel::{BasicConsumeArguments, ConsumerMessage};
+use amqprs::channel::{BasicAckArguments, BasicConsumeArguments, ConsumerMessage};
 use amqprs::Deliver;
 // Cannot * due to Ok()
 use anyhow::{Context, Result};
@@ -86,10 +86,12 @@ impl RabbitReceiver<'_> {
             }
             Err(e) => {
                 warn!(
-                    "Unable to parse RabbitMQ message: {:?} - {:?}",
+                    "Unable to parse RabbitMQ message: {:?} - {:?} (ack to drop)",
                     e,
                     self.try_parse_utf8(content_slice)
                 );
+                self.ack(deliver.delivery_tag())
+                    .await?
             }
         }
         Ok(())
@@ -100,5 +102,12 @@ impl RabbitReceiver<'_> {
             Ok(parsed) => parsed,
             Err(_) => "<< not UTF-8 >>",
         }
+    }
+
+    async fn ack(&self, delivery_tag: u64) -> Result<()> {
+        self.handle.chan().basic_ack(BasicAckArguments::new(
+            delivery_tag, false,
+        )).await.with_context(|| "during immediate ack")?;
+        Ok(())
     }
 }
