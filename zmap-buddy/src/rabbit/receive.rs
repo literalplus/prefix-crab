@@ -1,4 +1,4 @@
-use amqprs::channel::{BasicAckArguments, BasicConsumeArguments, ConsumerMessage};
+use amqprs::channel::{BasicAckArguments, BasicConsumeArguments, BasicNackArguments, BasicRejectArguments, ConsumerMessage};
 use amqprs::Deliver;
 // Cannot * due to Ok()
 use anyhow::{Context, Result};
@@ -90,7 +90,9 @@ impl RabbitReceiver<'_> {
                     e,
                     self.try_parse_utf8(content_slice)
                 );
-                self.ack(deliver.delivery_tag())
+                // We explicitly reject on a parsing error, everything else is not recoverable and
+                // the messages will be anyways rejected due to channel disconnect
+                self.reject_msg(deliver.delivery_tag())
                     .await?
             }
         }
@@ -104,9 +106,9 @@ impl RabbitReceiver<'_> {
         }
     }
 
-    async fn ack(&self, delivery_tag: u64) -> Result<()> {
-        self.handle.chan().basic_ack(BasicAckArguments::new(
-            delivery_tag, false,
+    async fn reject_msg(&self, delivery_tag: u64) -> Result<()> {
+        self.handle.chan().basic_reject(BasicRejectArguments::new(
+            delivery_tag, /* requeue = */ false,
         )).await.with_context(|| "during immediate ack")?;
         Ok(())
     }
