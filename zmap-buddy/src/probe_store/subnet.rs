@@ -41,8 +41,9 @@ impl Responses {
         self.intended_targets.len()
     }
 
-    fn to_model(self) -> echo_response::Responses {
+    fn to_model(self, key: ResponseKey) -> echo_response::Responses {
         echo_response::Responses {
+            key,
             intended_targets: self.intended_targets,
         }
     }
@@ -119,7 +120,7 @@ impl Into<SplitResult> for SubnetStore {
         SplitResult {
             net: self.sample.subnet,
             responses: self.responses.into_iter()
-                .map(|(k, v)| (k, v.to_model()))
+                .map(|(k, v)| v.to_model(k))
                 .collect(),
         }
     }

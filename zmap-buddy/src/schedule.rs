@@ -141,8 +141,6 @@ mod task {
             Ok(())
         }
 
-        // TODO: test address: 2a01:4f9:6b:1280::2/126
-        // TODO: Don't forget to set rabbitmq credentials in env
         pub async fn run(mut self) -> Result<Vec<TaskResponse>> {
             let mut response_rx = self.caller.request_responses();
             self.targets.flush()?;
