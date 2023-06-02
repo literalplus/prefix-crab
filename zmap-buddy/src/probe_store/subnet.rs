@@ -106,6 +106,9 @@ impl ProbeStore for SubnetStore {
     }
 
     fn fill_missing(&mut self) {
+        if self.sample.addresses.is_empty() {
+            return;
+        }
         let missing_addrs_iter = self.sample.addresses.drain(..);
         let missing_addrs_uniq = HashSet::<_>::from_iter(missing_addrs_iter);
         let no_responses = self.entry(ResponseKey::NoResponse);
