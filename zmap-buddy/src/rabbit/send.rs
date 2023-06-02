@@ -14,14 +14,16 @@ struct RabbitSender<'han> {
     work_receiver: UnboundedReceiver<TaskResponse>,
     exchange_name: String,
     handle: &'han RabbitHandle,
+    pretty_print: bool,
 }
 
 pub async fn run(
     handle: &RabbitHandle,
     work_receiver: UnboundedReceiver<TaskResponse>,
     exchange_name: String,
+    pretty_print: bool,
 ) -> Result<()> {
-    RabbitSender { work_receiver, exchange_name, handle }
+    RabbitSender { work_receiver, exchange_name, handle, pretty_print }
         .run()
         .await
         .with_context(|| "while sending RabbitMQ messages")
@@ -32,7 +34,7 @@ impl RabbitSender<'_> {
         loop {
             if let Some(msg) = self.work_receiver.recv().await {
                 match self.do_send(msg).await {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(e) => warn!("Failed to publish/ack message: {:?}", e),
                 }
             } else {
@@ -42,7 +44,7 @@ impl RabbitSender<'_> {
         }
     }
 
-    async fn do_send(&mut self, msg: TaskResponse) -> Result<()>{
+    async fn do_send(&mut self, msg: TaskResponse) -> Result<()> {
         self.publish(msg.model).await?;
         self.ack(msg.acks_delivery_tag).await?;
         Ok(())
@@ -50,8 +52,11 @@ impl RabbitSender<'_> {
 
     async fn publish(&self, msg: EchoProbeResponse) -> Result<()> {
         let args = BasicPublishArguments::new(&self.exchange_name, "");
-        let bin = serde_json::to_vec(&msg)
-            .with_context(|| format!("during serialisation of {:?}", msg))?;
+        let bin = if self.pretty_print {
+            serde_json::to_vec_pretty(&msg)
+        } else {
+            serde_json::to_vec(&msg)
+        }.with_context(|| format!("during serialisation of {:?}", msg))?;
         self.handle.chan()
             .basic_publish(BasicProperties::default(), bin, args)
             .await

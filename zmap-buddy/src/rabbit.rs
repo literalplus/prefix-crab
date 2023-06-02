@@ -33,6 +33,10 @@ pub struct Params {
     /// Name of the exchange to publish to.
     #[arg(long, default_value = "prefix-crab.probe-response")]
     out_exchange_name: String,
+
+    /// Whether to pretty print JSON in RabbitMQ responses.
+    #[arg(long)]
+    pretty_print: bool,
 }
 
 pub async fn run(
@@ -56,7 +60,7 @@ async fn run_without_stop(
     let handle = prepare::prepare(&params)
         .await?;
     let sender = send::run(
-        &handle, result_receiver, params.out_exchange_name,
+        &handle, result_receiver, params.out_exchange_name, params.pretty_print,
     );
     let receiver = receive::run(
         &handle, params.in_queue_name, work_sender,
