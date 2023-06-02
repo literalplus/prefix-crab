@@ -1,24 +1,23 @@
-use amqprs::channel::{BasicAckArguments, BasicConsumeArguments, BasicNackArguments, BasicRejectArguments, ConsumerMessage};
+use amqprs::channel::{BasicConsumeArguments, BasicRejectArguments, ConsumerMessage};
 use amqprs::Deliver;
 // Cannot * due to Ok()
 use anyhow::{Context, Result};
 use log::{info, Level, log_enabled, trace, warn};
 use tokio::sync::mpsc;
 
-use crate::schedule;
 use crate::schedule::TaskRequest;
 
 use super::prepare::RabbitHandle;
 
 struct RabbitReceiver<'han> {
-    work_sender: mpsc::Sender<schedule::TaskRequest>,
+    work_sender: mpsc::Sender<TaskRequest>,
     handle: &'han RabbitHandle,
 }
 
 pub async fn run(
     handle: &RabbitHandle,
     queue_name: String,
-    work_sender: mpsc::Sender<schedule::TaskRequest>,
+    work_sender: mpsc::Sender<TaskRequest>,
 ) -> Result<()> {
     RabbitReceiver { work_sender, handle }
         .run(queue_name)

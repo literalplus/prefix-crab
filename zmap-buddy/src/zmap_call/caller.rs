@@ -75,6 +75,10 @@ impl Caller {
         self.cmd.arg(format!("--interface={}", interface_name));
     }
 
+    pub fn request_gateway_mac(&mut self, gateway_mac: String) {
+        self.cmd.arg(format!("--gateway-mac={}", gateway_mac));
+    }
+
     /// Runs the configured command, consuming this instance.
     pub fn consume_run(mut self, targets: TargetCollector) -> Result<()> {
         self.set_base();

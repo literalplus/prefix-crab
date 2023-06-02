@@ -16,6 +16,10 @@ pub struct Params {
     #[arg(long)]
     source_address: String,
 
+    /// Optional gateway MAC, needed if there is no default route via the specified interface
+    #[arg(long)]
+    gateway_mac: Option<String>,
+
     /// Name of the source interface to use for zmap
     #[arg(long)]
     interface: Option<String>,
@@ -43,6 +47,9 @@ impl Params {
         );
         if let Some(interface_name) = &self.interface {
             caller.request_interface(interface_name.to_string());
+        }
+        if let Some(gateway_mac) = &self.gateway_mac {
+            caller.request_gateway_mac(gateway_mac.to_string());
         }
         debug!("Using zmap caller: {:?}", caller);
         caller.push_source_address(self.source_address.to_string())?;
