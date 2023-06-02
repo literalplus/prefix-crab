@@ -7,6 +7,6 @@ Routing key: `echo`
 
 ```json
 {
-  "target_net": "2a01:4f9:6b:1280::2/126"
+  "target_net": "fddc:9d0b:e318:8712::bc:1/48"
 }
 ```

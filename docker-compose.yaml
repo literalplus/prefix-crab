@@ -11,7 +11,7 @@ services:
       - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: "rabbit"
-      RABBITMQ_DEFAULT_PASS: "unwkuKKyYSFdHjZCqxuZhwUj1e8W3xq0pmvvbM03LU"
+      RABBITMQ_DEFAULT_PASS: "localsetupveryinsecure"
     volumes:
       - rmq-data:/var/lib/rabbitmq/
       #- ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
