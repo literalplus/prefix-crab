@@ -44,8 +44,9 @@ impl Responses {
 
 #[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub enum DestUnreachKind {
-    /// 0 = no route, 2 = beyond scope, 7 = source routing error
+    /// 2 = beyond scope, 7 = source routing error
     Other(u8),
+    NoRoute,
     AdminProhibited,
     AddressUnreachable,
     PortUnreachable,
@@ -56,6 +57,7 @@ pub enum DestUnreachKind {
 impl DestUnreachKind {
     pub fn parse(code: u8) -> Self {
         match code {
+            0 => Self::NoRoute,
             1 => Self::AdminProhibited,
             3 => Self::AddressUnreachable,
             4 => Self::PortUnreachable,
