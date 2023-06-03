@@ -179,12 +179,9 @@ impl Caller {
     fn set_base(&mut self) {
         self.cmd
             .arg("--bandwidth=10K")
-            .arg("--max-targets=10")
             .arg("--verbosity=5")
             .arg("--cooldown-time=4") // wait for responses for n secs after sending
             // TODO: Permute addresses manually, as --seed is not supported for v6
-            //.arg("--gateway-mac=addr")
-            //.arg("--source-mac=addr")
             .arg("--probe-module=icmp6_echoscan")
             .arg("--probe-ttl=255")
 
