@@ -1,5 +1,5 @@
 [workspace]
-members = ["zmap-buddy", "queue-models"]
+members = ["zmap-buddy", "queue-models", "aggregator"]
 
 [workspace.package]
 version = "0.1.0"
@@ -9,6 +9,7 @@ license = "MIT"
 rust-version = "1.59.0" # flexi_logger
 
 [workspace.dependencies]
+amqprs = { version = "1.2.0", features = ["traces", "urispec"] }
 # To enable backtrace printing, set RUST_BACKTRACE=1 (see anyhow docs)
 anyhow = { version = "1.0.68", features = ["backtrace"] }
 clap = { version = "4.2", features = ["derive", "unicode", "env"] }
@@ -19,6 +20,10 @@ serde = { version = "1.0.159", features = ["derive"] }
 log = "0.4.17"
 ipnet = { version = "2.7.1", features = ["serde"] }
 serde_json = "1.0.96"
+tokio = { version = "1.27.0", features = ["full"] }
+futures = "0.3.28"
+futures-util = "0.3.28"
+async-trait = "0.1.68" # https://github.com/rust-lang/rust/issues/91611
 
 [package]
 name = "prefix-crab"
@@ -28,3 +33,16 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 rust-version.workspace = true
+
+[dependencies]
+amqprs = { workspace = true }
+clap = { workspace = true }
+clap-verbosity-flag = { workspace = true }
+anyhow = { workspace = true }
+flexi_logger = { workspace = true }
+log = { workspace = true }
+human-panic = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }

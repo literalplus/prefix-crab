@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/zmap-buddy/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/queue-models/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/aggregator/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

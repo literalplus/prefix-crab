@@ -39,6 +39,10 @@ impl Responses {
     pub fn len(&self) -> ResponseCount {
         self.intended_targets.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 

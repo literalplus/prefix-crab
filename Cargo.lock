@@ -18,6 +18,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
+name = "aggregator"
+version = "0.1.0"
+dependencies = [
+ "amqprs",
+ "anyhow",
+ "assertor",
+ "async-trait",
+ "clap",
+ "clap-verbosity-flag",
+ "flexi_logger",
+ "futures",
+ "futures-util",
+ "human-panic",
+ "ipnet",
+ "log",
+ "prefix-crab",
+ "queue-models",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -129,13 +152,13 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.66"
+version = "0.1.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b84f9ebcc6c1f5b8cb160f6990096a5c127f423fcb6e1ccc46c370cbdfb75dfc"
+checksum = "b9ccdd8f2a161be9bd5c023df56f1b2a0bd1d83872ae53b71a84a12c9bf6e842"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.107",
+ "syn 2.0.11",
 ]
 
 [[package]]
@@ -1006,6 +1029,19 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 [[package]]
 name = "prefix-crab"
 version = "0.1.0"
+dependencies = [
+ "amqprs",
+ "anyhow",
+ "async-trait",
+ "clap",
+ "clap-verbosity-flag",
+ "flexi_logger",
+ "human-panic",
+ "log",
+ "serde",
+ "serde_json",
+ "tokio",
+]
 
 [[package]]
 name = "proc-macro2"
@@ -1713,6 +1749,7 @@ dependencies = [
  "amqprs",
  "anyhow",
  "assertor",
+ "async-trait",
  "clap",
  "clap-verbosity-flag",
  "csv",
