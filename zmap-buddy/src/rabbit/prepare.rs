@@ -18,7 +18,7 @@ pub async fn prepare(params: &Params) -> Result<RabbitHandle> {
         .declare_queue(queue_name).await?
         .declare_exchange(out_exchange_name, "fanout").await?
         .declare_exchange(in_exchange_name, "direct").await?
-        .bind_queue_to(queue_name, in_exchange_name).await?;
+        .bind_queue_routing(queue_name, in_exchange_name, "echo").await?;
 
     Ok(handle)
 }

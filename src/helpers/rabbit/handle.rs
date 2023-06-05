@@ -64,7 +64,15 @@ impl<'han> ConfigureRabbit<'han> {
     }
 
     pub async fn bind_queue_to(&self, queue_name: &str, exchange_name: &str) -> Result<&ConfigureRabbit> {
-        let routing_key = "echo";
+        self.chan().queue_bind(QueueBindArguments::new(
+            queue_name, exchange_name, "",
+        )).await.with_context(|| format!("while binding {}->{}", queue_name, exchange_name))?;
+        Ok(self)
+    }
+
+    pub async fn bind_queue_routing(
+        &self, queue_name: &str, exchange_name: &str, routing_key: &str
+    ) -> Result<&ConfigureRabbit> {
         self.chan().queue_bind(QueueBindArguments::new(
             queue_name, exchange_name, routing_key,
         )).await.with_context(|| format!("while binding {}->{}", queue_name, exchange_name))?;
