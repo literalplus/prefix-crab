@@ -35,7 +35,7 @@ fn do_run(cli: Cli) -> Result<()> {
     // bounded s.t. we don't keep consuming new work items when the scheduler is blocked for some reason.
     let (task_tx, task_rx) = mpsc::channel(4096);
 
-    // This task if shut down by the RabbitMQ receiver closing the channel
+    // This task is shut down by the RabbitMQ receiver closing the channel
     let scheduler_handle = tokio::spawn(handle_probe::run(task_rx));
 
     let sig_handler = signal_handler::new();
@@ -59,26 +59,4 @@ async fn wait_for_exit(
     inner_res.with_context(|| "a task exited unexpectedly")
 }
 
-mod handle_probe {
-    use queue_models::echo_response::EchoProbeResponse;
-    use anyhow::Result;
-    use log::{info, trace};
-    use tokio::sync::mpsc::Receiver;
-
-    #[derive(Debug)]
-    pub struct TaskRequest {
-        pub model: EchoProbeResponse,
-    }
-
-    pub async fn run(mut task_rx: Receiver<TaskRequest>) -> Result<()> {
-        info!("probe handler up & running!");
-        loop {
-            if let Some(batch) = task_rx.recv().await {
-                trace!("Received something: {:?}", batch);
-            } else {
-                info!("probe handler shutting down.");
-                return Ok(());
-            }
-        }
-    }
-}
+mod handle_probe;
