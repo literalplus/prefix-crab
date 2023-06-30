@@ -15,7 +15,7 @@ pub struct Params {
     /// Environment variable: AMQP_URI
     /// If a password is required, it is recommended to specify the URL over the environment or
     /// a config file, to avoid exposure in shell history and process list.
-    #[arg(long, default_value = "amqp://rabbit:localsetupveryinsecure@10.45.87.51:5672/", env = "AMQP_URI")]
+    #[arg(long, env = "AMQP_URI")]
     amqp_uri: String,
 
     /// Name of the queue to set up & listen to.

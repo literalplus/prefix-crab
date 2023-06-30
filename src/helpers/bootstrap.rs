@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use human_panic::setup_panic;
-use log::debug;
+use log::{debug, warn};
 
 use crate::helpers::logging;
 
@@ -12,6 +12,13 @@ pub fn run<CliType>(
     fn_run: fn(CliType) -> Result<()>,
 ) -> Result<()> {
     setup_panic!();
+    if let Err(env_err) = dotenvy::dotenv() {
+        if env_err.not_found() {
+            warn!("No `.env` file found (recursively). You usually want to have one.")
+        } else {
+            return Err(env_err).with_context(|| "Failed to load `.env` file");
+        }
+    }
 
     let cli = fn_cli_parse();
     let logger_handle = logging::configure_from(fn_extract_logging(&cli))?;
