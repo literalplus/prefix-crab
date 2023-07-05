@@ -1,4 +1,3 @@
-
 use anyhow::{Context, Result};
 use clap::Parser;
 
@@ -11,6 +10,8 @@ use tokio::task::JoinHandle;
 use prefix_crab::helpers::signal_handler;
 
 mod rabbit;
+mod models;
+mod schema;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -20,6 +21,9 @@ struct Cli {
 
     #[clap(flatten)]
     rabbit: rabbit::Params,
+
+    #[clap(flatten)]
+    handler: handle_probe::Params,
 }
 
 fn main() -> Result<()> {
@@ -36,7 +40,9 @@ fn do_run(cli: Cli) -> Result<()> {
     let (task_tx, task_rx) = mpsc::channel(4096);
 
     // This task is shut down by the RabbitMQ receiver closing the channel
-    let scheduler_handle = tokio::spawn(handle_probe::run(task_rx));
+    let scheduler_handle = tokio::spawn(handle_probe::run(
+        task_rx, cli.handler
+    ));
 
     let sig_handler = signal_handler::new();
     let stop_rx = sig_handler.subscribe_stop();
