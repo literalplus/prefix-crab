@@ -52,7 +52,8 @@ pub async fn run(mut task_rx: Receiver<TaskRequest>, params: Params) -> Result<(
                 is_routed.eq(true),
                 merge_status.eq(MergeStatus::NotMerged),
                 data.eq(ExtraData { ever_responded: true }),
-            )).execute(&mut connection)?;
+            )).execute(&mut connection)
+                .with_context(|| "while trying to insert into prefix_tree")?;
         } else {
             info!("Probe handler shutting down.");
             return Ok(());
