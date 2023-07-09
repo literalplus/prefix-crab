@@ -1,9 +1,9 @@
 use amqprs::channel::{BasicConsumeArguments, BasicRejectArguments, ConsumerMessage};
 use amqprs::Deliver;
 // Cannot * due to Ok()
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
-use log::{info, Level, log_enabled, trace, warn};
+use log::{Level, log_enabled, trace, warn};
 use serde::Deserialize;
 use serde_json;
 use tokio::sync::mpsc;
@@ -71,7 +71,8 @@ impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
                 .expect("amqprs guarantees that received ConsumerMessage has deliver");
             self.parse_and_pass(content, deliver).await?;
         } else {
-            info!("RabbitMQ channel was closed");
+            // TODO implement recovery from this (reconnect)
+            bail!("RabbitMQ channel was closed");
         }
         Ok(())
     }

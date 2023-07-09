@@ -7,12 +7,11 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use crate::schedule::{TaskRequest, TaskResponse};
 
 /// Handles configuration and connection setup.
-mod prepare;
+pub mod prepare;
 mod receive;
 mod send;
 
-#[derive(Args)]
-#[derive(Debug)]
+#[derive(Args, Clone, Debug)]
 #[group(id = "rabbit")]
 pub struct Params {
     /// URI for AMQP (RabbitMQ) server to connect to.
@@ -28,7 +27,7 @@ pub struct Params {
 
     /// Name of the exchange to bind the queue to.
     #[arg(long, default_value = "prefix-crab.probe-request")]
-    in_exchange_name: String,
+    pub in_exchange_name: String,
 
     /// Name of the exchange to publish to.
     #[arg(long, default_value = "prefix-crab.probe-response")]
