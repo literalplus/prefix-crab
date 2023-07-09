@@ -11,4 +11,12 @@ Routing key: `echo`
 }
 ```
 
-`cargo run -- rabbit-mq-listen --source-address fddc:9d0b:e318:8710::cc:1 --interface=brgns3 --chunk-timeout-secs=2 -vvv --gateway-mac=0C:0C:7B:D2:00:01 --pretty-print`
+`cargo run -- rabbit-mq-listen`
+
+```bash
+sudo systemctl start gns3-server@lit
+sudo ip link add name brgns3 type bridge
+sudo ip link set dev brgns3 up
+sudo ip -6 route add fddc:9d0b:e318::/48 dev brgns3 via fddc:9d0b:e318:8710::bb:1 metric 3
+sudo ip -6 addr add fddc:9d0b:e318:8710::cc:1/64 dev brgns3
+```
