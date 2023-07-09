@@ -20,7 +20,7 @@ pub struct Params {
 
     /// How long to wait for enough probes to arrive before flushing the chunk anyways
     /// and invoking zmap with less than the chunk size
-    #[arg(long, default_value = "60")]
+    #[arg(long, default_value = "60", env = "CHUNK_TIMEOUT_SECS")]
     chunk_timeout_secs: u64,
 
     /// How many measurements to include in a chunk at most. If this many probes have been

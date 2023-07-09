@@ -13,15 +13,15 @@ mod caller;
 #[group(id = "zmap")]
 pub struct Params {
     /// Source IPv6 address to use for zmap
-    #[arg(long)]
+    #[arg(long, env = "SOURCE_ADDRESS")]
     source_address: String,
 
     /// Optional gateway MAC, needed if there is no default route via the specified interface
-    #[arg(long)]
+    #[arg(long, env = "GATEWAY_MAC")]
     gateway_mac: Option<String>,
 
     /// Name of the source interface to use for zmap
-    #[arg(long)]
+    #[arg(long, env = "INTERFACE")]
     interface: Option<String>,
 
     /// FQ path to zmap binary

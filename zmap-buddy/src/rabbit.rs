@@ -35,7 +35,7 @@ pub struct Params {
     out_exchange_name: String,
 
     /// Whether to pretty print JSON in RabbitMQ responses.
-    #[arg(long)]
+    #[arg(long, env = "PRETTY_PRINT")]
     pretty_print: bool,
 }
 
