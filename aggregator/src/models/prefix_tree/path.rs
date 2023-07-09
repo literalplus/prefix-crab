@@ -94,14 +94,6 @@ impl ToSql<Ltree, Pg> for PrefixPath where i32: ToSql<Integer, Pg> {
     }
 }
 
-impl Display for PrefixPath {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let octets = self.0.network().octets();
-        Self::fmt_root_cidr12(f, octets)?;
-        self.fmt_netmask_as_bits(f, octets)
-    }
-}
-
 impl FromStr for PrefixPath {
     type Err = anyhow::Error;
 
@@ -166,6 +158,14 @@ impl FromStr for PrefixPath {
             .with_context(|| format!("issue with prefix length {} of {:?}", prefix_len, s))?;
 
         Ok(PrefixPath(net))
+    }
+}
+
+impl Display for PrefixPath {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let octets = self.0.network().octets();
+        Self::fmt_root_cidr12(f, octets)?;
+        self.fmt_netmask_as_bits(f, octets)
     }
 }
 

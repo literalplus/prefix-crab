@@ -1,5 +1,6 @@
 use anyhow::*;
 use clap::Args;
+use diesel::dsl::not;
 use diesel::insert_into;
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
@@ -79,12 +80,16 @@ fn handle_one(connection: &mut PgConnection, req: &TaskRequest) -> Result<(), Er
 
     insert_if_new(connection, &target_net)?;
 
-    let parents = select_parents(connection, &target_net)?;
+    let parents = select_parents_and_self(connection, &target_net)?;
     info!("Parents: {:?}", parents);
+
+    let unmerged_children = select_unmerged_children(connection, &target_net)?;
+    info!("Umerged children: {:?}", unmerged_children);
+
     Ok(())
 }
 
-fn select_parents(
+fn select_parents_and_self(
     connection: &mut PgConnection, target_net: &PrefixPath
 ) -> Result<Vec<PrefixTree>> {
     let parents = prefix_tree
@@ -92,6 +97,18 @@ fn select_parents(
         .select(PrefixTree::as_select())
         .load(connection)
         .with_context(|| "while selecting parents")?;
+    Ok(parents)
+}
+
+fn select_unmerged_children(
+    connection: &mut PgConnection, target_net: &PrefixPath
+) -> Result<Vec<PrefixTree>> {
+    let parents = prefix_tree
+        .filter(path.descendant_or_same_as(target_net))
+        .filter(not(path.eq(target_net)))
+        .select(PrefixTree::as_select())
+        .load(connection)
+        .with_context(|| "while selecting unmerged children")?;
     Ok(parents)
 }
 
