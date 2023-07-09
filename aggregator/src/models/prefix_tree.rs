@@ -5,7 +5,7 @@ use diesel::prelude::*;
 mod data;
 mod path;
 
-pub use path::PrefixPath;
+pub use path::{PrefixPath, PathExpressionMethods};
 pub use data::ExtraData;
 
 #[derive(diesel_derive_enum::DbEnum, Debug)]
@@ -14,7 +14,7 @@ pub enum MergeStatus {
     NotMerged,
 }
 
-#[derive(Queryable, Selectable)]
+#[derive(Queryable, Selectable, Debug)]
 #[diesel(table_name = crate::schema::prefix_tree)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct PrefixTree {

@@ -12,4 +12,8 @@ CREATE TABLE public.prefix_tree
     merge_status prefix_merge_status   NOT NULL DEFAULT 'not_merged',
     "data"       jsonb                 NOT NULL DEFAULT '{}'::jsonb
 );
+
 CREATE INDEX IF NOT EXISTS prefix_tree_gist_idx ON public.prefix_tree USING gist (path);
+
+ALTER TABLE prefix_tree
+    ADD CONSTRAINT prefix_tree_path_uq UNIQUE ("path");

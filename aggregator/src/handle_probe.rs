@@ -47,16 +47,41 @@ pub async fn run(mut task_rx: Receiver<TaskRequest>, params: Params) -> Result<(
         if let Some(req) = task_rx.recv().await {
             trace!("Received something: {:?}", req);
             let target_net: PrefixPath = req.model.target_net.into();
-            insert_into(prefix_tree).values((
-                path.eq(target_net),
-                is_routed.eq(true),
-                merge_status.eq(MergeStatus::NotMerged),
-                data.eq(ExtraData { ever_responded: true }),
-            )).execute(&mut connection)
-                .with_context(|| "while trying to insert into prefix_tree")?;
+            debug!("Resolved path is {}", target_net);
+
+            insert_if_new(&mut connection, &target_net)?;
+
+            let parents = select_parents(&mut connection, &target_net)?;
+            info!("Parents: {:?}", parents);
         } else {
             info!("Probe handler shutting down.");
             return Ok(());
         }
     }
+}
+
+fn select_parents(
+    connection: &mut PgConnection, target_net: &PrefixPath
+) -> Result<Vec<PrefixTree>> {
+    let parents = prefix_tree
+        .filter(path.ancestor_or_same_as(target_net))
+        .select(PrefixTree::as_select())
+        .load(connection)
+        .with_context(|| "while selecting parents")?;
+    Ok(parents)
+}
+
+fn insert_if_new(connection: &mut PgConnection, target_net: &PrefixPath) -> Result<(), Error> {
+    let inserted_id_or_zero = insert_into(prefix_tree).values((
+        path.eq(target_net),
+        is_routed.eq(true),
+        merge_status.eq(MergeStatus::NotMerged),
+        data.eq(ExtraData { ever_responded: true }),
+    ))
+        .on_conflict_do_nothing()
+        .returning(id)
+        .execute(connection)
+        .with_context(|| "while trying to insert into prefix_tree")?;
+    info!("ID for this prefix is {}.", inserted_id_or_zero);
+    Ok(())
 }

@@ -4,15 +4,14 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use bitvec::prelude::*;
-
 use diesel;
 use diesel::backend::Backend;
 use diesel::deserialize::{FromSql, FromSqlRow};
+use diesel::Expression;
 use diesel::expression::AsExpression;
 use diesel::pg::Pg;
-
 use diesel::serialize::{IsNull, Output, ToSql};
-use diesel::sql_types::{Integer, Text};
+use diesel::sql_types::{Bool, Integer, Text};
 use ipnet::Ipv6Net;
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +20,33 @@ use crate::schema::sql_types::Ltree;
 #[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default)]
 #[diesel(sql_type = crate::schema::sql_types::Ltree)]
 pub struct PrefixPath(Ipv6Net);
+
+diesel::infix_operator!(AncestorOrSame, " @> ", Bool, backend: Pg);
+diesel::infix_operator!(DescendantOrSame, " <@ ", Bool, backend: Pg);
+
+pub trait PathExpressionMethods where Self: AsExpression<Ltree> + Sized {
+    // Note: If there are issues with operator precedence (because of missing parentheses),
+    // we can copy over Grouped from upstream (which is not public atm sadly)
+    // https://github.com/diesel-rs/diesel/blob/13c237473627ea2500c2274e3b0cf8a54187079a/diesel/src/expression/grouped.rs#L8
+
+    fn ancestor_or_same_as<OtherType>(self, other: OtherType) -> AncestorOrSame<Self::Expression, OtherType::Expression>
+        where
+            OtherType: AsExpression<Ltree>,
+            AncestorOrSame<Self::Expression, OtherType::Expression>: Expression,
+    {
+        AncestorOrSame::new(self.as_expression(), other.as_expression())
+    }
+
+    fn descendant_or_same_as<OtherType>(self, other: OtherType) -> DescendantOrSame<Self::Expression, OtherType::Expression>
+        where
+            OtherType: AsExpression<Ltree>,
+            AncestorOrSame<Self::Expression, OtherType::Expression>: Expression,
+    {
+        DescendantOrSame::new(self.as_expression(), other.as_expression())
+    }
+}
+
+impl<T> PathExpressionMethods for T where T: Expression<SqlType=Ltree> {}
 
 impl Into<PrefixPath> for Ipv6Net {
     fn into(self) -> PrefixPath {
