@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::io::Write;
 use std::str::FromStr;
 
 use anyhow::Context;
@@ -39,9 +40,9 @@ impl FromSql<Ltree, Pg> for PrefixPath {
 
 impl ToSql<Ltree, Pg> for PrefixPath where i32: ToSql<Integer, Pg> {
     fn to_sql(&self, out: &mut Output<Pg>) -> diesel::serialize::Result {
-        // ltree format version; currently version 1
+        // ltree format version; currently version 1 -- 1 byte
         // ref: https://doxygen.postgresql.org/ltree__io_8c_source.html ltree_recv
-        <i32 as ToSql<Integer, Pg>>::to_sql(&1i32, &mut out.reborrow())?;
+        out.write(&[1])?;
         // string representation of the ltree
         <str as ToSql<Text, Pg>>::to_sql(&self.to_string(), &mut out.reborrow())?;
         Ok(IsNull::No)
