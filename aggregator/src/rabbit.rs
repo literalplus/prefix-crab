@@ -2,7 +2,7 @@ use anyhow::*;
 use clap::Args;
 use tokio::select;
 use tokio::sync::{broadcast, mpsc};
-use prefix_crab::helpers::rabbit::{ConfigureRabbit, RabbitHandle};
+use prefix_crab::helpers::rabbit::{ack_sender, ConfigureRabbit, RabbitHandle};
 use crate::handle_probe::TaskRequest;
 
 mod receive;
@@ -29,25 +29,33 @@ pub struct Params {
 
 pub async fn run(
     work_sender: mpsc::Sender<TaskRequest>,
+    ack_receiver: mpsc::UnboundedReceiver<TaskRequest>,
     mut stop_rx: broadcast::Receiver<()>,
     params: Params,
 ) -> Result<()> {
     select! {
         biased; // Needed to handle stops immediately
         _ = stop_rx.recv() => Ok(()),
-        exit_res = run_without_stop(work_sender, params) => exit_res,
+        exit_res = run_without_stop(work_sender, ack_receiver, params) => exit_res,
     }
 }
 
 async fn run_without_stop(
     work_sender: mpsc::Sender<TaskRequest>,
+    ack_receiver: mpsc::UnboundedReceiver<TaskRequest>,
     params: Params,
 ) -> Result<()> {
-    let handle = prepare(&params)
-        .await?;
-    receive::run(
+    let handle = prepare(&params).await?;
+    let receiver = receive::run(
         &handle, params.in_queue_name, work_sender,
-    ).await
+    );
+    let ack_sender = ack_sender::run(
+        &handle, ack_receiver
+    );
+    select! {
+        exit_res = receiver => exit_res,
+        exit_res = ack_sender => exit_res,
+    }
 }
 
 async fn prepare(params: &Params) -> Result<RabbitHandle> {

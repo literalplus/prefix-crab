@@ -3,9 +3,10 @@ use clap::Args;
 use diesel::insert_into;
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use log::{debug, info, trace};
-use tokio::sync::mpsc::Receiver;
+use log::{debug, error, info, trace};
+use tokio::sync::mpsc::{Receiver, UnboundedSender};
 
+use prefix_crab::helpers::rabbit::ack_sender::CanAck;
 use queue_models::echo_response::EchoProbeResponse;
 
 use crate::models::prefix_tree::*;
@@ -26,11 +27,22 @@ pub struct Params {
 #[derive(Debug)]
 pub struct TaskRequest {
     pub model: EchoProbeResponse,
+    pub delivery_tag: u64,
+}
+
+impl CanAck for TaskRequest {
+    fn delivery_tag(&self) -> u64 {
+        self.delivery_tag
+    }
 }
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-pub async fn run(mut task_rx: Receiver<TaskRequest>, params: Params) -> Result<()> {
+pub async fn run(
+    mut task_rx: Receiver<TaskRequest>,
+    ack_tx: UnboundedSender<TaskRequest>,
+    params: Params
+) -> Result<()> {
     let mut connection = PgConnection::establish(&params.database_url)
         .with_context(|| "While connecting to PostgreSQL")?;
     debug!("Running any pending migrations now.");
@@ -46,18 +58,30 @@ pub async fn run(mut task_rx: Receiver<TaskRequest>, params: Params) -> Result<(
     loop {
         if let Some(req) = task_rx.recv().await {
             trace!("Received something: {:?}", req);
-            let target_net: PrefixPath = req.model.target_net.into();
-            debug!("Resolved path is {}", target_net);
 
-            insert_if_new(&mut connection, &target_net)?;
-
-            let parents = select_parents(&mut connection, &target_net)?;
-            info!("Parents: {:?}", parents);
+            match handle_one(&mut connection, &req) {
+                Result::Ok(_) => ack_tx.send(req)?,
+                Err(e) => {
+                    error!("Failed to handle request: {:?} - shutting down.", req);
+                    return Err(e);
+                }
+            }
         } else {
             info!("Probe handler shutting down.");
             return Ok(());
         }
     }
+}
+
+fn handle_one(connection: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
+    let target_net: PrefixPath = req.model.target_net.into();
+    debug!("Resolved path is {}", target_net);
+
+    insert_if_new(connection, &target_net)?;
+
+    let parents = select_parents(connection, &target_net)?;
+    info!("Parents: {:?}", parents);
+    Ok(())
 }
 
 fn select_parents(

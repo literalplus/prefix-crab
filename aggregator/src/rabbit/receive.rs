@@ -1,4 +1,3 @@
-use amqprs::channel::BasicAckArguments;
 use anyhow::*;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -15,27 +14,21 @@ pub async fn run(
     queue_name: String,
     work_sender: mpsc::Sender<TaskRequest>,
 ) -> Result<()> {
-    helpers_receive::run(handle, queue_name, TaskHandler { work_sender, handle }).await
+    helpers_receive::run(handle, queue_name, TaskHandler { work_sender }).await
 }
 
-struct TaskHandler<'han> {
+struct TaskHandler {
     work_sender: mpsc::Sender<TaskRequest>,
-    handle: &'han RabbitHandle,
 }
 
 #[async_trait]
-impl MessageHandler for TaskHandler<'_> {
+impl MessageHandler for TaskHandler {
     type Model = EchoProbeResponse;
 
     async fn handle_msg<'de>(
         &self, model: Self::Model, delivery_tag: u64,
     ) -> Result<()> where Self::Model: Deserialize<'de> {
-        let request = TaskRequest { model };
-        // TODO ack only when processed...
-        self.handle.chan()
-            .basic_ack(BasicAckArguments { delivery_tag, multiple: false })
-            .await
-            .with_context(|| "during ack")?;
+        let request = TaskRequest { model, delivery_tag };
         self.work_sender.send(request)
             .await
             .with_context(|| "while passing received message")
