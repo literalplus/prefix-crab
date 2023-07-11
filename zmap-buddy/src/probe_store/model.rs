@@ -12,6 +12,7 @@ impl From<&ProbeResponse> for ResponseKey {
             129 => Self::EchoReply {
                 different_from: Some(source.source_ip)
                     .filter(|it| *it != source.original_dest_ip),
+                sent_ttl: source.original_ttl,
             },
             _ => Self::Other { description: source.classification.to_string() }
         }

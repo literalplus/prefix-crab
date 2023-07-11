@@ -21,7 +21,7 @@ pub struct SplitResult {
 #[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub enum ResponseKey {
     DestinationUnreachable { kind: DestUnreachKind },
-    EchoReply { different_from: Option<Ipv6Addr> },
+    EchoReply { different_from: Option<Ipv6Addr>, sent_ttl: u8 },
     NoResponse,
     TimeExceeded { from: Ipv6Addr, sent_ttl: u8 },
     Other { description: String },
