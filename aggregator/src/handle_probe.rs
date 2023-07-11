@@ -4,7 +4,7 @@ use diesel::dsl::not;
 use diesel::insert_into;
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, info, trace};
 use tokio::sync::mpsc::{Receiver, UnboundedSender};
 
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
@@ -13,9 +13,6 @@ use queue_models::echo_response::EchoProbeResponse;
 use crate::models::path::{PathExpressionMethods, PrefixPath};
 use crate::models::tree::*;
 use crate::schema::prefix_tree::dsl::*;
-use crate::schema::response_archive::dsl::{
-    response_archive, path as archive_path, data as archive_data
-};
 
 #[derive(Args)]
 #[derive(Debug)]
@@ -67,6 +64,7 @@ pub async fn run(
             match handle_one(&mut connection, &req) {
                 Result::Ok(_) => ack_tx.send(req)?,
                 Err(e) => {
+                    // TODO Could be handled with DLQ
                     error!("Failed to handle request: {:?} - shutting down.", req);
                     return Err(e);
                 }
@@ -84,11 +82,7 @@ fn handle_one(connection: &mut PgConnection, req: &TaskRequest) -> Result<(), Er
 
     insert_if_new(connection, &target_net)?;
 
-    if let Err(e) = archive_response(connection, &target_net, &req.model) {
-        warn!("Unable to archive response: {:?} - due to {}", &req.model, e);
-    } else {
-        trace!("Response successfully archived.");
-    }
+    archive::process(connection, &target_net, &req.model);
 
     let parents = select_parents_and_self(connection, &target_net)?;
     info!("Parents: {:?}", parents);
@@ -138,17 +132,42 @@ fn insert_if_new(connection: &mut PgConnection, target_net: &PrefixPath) -> Resu
     Ok(())
 }
 
-fn archive_response(
-    connection: &mut PgConnection, target_net: &PrefixPath, model: &EchoProbeResponse,
-) -> Result<(), Error> {
-    let model_jsonb = serde_json::to_value(model)
-        .with_context(|| "failed to serialize to json for archiving")?;
-    insert_into(response_archive)
-        .values((
-            archive_path.eq(target_net),
-            archive_data.eq(model_jsonb),
-        ))
-        .execute(connection)
-        .with_context(|| "while trying to insert into response archive")?;
-    Ok(())
+mod archive {
+    use anyhow::*;
+    use diesel::insert_into;
+    use diesel::prelude::*;
+    use log::{warn, trace};
+
+    use queue_models::echo_response::EchoProbeResponse;
+
+    use crate::models::path::PrefixPath;
+    use crate::schema::response_archive::dsl::*;
+
+    pub fn process(
+        connection: &mut PgConnection, target_net: &PrefixPath, model: &EchoProbeResponse,
+    ) {
+        // Note: This could technically be separated into a different component, then that should
+        // be independent of any processing errors (giving us a decent chance at reprocessing if
+        // combined with some sort of success flag/DLQ
+        if let Err(e) = archive_response(connection, &target_net, &model) {
+            warn!("Unable to archive response: {:?} - due to {}", &model, e);
+        } else {
+            trace!("Response successfully archived.");
+        }
+    }
+
+    fn archive_response(
+        connection: &mut PgConnection, target_net: &PrefixPath, model: &EchoProbeResponse,
+    ) -> Result<(), Error> {
+        let model_jsonb = serde_json::to_value(model)
+            .with_context(|| "failed to serialize to json for archiving")?;
+        insert_into(response_archive)
+            .values((
+                path.eq(target_net),
+                data.eq(model_jsonb),
+            ))
+            .execute(connection)
+            .with_context(|| "while trying to insert into response archive")?;
+        Ok(())
+    }
 }
