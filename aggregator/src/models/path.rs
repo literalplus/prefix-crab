@@ -19,7 +19,7 @@ pub use expr::PathExpressionMethods;
 
 use crate::schema::sql_types::Ltree;
 
-#[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default)]
+#[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default, Copy, Clone)]
 #[diesel(sql_type = crate::schema::sql_types::Ltree)]
 pub struct PrefixPath(Ipv6Net);
 

@@ -5,13 +5,13 @@ use diesel::prelude::*;
 pub use data::ExtraData;
 use super::path::PrefixPath;
 
-#[derive(diesel_derive_enum::DbEnum, Debug)]
+#[derive(diesel_derive_enum::DbEnum, Debug, Copy, Clone)]
 #[ExistingTypePath = "crate::schema::sql_types::PrefixMergeStatus"]
 pub enum MergeStatus {
     NotMerged,
 }
 
-#[derive(Queryable, Selectable, Debug)]
+#[derive(Queryable, Selectable, Debug, Copy, Clone)]
 #[diesel(table_name = crate::schema::prefix_tree)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct PrefixTree {
@@ -35,7 +35,7 @@ mod data {
     use serde::{Deserialize, Serialize};
     use serde_json;
 
-    #[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default)]
+    #[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default, Copy, Clone)]
     #[diesel(sql_type = Jsonb)]
     pub struct ExtraData {
         // IMPORTANT: Type must stay backwards-compatible with previously-written JSON,

@@ -1,7 +1,5 @@
 use anyhow::*;
 use clap::Args;
-use diesel::dsl::not;
-use diesel::insert_into;
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use log::{debug, error, info, trace};
@@ -10,9 +8,7 @@ use tokio::sync::mpsc::{Receiver, UnboundedSender};
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
 use queue_models::echo_response::EchoProbeResponse;
 
-use crate::models::path::{PathExpressionMethods, PrefixPath};
-use crate::models::tree::*;
-use crate::schema::prefix_tree::dsl::*;
+use crate::models::path::PrefixPath;
 
 #[derive(Args)]
 #[derive(Debug)]
@@ -80,63 +76,94 @@ fn handle_one(connection: &mut PgConnection, req: &TaskRequest) -> Result<(), Er
     let target_net: PrefixPath = req.model.target_net.into();
     debug!("Resolved path is {}", target_net);
 
-    insert_if_new(connection, &target_net)?;
-
     archive::process(connection, &target_net, &req.model);
 
-    let parents = select_parents_and_self(connection, &target_net)?;
-    info!("Parents: {:?}", parents);
+    let context = context::fetch(connection, &target_net)
+        .with_context(|| "while fetching context")?;
 
-    let unmerged_children = select_unmerged_children(connection, &target_net)?;
-    info!("Unmerged children: {:?}", unmerged_children);
+    info!("Context for this probe: {:?}", context);
 
     Ok(())
 }
 
-fn select_parents_and_self(
-    connection: &mut PgConnection, target_net: &PrefixPath,
-) -> Result<Vec<PrefixTree>> {
-    let parents = prefix_tree
-        .filter(path.ancestor_or_same_as(target_net))
-        .select(PrefixTree::as_select())
-        .load(connection)
-        .with_context(|| "while selecting parents")?;
-    Ok(parents)
-}
+mod context {
+    use anyhow::*;
+    use diesel::dsl::not;
+    use diesel::insert_into;
+    use diesel::prelude::*;
 
-fn select_unmerged_children(
-    connection: &mut PgConnection, target_net: &PrefixPath,
-) -> Result<Vec<PrefixTree>> {
-    let parents = prefix_tree
-        .filter(path.descendant_or_same_as(target_net))
-        .filter(not(path.eq(target_net)))
-        .select(PrefixTree::as_select())
-        .load(connection)
-        .with_context(|| "while selecting unmerged children")?;
-    Ok(parents)
-}
+    use crate::models::path::{PathExpressionMethods, PrefixPath};
+    use crate::models::tree::*;
+    use crate::schema::prefix_tree::dsl::*;
 
-fn insert_if_new(connection: &mut PgConnection, target_net: &PrefixPath) -> Result<(), Error> {
-    let inserted_id_or_zero = insert_into(prefix_tree)
-        .values((
-            path.eq(target_net),
-            is_routed.eq(true),
-            merge_status.eq(MergeStatus::NotMerged),
-            data.eq(ExtraData { ever_responded: true }),
-        ))
-        .on_conflict_do_nothing()
-        .returning(id)
-        .execute(connection)
-        .with_context(|| "while trying to insert into prefix_tree")?;
-    info!("ID for this prefix is {}.", inserted_id_or_zero);
-    Ok(())
+    #[derive(Debug)]
+    pub struct ProbeContext {
+        node: PrefixTree,
+        ancestors: Vec<PrefixTree>,
+        unmerged_children: Vec<PrefixTree>,
+    }
+
+    pub fn fetch(
+        connection: &mut PgConnection, target_net: &PrefixPath,
+    ) -> Result<ProbeContext> {
+        insert_if_new(connection, &target_net)?;
+
+        let ancestors_and_self = select_ancestors_and_self(connection, &target_net)
+            .with_context(|| "while finding ancestors and self")?;
+        let (ancestors, node) = match &ancestors_and_self[..] {
+            [parents @ .., node] => (parents.to_vec(), *node),
+            [] => bail!("Didn't find the prefix_tree node we just inserted :("),
+        };
+        let unmerged_children = select_unmerged_children(connection, &target_net)?;
+        Result::Ok(ProbeContext { node, ancestors, unmerged_children })
+    }
+
+    fn select_ancestors_and_self(
+        connection: &mut PgConnection, target_net: &PrefixPath,
+    ) -> Result<Vec<PrefixTree>> {
+        let parents = prefix_tree
+            .filter(path.ancestor_or_same_as(target_net))
+            .select(PrefixTree::as_select())
+            .order_by(path)
+            .load(connection)
+            .with_context(|| "while selecting parents")?;
+        Ok(parents)
+    }
+
+    fn select_unmerged_children(
+        connection: &mut PgConnection, target_net: &PrefixPath,
+    ) -> Result<Vec<PrefixTree>> {
+        let parents = prefix_tree
+            .filter(path.descendant_or_same_as(target_net))
+            .filter(not(path.eq(target_net)))
+            .select(PrefixTree::as_select())
+            .order_by(path)
+            .load(connection)
+            .with_context(|| "while selecting unmerged children")?;
+        Ok(parents)
+    }
+
+    fn insert_if_new(connection: &mut PgConnection, target_net: &PrefixPath) -> Result<(), Error> {
+        let _inserted_id_or_zero = insert_into(prefix_tree)
+            .values((
+                path.eq(target_net),
+                is_routed.eq(true),
+                merge_status.eq(MergeStatus::NotMerged),
+                data.eq(ExtraData { ever_responded: true }),
+            ))
+            .on_conflict_do_nothing()
+            .returning(id)
+            .execute(connection)
+            .with_context(|| "while trying to insert into prefix_tree")?;
+        Ok(())
+    }
 }
 
 mod archive {
     use anyhow::*;
     use diesel::insert_into;
     use diesel::prelude::*;
-    use log::{warn, trace};
+    use log::{trace, warn};
 
     use queue_models::echo_response::EchoProbeResponse;
 
