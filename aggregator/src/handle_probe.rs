@@ -4,14 +4,18 @@ use diesel::dsl::not;
 use diesel::insert_into;
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use log::{debug, error, info, trace};
+use log::{debug, error, info, trace, warn};
 use tokio::sync::mpsc::{Receiver, UnboundedSender};
 
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
 use queue_models::echo_response::EchoProbeResponse;
 
-use crate::models::prefix_tree::*;
+use crate::models::path::{PathExpressionMethods, PrefixPath};
+use crate::models::tree::*;
 use crate::schema::prefix_tree::dsl::*;
+use crate::schema::response_archive::dsl::{
+    response_archive, path as archive_path, data as archive_data
+};
 
 #[derive(Args)]
 #[derive(Debug)]
@@ -42,7 +46,7 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 pub async fn run(
     mut task_rx: Receiver<TaskRequest>,
     ack_tx: UnboundedSender<TaskRequest>,
-    params: Params
+    params: Params,
 ) -> Result<()> {
     let mut connection = PgConnection::establish(&params.database_url)
         .with_context(|| "While connecting to PostgreSQL")?;
@@ -80,17 +84,23 @@ fn handle_one(connection: &mut PgConnection, req: &TaskRequest) -> Result<(), Er
 
     insert_if_new(connection, &target_net)?;
 
+    if let Err(e) = archive_response(connection, &target_net, &req.model) {
+        warn!("Unable to archive response: {:?} - due to {}", &req.model, e);
+    } else {
+        trace!("Response successfully archived.");
+    }
+
     let parents = select_parents_and_self(connection, &target_net)?;
     info!("Parents: {:?}", parents);
 
     let unmerged_children = select_unmerged_children(connection, &target_net)?;
-    info!("Umerged children: {:?}", unmerged_children);
+    info!("Unmerged children: {:?}", unmerged_children);
 
     Ok(())
 }
 
 fn select_parents_and_self(
-    connection: &mut PgConnection, target_net: &PrefixPath
+    connection: &mut PgConnection, target_net: &PrefixPath,
 ) -> Result<Vec<PrefixTree>> {
     let parents = prefix_tree
         .filter(path.ancestor_or_same_as(target_net))
@@ -101,7 +111,7 @@ fn select_parents_and_self(
 }
 
 fn select_unmerged_children(
-    connection: &mut PgConnection, target_net: &PrefixPath
+    connection: &mut PgConnection, target_net: &PrefixPath,
 ) -> Result<Vec<PrefixTree>> {
     let parents = prefix_tree
         .filter(path.descendant_or_same_as(target_net))
@@ -113,16 +123,32 @@ fn select_unmerged_children(
 }
 
 fn insert_if_new(connection: &mut PgConnection, target_net: &PrefixPath) -> Result<(), Error> {
-    let inserted_id_or_zero = insert_into(prefix_tree).values((
-        path.eq(target_net),
-        is_routed.eq(true),
-        merge_status.eq(MergeStatus::NotMerged),
-        data.eq(ExtraData { ever_responded: true }),
-    ))
+    let inserted_id_or_zero = insert_into(prefix_tree)
+        .values((
+            path.eq(target_net),
+            is_routed.eq(true),
+            merge_status.eq(MergeStatus::NotMerged),
+            data.eq(ExtraData { ever_responded: true }),
+        ))
         .on_conflict_do_nothing()
         .returning(id)
         .execute(connection)
         .with_context(|| "while trying to insert into prefix_tree")?;
     info!("ID for this prefix is {}.", inserted_id_or_zero);
+    Ok(())
+}
+
+fn archive_response(
+    connection: &mut PgConnection, target_net: &PrefixPath, model: &EchoProbeResponse,
+) -> Result<(), Error> {
+    let model_jsonb = serde_json::to_value(model)
+        .with_context(|| "failed to serialize to json for archiving")?;
+    insert_into(response_archive)
+        .values((
+            archive_path.eq(target_net),
+            archive_data.eq(model_jsonb),
+        ))
+        .execute(connection)
+        .with_context(|| "while trying to insert into response archive")?;
     Ok(())
 }

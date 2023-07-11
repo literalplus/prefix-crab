@@ -25,3 +25,20 @@ diesel::table! {
         data -> Jsonb,
     }
 }
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::Ltree;
+
+    response_archive (id) {
+        id -> Int8,
+        path -> Ltree,
+        created -> Timestamp,
+        data -> Jsonb,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(
+    prefix_tree,
+    response_archive,
+);

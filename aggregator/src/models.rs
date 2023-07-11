@@ -1,1 +1,2 @@
-pub mod prefix_tree;
+pub mod tree;
+pub mod path;
