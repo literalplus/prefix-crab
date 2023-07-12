@@ -91,15 +91,15 @@ mod interpret {
     use std::iter::Peekable;
     use std::net::Ipv6Addr;
     use std::path::Iter;
-    use itertools::Itertools;
 
     use ipnet::Ipv6Net;
+    use itertools::Itertools;
 
     use queue_models::echo_response::{DestUnreachKind, EchoProbeResponse, ResponseKey, Responses, SplitResult};
     use queue_models::echo_response::ResponseKey::*;
 
     enum FollowUpTraceRequest {
-        TraceResponsive { targets: Vec<Ipv6Addr> },
+        TraceResponsive { targets: Vec<Ipv6Addr>, sent_ttl: u8 },
         TraceUnresponsive { candidates: Vec<Ipv6Addr> },
     }
 
@@ -115,11 +115,21 @@ mod interpret {
         source: LastHopRouterSource,
     }
 
+    enum WeirdBehaviourKind {
+        TtlExceeded { sent_ttl: u8 },
+        Other { description: String },
+    }
+
+    struct WeirdBehaviour {
+        from: Ipv6Addr,
+        kind: WeirdBehaviourKind,
+    }
+
     struct SplitAnalysisResult {
         split: Ipv6Net,
         follow_ups: Vec<FollowUpTraceRequest>,
         last_hop_routers: Vec<LastHopRouter>,
-        has_weird_behaviour: bool,
+        weird_behaviours: Vec<WeirdBehaviour>,
     }
 
     impl SplitAnalysisResult {
@@ -128,7 +138,7 @@ mod interpret {
                 split: split.net,
                 follow_ups: vec![],
                 last_hop_routers: vec![],
-                has_weird_behaviour: false,
+                weird_behaviours: vec![],
             }
         }
     }
@@ -142,33 +152,48 @@ mod interpret {
     }
 
     fn process_split(split: &SplitResult) {
-        let result = SplitAnalysisResult::new(split);
-        handle_dest_unreach(&result, &split.responses);
-    }
-
-    fn handle_dest_unreach(
-        result: &mut SplitAnalysisResult, responses: &Vec<Responses>,
-    ) {
-        let kinds: Vec<Option<&DestUnreachKind>> = responses.iter()
-            .map(|it| it.key.get_dest_unreach_kind() )
-            .unique() // for None - the kinds themselves only occur once
-            .collect();
-
-        let there_are_other_responses = kinds.iter().any(|it| it.is_none());
-
-        // FIXME
-
+        let mut result = SplitAnalysisResult::new(split);
+        let mut some_addrs_were_unresponsive = false;
         for response in responses {
             match &response.key {
-                DestinationUnreachable { kind, from }=> {
-                    result.last_hop_routers.push(LastHopRouter{
+                DestinationUnreachable { kind, from } => {
+                    result.last_hop_routers.push(LastHopRouter {
                         router: *from,
                         handled_addresses: response.intended_targets.clone(),
-                        source: LastHopRouterSource::DestinationUnreachable {kind: *kind}
+                        source: LastHopRouterSource::DestinationUnreachable { kind: *kind },
                     })
-                },
-                _ => {}
+                }
+                EchoReply { different_from: _, sent_ttl } => {
+                    result.follow_ups.push(FollowUpTraceRequest::TraceResponsive {
+                        targets: response.intended_targets.clone(),
+                        sent_ttl: *sent_ttl,
+                    })
+                }
+                Other { description } => {
+                    for target in response.intended_targets {
+                        result.weird_behaviours.push(WeirdBehaviour {
+                            from: target,
+                            kind: WeirdBehaviourKind::Other {
+                                description: description.to_string(),
+                            },
+                        })
+                    }
+                }
+                NoResponse => {
+                    some_addrs_were_unresponsive = true;
+                }
+                TimeExceeded { from, sent_ttl } => {
+                    result.weird_behaviours.push(WeirdBehaviour {
+                        from: *from,
+                        kind: WeirdBehaviourKind::TtlExceeded { sent_ttl: *sent_ttl },
+                    })
+                }
             }
+        }
+        let nothing_else_recorded = result.follow_ups.is_empty() &&
+            result.last_hop_routers.is_empty();
+        if some_addrs_were_unresponsive && nothing_else_recorded {
+            // TODO
         }
     }
 }
