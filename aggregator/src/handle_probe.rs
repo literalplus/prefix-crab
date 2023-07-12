@@ -86,6 +86,93 @@ fn handle_one(connection: &mut PgConnection, req: &TaskRequest) -> Result<(), Er
     Ok(())
 }
 
+mod interpret {
+    use std::collections::HashMap;
+    use std::iter::Peekable;
+    use std::net::Ipv6Addr;
+    use std::path::Iter;
+    use itertools::Itertools;
+
+    use ipnet::Ipv6Net;
+
+    use queue_models::echo_response::{DestUnreachKind, EchoProbeResponse, ResponseKey, Responses, SplitResult};
+    use queue_models::echo_response::ResponseKey::*;
+
+    enum FollowUpTraceRequest {
+        TraceResponsive { targets: Vec<Ipv6Addr> },
+        TraceUnresponsive { candidates: Vec<Ipv6Addr> },
+    }
+
+    enum LastHopRouterSource {
+        TraceUnresponsive,
+        TraceResponsive,
+        DestinationUnreachable { kind: DestUnreachKind },
+    }
+
+    struct LastHopRouter {
+        router: Ipv6Addr,
+        handled_addresses: Vec<Ipv6Addr>,
+        source: LastHopRouterSource,
+    }
+
+    struct SplitAnalysisResult {
+        split: Ipv6Net,
+        follow_ups: Vec<FollowUpTraceRequest>,
+        last_hop_routers: Vec<LastHopRouter>,
+        has_weird_behaviour: bool,
+    }
+
+    impl SplitAnalysisResult {
+        fn new(split: &SplitResult) -> SplitAnalysisResult {
+            Self {
+                split: split.net,
+                follow_ups: vec![],
+                last_hop_routers: vec![],
+                has_weird_behaviour: false,
+            }
+        }
+    }
+
+    pub fn process(model: &EchoProbeResponse) {
+        let mut split_results = vec![];
+        for split in model.splits {
+            split_results.push(process_split(&split));
+        }
+        // TODO handle results of split processing
+    }
+
+    fn process_split(split: &SplitResult) {
+        let result = SplitAnalysisResult::new(split);
+        handle_dest_unreach(&result, &split.responses);
+    }
+
+    fn handle_dest_unreach(
+        result: &mut SplitAnalysisResult, responses: &Vec<Responses>,
+    ) {
+        let kinds: Vec<Option<&DestUnreachKind>> = responses.iter()
+            .map(|it| it.key.get_dest_unreach_kind() )
+            .unique() // for None - the kinds themselves only occur once
+            .collect();
+
+        let there_are_other_responses = kinds.iter().any(|it| it.is_none());
+
+        // FIXME
+
+        for response in responses {
+            match &response.key {
+                DestinationUnreachable { kind, from }=> {
+                    result.last_hop_routers.push(LastHopRouter{
+                        router: *from,
+                        handled_addresses: response.intended_targets.clone(),
+                        source: LastHopRouterSource::DestinationUnreachable {kind: *kind}
+                    })
+                },
+                _ => {}
+            }
+        }
+    }
+}
+
 mod context {
     use anyhow::*;
     use diesel::dsl::not;

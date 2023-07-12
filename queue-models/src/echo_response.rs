@@ -20,11 +20,20 @@ pub struct SplitResult {
 
 #[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub enum ResponseKey {
-    DestinationUnreachable { kind: DestUnreachKind },
+    DestinationUnreachable { kind: DestUnreachKind, from: Ipv6Addr },
     EchoReply { different_from: Option<Ipv6Addr>, sent_ttl: u8 },
     NoResponse,
     TimeExceeded { from: Ipv6Addr, sent_ttl: u8 },
     Other { description: String },
+}
+
+impl ResponseKey {
+    pub fn get_dest_unreach_kind(&self) -> Option<&DestUnreachKind> {
+        match self {
+            Self::DestinationUnreachable { kind, from: _ } => Some(kind),
+            _ => None,
+        }
+    }
 }
 
 pub type ResponseCount = usize;
@@ -46,7 +55,7 @@ impl Responses {
 }
 
 
-#[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize, Copy)]
 pub enum DestUnreachKind {
     /// 2 = beyond scope, 7 = source routing error
     Other(u8),
