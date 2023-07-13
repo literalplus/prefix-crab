@@ -52,7 +52,7 @@ impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
     async fn start_consumer(
         &self, queue_name: &str,
     ) -> Result<mpsc::UnboundedReceiver<ConsumerMessage>> {
-        let consume_args = BasicConsumeArguments::new(&queue_name, "zmap-buddy");
+        let consume_args = BasicConsumeArguments::new(queue_name, "zmap-buddy");
         let (_, rabbit_rx) = self.handle.chan()
             .basic_consume_rx(consume_args)
             .await

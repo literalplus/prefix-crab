@@ -33,11 +33,11 @@ pub fn configure_from(params: &Params) -> Result<LoggerHandle> {
         .format_for_stdout(colored_default_format)
         .format_for_files(detailed_format);
 
-    return match (&params.use_log_spec, &params.log_spec_file) {
+    match (&params.use_log_spec, &params.log_spec_file) {
         (true, specfile_path) => log_builder
             .start_with_specfile(specfile_path)
             .with_context(|| format!("Failed to start logger with specfile {:?}", *specfile_path)),
         (false, _) => log_builder
             .start().context("Failed to start logger handle w/o specfile")
-    };
+    }
 }

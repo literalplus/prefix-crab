@@ -20,15 +20,13 @@ impl SignalHandler {
     pub async fn wait_for_signal(self) {
         let mut sigterm = signal(SignalKind::terminate()).unwrap();
         let mut sigint = signal(SignalKind::interrupt()).unwrap();
-        loop {
-            select! {
+
+        select! {
             _ = sigterm.recv() => info!("Terminated; stopping..."),
             _ = sigint.recv() => info!("Interrupted; stopping..."),
             }
-            if let Err(e) = self.stop_tx.send(()) {
-                warn!("Failed to notify tasks to stop, maybe they're already finished. {}", e);
-            }
-            break;
+        if let Err(e) = self.stop_tx.send(()) {
+            warn!("Failed to notify tasks to stop, maybe they're already finished. {}", e);
         }
     }
 }

@@ -55,7 +55,7 @@ impl Responses {
 }
 
 
-#[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize, Copy)]
+#[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum DestUnreachKind {
     /// 2 = beyond scope, 7 = source routing error
     Other(u8),

@@ -62,9 +62,9 @@ pub mod expr {
     impl<T> PathExpressionMethods for T where T: Expression<SqlType=Ltree> {}
 }
 
-impl Into<PrefixPath> for Ipv6Net {
-    fn into(self) -> PrefixPath {
-        PrefixPath(self)
+impl From<Ipv6Net> for PrefixPath {
+    fn from(value: Ipv6Net) -> Self {
+        Self(value)
     }
 }
 
@@ -87,7 +87,7 @@ impl ToSql<Ltree, Pg> for PrefixPath where i32: ToSql<Integer, Pg> {
     fn to_sql(&self, out: &mut Output<Pg>) -> diesel::serialize::Result {
         // ltree format version; currently version 1 -- 1 byte
         // ref: https://doxygen.postgresql.org/ltree__io_8c_source.html ltree_recv
-        out.write(&[1])?;
+        out.write_all(&[1])?;
         // string representation of the ltree
         <str as ToSql<Text, Pg>>::to_sql(&self.to_string(), &mut out.reborrow())?;
         Ok(IsNull::No)
@@ -98,6 +98,7 @@ impl FromStr for PrefixPath {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s_as_bytes = s.as_bytes();
         let root_len_bits = 12u8;
         let mut bits = bitvec![u8, Msb0;];
         let two_hex_bytes = format!("{}0{}", &s[2..3], &s[0..2]); // inverted for byte order
@@ -105,15 +106,15 @@ impl FromStr for PrefixPath {
             .with_context(|| format!(
                 "First three characters must be hex: {} / {}", two_hex_bytes, s
             ))?;
-        bits.write(&root_as_bytes.to_le_bytes())?;
+        bits.write_all(&root_as_bytes.to_le_bytes())?;
         bits.truncate(root_len_bits.into()); // discard last four bits, as these aren't part of the prefix
 
         for dot_idx in (3..s.len()).step_by(2) {
-            match s.bytes().nth(dot_idx) {
+            match s_as_bytes.get(dot_idx) {
                 Some(b'.') => {}
                 _ => bail!(
                     "Expected a dot at position {} of {:?}, but was: {:?}",
-                    dot_idx, s, s.bytes().nth(dot_idx),
+                    dot_idx, s, s_as_bytes.get(dot_idx),
                 ),
             }
         }
@@ -122,11 +123,11 @@ impl FromStr for PrefixPath {
         // 4 characters root; (64 - 12) bits left, each has a dot
         let end = 4 + (64 - root_len_bits) * 2u8;
         for char_idx in (4..end).step_by(2) {
-            match s.bytes().nth(char_idx.into()) {
+            match s_as_bytes.get(char_idx as usize) {
                 Some(b'0') => bits.push(false),
                 Some(b'1') => bits.push(true),
                 None => {
-                    if let None = work_prefix_len {
+                    if  work_prefix_len.is_none() {
                         work_prefix_len = Some(bits.len() as u8);
                     }
                     // still need to fill up until 64 to get the correct total length
@@ -134,13 +135,13 @@ impl FromStr for PrefixPath {
                 }
                 _ => bail!(
                     "Expected a bit at position {} of {:?} but was: {:?}",
-                    char_idx, s, s.bytes().nth(char_idx.into()),
+                    char_idx, s, s_as_bytes.get(char_idx as usize),
                 ),
             }
         }
         let prefix_len = match work_prefix_len {
             Some(len) => len,
-            None => if s.bytes().nth((end + 1) as usize).is_some() {
+            None => if s_as_bytes.get((end + 1) as usize).is_some() {
                 bail!(
                 "Input was too long; An IPv6 prefix must not be longer than 64 bits to be \
                 standards-compliant. Input was: {}", s
@@ -177,7 +178,7 @@ impl PrefixPath {
         // second byte cut off, as it is not part of the /12
         write!(f, "{:0>2x}", octets[0])?;
         let full_second_byte = format!("{:0>2x}", octets[1]);
-        let first_nibble = full_second_byte.chars().nth(0)
+        let first_nibble = full_second_byte.chars().next()
             .expect("a byte formatted to hex to have at least one character");
         write!(f, "{}", first_nibble)?;
         Ok(())
