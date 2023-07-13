@@ -1,0 +1,5 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="zmap (trigger; no build)" type="CLionExternalRunConfiguration" factoryName="Application" PROGRAM_PARAMS="prefix-scan fddc:9d0b:e318:8712::bc:1/48" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" WORKING_DIR="file://$PROJECT_DIR$/zmap-buddy" PASS_PARENT_ENVS_2="true" PROJECT_NAME="prefix-crab" TARGET_NAME="dummy" CONFIG_NAME="dummy" RUN_PATH="$PROJECT_DIR$/target/debug/zmap-buddy">
+    <method v="2" />
+  </configuration>
+</component>
