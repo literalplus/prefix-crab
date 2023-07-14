@@ -56,7 +56,7 @@ mod data {
     use serde::{Deserialize, Serialize};
     use serde_json;
 
-    #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+    #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
     pub enum LastHopRouterSource {
         TraceUnresponsive,
         TraceResponsive,
@@ -68,7 +68,7 @@ mod data {
     #[derive(Serialize, Deserialize, Clone, Debug)]
     pub struct LastHopRouterData {
         pub address: Ipv6Addr,
-        pub source: String,
+        pub source: LastHopRouterSource,
         pub hits: i32,
     }
 

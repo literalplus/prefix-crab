@@ -1,110 +1,177 @@
+use anyhow::*;
 
+use queue_models::echo_response::EchoProbeResponse;
 
-use std::net::Ipv6Addr;
+use self::model::EchoResult;
 
+pub mod model {
+    pub use super::echo::{
+        EchoSplitResult, FollowUpTraceRequest, LastHopRouter, LastHopRouterSource,
+    };
 
-use ipnet::Ipv6Net;
+    #[derive(Debug)]
+    pub struct EchoResult {
+        pub splits: Vec<EchoSplitResult>,
+    }
 
+    pub trait CanFollowUp {
+        fn needs_follow_up(&self) -> bool;
+    }
 
-use queue_models::echo_response::{DestUnreachKind, EchoProbeResponse, SplitResult};
-use queue_models::echo_response::ResponseKey::*;
-
-enum FollowUpTraceRequest {
-    TraceResponsive { targets: Vec<Ipv6Addr>, sent_ttl: u8 },
-    TraceUnresponsive { candidates: Vec<Ipv6Addr> },
-}
-
-enum LastHopRouterSource {
-    TraceUnresponsive,
-    TraceResponsive,
-    DestinationUnreachable { kind: DestUnreachKind },
-}
-
-struct LastHopRouter {
-    router: Ipv6Addr,
-    handled_addresses: Vec<Ipv6Addr>,
-    source: LastHopRouterSource,
-}
-
-enum WeirdBehaviourKind {
-    TtlExceeded { sent_ttl: u8 },
-    Other { description: String },
-}
-
-struct WeirdBehaviour {
-    from: Ipv6Addr,
-    kind: WeirdBehaviourKind,
-}
-
-struct SplitAnalysisResult {
-    split: Ipv6Net,
-    follow_ups: Vec<FollowUpTraceRequest>,
-    last_hop_routers: Vec<LastHopRouter>,
-    weird_behaviours: Vec<WeirdBehaviour>,
-}
-
-impl SplitAnalysisResult {
-    fn new(split: &SplitResult) -> SplitAnalysisResult {
-        Self {
-            split: split.net,
-            follow_ups: vec![],
-            last_hop_routers: vec![],
-            weird_behaviours: vec![],
+    impl CanFollowUp for EchoResult {
+        fn needs_follow_up(&self) -> bool {
+            return self.splits.iter().any(|it| it.needs_follow_up());
         }
     }
 }
 
-pub fn process(model: &EchoProbeResponse) {
-    let mut split_results = vec![];
+pub fn process_echo(model: &EchoProbeResponse) -> Result<EchoResult> {
+    let mut splits = vec![];
     for split in &model.splits {
-        split_results.push(process_split(split));
+        splits.push(echo::process_split(split));
     }
-    // TODO handle results of split processing
+    return Ok(EchoResult { splits });
 }
 
-fn process_split(split: &SplitResult) -> SplitAnalysisResult {
-    let mut result = SplitAnalysisResult::new(split);
-    let mut some_addrs_were_unresponsive = false;
-    for response in &split.responses {
-        match &response.key {
-            DestinationUnreachable { kind, from } => {
-                result.last_hop_routers.push(LastHopRouter {
-                    router: *from,
-                    handled_addresses: response.intended_targets.clone(),
-                    source: LastHopRouterSource::DestinationUnreachable { kind: *kind },
-                })
-            }
-            EchoReply { different_from: _, sent_ttl } => {
-                result.follow_ups.push(FollowUpTraceRequest::TraceResponsive {
-                    targets: response.intended_targets.clone(),
-                    sent_ttl: *sent_ttl,
-                })
-            }
-            Other { description } => {
-                for target in &response.intended_targets {
-                    result.weird_behaviours.push(WeirdBehaviour {
-                        from: *target,
-                        kind: WeirdBehaviourKind::Other {
-                            description: description.to_string(),
-                        },
-                    })
+mod echo {
+    use std::fmt::Display;
+    use std::net::Ipv6Addr;
+
+    use ipnet::Ipv6Net;
+
+    use queue_models::echo_response::ResponseKey::*;
+    use queue_models::echo_response::{DestUnreachKind, SplitResult};
+
+    use super::model::CanFollowUp;
+
+    #[derive(Debug)]
+    pub struct EchoSplitResult {
+        pub split: Ipv6Net,
+        pub follow_ups: Vec<FollowUpTraceRequest>,
+        pub last_hop_routers: Vec<LastHopRouter>,
+        pub weird_behaviours: Vec<WeirdBehaviour>,
+    }
+
+    impl CanFollowUp for EchoSplitResult {
+        fn needs_follow_up(&self) -> bool {
+            return !self.follow_ups.is_empty();
+        }
+    }
+
+    // TODO type should probably be moved into a follow_up module
+    #[derive(Debug)]
+    pub enum FollowUpTraceRequest {
+        TraceResponsive {
+            targets: Vec<Ipv6Addr>,
+            sent_ttl: u8,
+        },
+        TraceUnresponsive {
+            candidates: Vec<Ipv6Addr>,
+        },
+    }
+
+    #[derive(Debug)]
+    pub enum LastHopRouterSource {
+        TraceUnresponsive,
+        TraceResponsive,
+        DestinationUnreachable { kind: DestUnreachKind },
+    }
+
+    #[derive(Debug)]
+    pub struct LastHopRouter {
+        pub router: Ipv6Addr,
+        handled_addresses: Vec<Ipv6Addr>,
+        pub source: LastHopRouterSource,
+    }
+
+    impl LastHopRouter {
+        pub fn get_hit_count(&self) -> usize {
+            self.handled_addresses.len()
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum WeirdBehaviour {
+        TtlExceeded { sent_ttl: u8 },
+        Other { description: String },
+    }
+
+    impl WeirdBehaviour {
+        pub fn get_id(&self) -> String {
+            match &self {
+                Self::TtlExceeded { sent_ttl } => {
+                    format!("ttl-xc-{}", sent_ttl)
+                },
+                Self::Other { description } => {
+                    format!("o-{}", description)
                 }
             }
-            NoResponse => {
-                some_addrs_were_unresponsive = true;
-            }
-            TimeExceeded { from, sent_ttl } => {
-                result.weird_behaviours.push(WeirdBehaviour {
-                    from: *from,
-                    kind: WeirdBehaviourKind::TtlExceeded { sent_ttl: *sent_ttl },
-                })
+        }
+    }
+
+    impl EchoSplitResult {
+        fn new(split: &SplitResult) -> EchoSplitResult {
+            Self {
+                split: split.net,
+                follow_ups: vec![],
+                last_hop_routers: vec![],
+                weird_behaviours: vec![],
             }
         }
     }
-    let nothing_else_recorded = result.follow_ups.is_empty() &&
-        result.last_hop_routers.is_empty();
-    if some_addrs_were_unresponsive && nothing_else_recorded {
-        // TODO
+
+    pub fn process_split(split: &SplitResult) -> EchoSplitResult {
+        let mut result = EchoSplitResult::new(split);
+        let mut unresponsive_addrs = vec![];
+        for response in &split.responses {
+            match &response.key {
+                DestinationUnreachable { kind, from } => {
+                    result.last_hop_routers.push(LastHopRouter {
+                        router: *from,
+                        handled_addresses: response.intended_targets.clone(),
+                        source: LastHopRouterSource::DestinationUnreachable { kind: *kind },
+                    })
+                }
+                EchoReply {
+                    different_from: _,
+                    sent_ttl,
+                } => {
+                    // TODO handle different from somehow ?
+                    result
+                        .follow_ups
+                        .push(FollowUpTraceRequest::TraceResponsive {
+                            targets: response.intended_targets.clone(),
+                            sent_ttl: *sent_ttl,
+                        })
+                }
+                Other { description } => {
+                    for target in &response.intended_targets {
+                        result.weird_behaviours.push(WeirdBehaviour {
+                            from: *target,
+                            kind: WeirdBehaviourKind::Other {
+                                description: description.to_string(),
+                            },
+                        })
+                    }
+                }
+                NoResponse => unresponsive_addrs.extend(&response.intended_targets),
+                TimeExceeded { from, sent_ttl } => result.weird_behaviours.push(WeirdBehaviour {
+                    from: *from,
+                    kind: WeirdBehaviourKind::TtlExceeded {
+                        sent_ttl: *sent_ttl,
+                    },
+                }),
+            }
+        }
+        let nothing_else_recorded =
+            result.follow_ups.is_empty() && result.last_hop_routers.is_empty();
+        if !unresponsive_addrs.is_empty() && nothing_else_recorded {
+            result
+                .follow_ups
+                .push(FollowUpTraceRequest::TraceUnresponsive {
+                    candidates: unresponsive_addrs,
+                })
+        }
+        result
     }
-    result
 }

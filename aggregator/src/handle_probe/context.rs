@@ -11,10 +11,10 @@ pub use analyses::ContextAnalyses;
 
 #[derive(Debug)]
 pub struct ProbeContext {
-    node: PrefixTree,
-    ancestors: Vec<PrefixTree>,
-    unmerged_children: Vec<PrefixTree>,
-    analyses: ContextAnalyses,
+    pub node: PrefixTree,
+    pub ancestors: Vec<PrefixTree>,
+    pub unmerged_children: Vec<PrefixTree>,
+    pub analyses: ContextAnalyses,
 }
 
 pub fn fetch(connection: &mut PgConnection, target_net: &PrefixPath) -> Result<ProbeContext> {
@@ -90,13 +90,13 @@ mod analyses {
     use crate::models::analysis::Stage;
     
     use crate::models::tree::*;
-    use crate::schema::split_analysis::dsl::{created};
+    use crate::schema::split_analysis::dsl::{created_at};
     use crate::schema::split_analysis_split::split_num;
 
     #[derive(Debug)]
     pub struct ContextAnalyses {
-        completed: Vec<SplitAnalysis>,
-        active: Option<SplitAnalysisDetails>,
+        pub completed: Vec<SplitAnalysis>,
+        pub active: Option<SplitAnalysisDetails>,
     }
 
     pub fn fetch(connection: &mut PgConnection, node: &PrefixTree) -> Result<ContextAnalyses> {
@@ -124,7 +124,7 @@ mod analyses {
         // TODO ignore very old analyses or cleanup ?
         Ok(SplitAnalysis::belonging_to(node)
             .select(SplitAnalysis::as_select())
-            .order_by(created.desc())
+            .order_by(created_at.desc())
             .load(connection)?)
     }
 

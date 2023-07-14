@@ -13,6 +13,7 @@ use crate::models::path::PrefixPath;
 mod interpret;
 mod context;
 mod archive;
+mod store;
 
 #[derive(Args)]
 #[derive(Debug)]
@@ -50,15 +51,7 @@ pub async fn run(
     loop {
         if let Some(req) = task_rx.recv().await {
             trace!("Received something: {:?}", req);
-
-            match handle_one(&mut connection, &req) {
-                Result::Ok(_) => ack_tx.send(req)?,
-                Err(e) => {
-                    // TODO Could be handled with DLQ
-                    error!("Failed to handle request: {:?} - shutting down.", req);
-                    return Err(e);
-                }
-            }
+            handle_recv(&mut connection, &ack_tx, req)?;
         } else {
             info!("Probe handler shutting down.");
             return Ok(());
@@ -81,6 +74,19 @@ fn connect_and_migrate_schema(params: &Params) -> Result<PgConnection, Error> {
     Ok(connection)
 }
 
+fn handle_recv(
+    connection: &mut PgConnection, ack_tx: &UnboundedSender<TaskRequest>, req: TaskRequest
+) -> Result<()> {
+    match handle_one(connection, &req) {
+        Result::Ok(_) => ack_tx.send(req).map_err(Error::msg),
+        Err(e) => {
+            // TODO Could be handled with DLQ
+            error!("Failed to handle request: {:?} - shutting down.", req);
+            Err(e)
+        }
+    }
+}
+
 fn handle_one(connection: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
     let target_net: PrefixPath = req.model.target_net.into();
     debug!("Resolved path is {}", target_net);
@@ -90,9 +96,10 @@ fn handle_one(connection: &mut PgConnection, req: &TaskRequest) -> Result<(), Er
     let context = context::fetch(connection, &target_net)
         .with_context(|| "while fetching context")?;
 
-    interpret::process(&req.model);
+    let interpretation = interpret::process_echo(&req.model);
 
     info!("Context for this probe: {:?}", context);
+    info!("Interpretation for this probe: {:?}", interpretation);
 
     Ok(())
 }
