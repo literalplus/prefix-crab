@@ -11,7 +11,7 @@ pub enum MergeStatus {
     NotMerged,
 }
 
-#[derive(Queryable, Selectable, Debug, Copy, Clone)]
+#[derive(Queryable, Selectable, Identifiable, Debug, Copy, Clone)]
 #[diesel(table_name = crate::schema::prefix_tree)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct PrefixTree {

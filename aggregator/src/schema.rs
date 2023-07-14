@@ -8,6 +8,10 @@ pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "prefix_merge_status"))]
     pub struct PrefixMergeStatus;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "split_analysis_stage"))]
+    pub struct SplitAnalysisStage;
 }
 
 diesel::table! {
@@ -38,7 +42,34 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::SplitAnalysisStage;
+
+    split_analysis (id) {
+        id -> Int8,
+        tree_id -> Int8,
+        created -> Timestamp,
+        completed -> Nullable<Timestamp>,
+        stage -> SplitAnalysisStage,
+        split_prefix_len -> Int2,
+    }
+}
+
+diesel::table! {
+    split_analysis_split (analysis_id, split_num) {
+        analysis_id -> Int8,
+        split_num -> Int2,
+        data -> Jsonb,
+    }
+}
+
+diesel::joinable!(split_analysis -> prefix_tree (tree_id));
+diesel::joinable!(split_analysis_split -> split_analysis (analysis_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     prefix_tree,
     response_archive,
+    split_analysis,
+    split_analysis_split,
 );
