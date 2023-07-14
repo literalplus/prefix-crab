@@ -17,8 +17,8 @@ pub enum MergeStatus {
 pub struct PrefixTree {
     pub id: i64,
     pub path: PrefixPath,
-    pub created: NaiveDateTime,
-    pub modified: NaiveDateTime,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
     pub is_routed: bool,
     pub merge_status: MergeStatus,
     pub data: ExtraData,

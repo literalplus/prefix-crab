@@ -6,8 +6,8 @@ CREATE TABLE public.prefix_tree
 (
     id           bigserial PRIMARY KEY NOT NULL,
     "path"       public.ltree          NOT NULL,
-    created      timestamp             NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    modified     timestamp             NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at   timestamp             NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   timestamp             NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_routed    bool                  NOT NULL DEFAULT true,
     merge_status prefix_merge_status   NOT NULL DEFAULT 'not_merged',
     "data"       jsonb                 NOT NULL DEFAULT '{}'::jsonb
@@ -17,3 +17,5 @@ CREATE INDEX IF NOT EXISTS prefix_tree_gist_idx ON public.prefix_tree USING gist
 
 ALTER TABLE prefix_tree
     ADD CONSTRAINT prefix_tree_path_uq UNIQUE ("path");
+
+SELECT diesel_manage_updated_at('prefix_tree');

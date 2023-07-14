@@ -22,8 +22,8 @@ diesel::table! {
     prefix_tree (id) {
         id -> Int8,
         path -> Ltree,
-        created -> Timestamp,
-        modified -> Timestamp,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
         is_routed -> Bool,
         merge_status -> PrefixMergeStatus,
         data -> Jsonb,
@@ -37,7 +37,7 @@ diesel::table! {
     response_archive (id) {
         id -> Int8,
         path -> Ltree,
-        created -> Timestamp,
+        created_at -> Timestamp,
         data -> Jsonb,
     }
 }
@@ -49,8 +49,8 @@ diesel::table! {
     split_analysis (id) {
         id -> Int8,
         tree_id -> Int8,
-        created -> Timestamp,
-        completed -> Nullable<Timestamp>,
+        created_at -> Timestamp,
+        completed_at -> Nullable<Timestamp>,
         stage -> SplitAnalysisStage,
         split_prefix_len -> Int2,
     }

@@ -19,8 +19,8 @@ pub enum Stage {
 pub struct SplitAnalysis {
     pub id: i64,
     pub tree_id: i64,
-    pub created: NaiveDateTime,
-    pub completed: Option<NaiveDateTime>,
+    pub created_at: NaiveDateTime,
+    pub completed_at: Option<NaiveDateTime>,
     pub stage: Stage,
     pub split_prefix_len: i16,
 }
