@@ -5,8 +5,6 @@ use prefix_crab::helpers::{bootstrap, logging};
 
 mod cmd_logic;
 mod zmap_call;
-/// Handles splitting of prefixes & selection of addresses to scan in them.
-mod prefix_split;
 /// Stores probe results in memory for the duration of the scan.
 mod probe_store;
 /// Handles reception, sending, & translation of messages from/to RabbitMQ.

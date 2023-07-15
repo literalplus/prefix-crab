@@ -7,7 +7,7 @@ use std::ops::Index;
 use queue_models::echo_response;
 use queue_models::echo_response::SplitResult;
 
-use crate::prefix_split::SubnetSample;
+use prefix_crab::prefix_split::SubnetSample;
 use crate::probe_store::model::RoutableProbeStore;
 use crate::probe_store::ProbeStore;
 use crate::schedule::ProbeResponse;
@@ -162,7 +162,7 @@ mod tests {
         // then
         let no_res = &store.responses[&ResponseKey::NoResponse];
         assert_that!(no_res.intended_targets).contains_exactly(target_addrs);
-        assert_eq!(no_res.len(), 4);
+        assert_eq!(no_res.len(), 16);
         Ok(())
     }
 
@@ -177,7 +177,7 @@ mod tests {
         store.fill_missing();
         // then
         let no_res = &store.responses[&ResponseKey::NoResponse];
-        assert_eq!(no_res.len(), 3);
+        assert_eq!(no_res.len(), 15);
         then_timxceed_registered(&mut store, responsive_addr);
         Ok(())
     }

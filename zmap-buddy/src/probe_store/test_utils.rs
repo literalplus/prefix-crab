@@ -3,7 +3,7 @@ use std::net::Ipv6Addr;
 use anyhow::*;
 use ipnet::Ipv6Net;
 
-use crate::prefix_split::{self, SubnetSample};
+use prefix_crab::prefix_split::{self, SubnetSample};
 use crate::probe_store::model::ResponseKey;
 use crate::probe_store::subnet::SubnetStore;
 use crate::schedule::ProbeResponse;

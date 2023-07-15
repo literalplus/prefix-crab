@@ -3,7 +3,7 @@ use derive_where::derive_where;
 
 use log::warn;
 
-use crate::prefix_split::SubnetSample;
+use prefix_crab::prefix_split::SubnetSample;
 use crate::probe_store::model::RoutableProbeStore;
 use crate::probe_store::ProbeStore;
 use crate::schedule::ProbeResponse;

@@ -104,7 +104,7 @@ mod task {
     use anyhow::{Context, Result};
     use log::trace;
 
-    use crate::prefix_split;
+    use prefix_crab::prefix_split;
     use crate::probe_store::{self, PrefixSplitProbeStore, PrefixStoreDispatcher, ProbeStore};
     use crate::zmap_call::{self, Caller, TargetCollector};
 
