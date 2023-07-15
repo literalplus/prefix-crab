@@ -57,9 +57,9 @@ diesel::table! {
 }
 
 diesel::table! {
-    split_analysis_split (analysis_id, split_num) {
+    split_analysis_split (analysis_id, net_index) {
         analysis_id -> Int8,
-        split_num -> Int2,
+        net_index -> Int2,
         data -> Jsonb,
     }
 }

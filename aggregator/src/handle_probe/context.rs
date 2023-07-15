@@ -17,6 +17,12 @@ pub struct ProbeContext {
     pub analyses: ContextAnalyses,
 }
 
+impl ProbeContext {
+    pub fn path(&self) -> &PrefixPath {
+        &self.node.path
+    } 
+}
+
 pub fn fetch(connection: &mut PgConnection, target_net: &PrefixPath) -> Result<ProbeContext> {
     insert_if_new(connection, target_net)?;
 
@@ -81,7 +87,7 @@ fn insert_if_new(connection: &mut PgConnection, target_net: &PrefixPath) -> Resu
 mod analyses {
     use anyhow::*;
     
-    
+
     use diesel::prelude::*;
 
     use crate::models::analysis::Split;
@@ -90,8 +96,8 @@ mod analyses {
     use crate::models::analysis::Stage;
     
     use crate::models::tree::*;
-    use crate::schema::split_analysis::dsl::{created_at};
-    use crate::schema::split_analysis_split::split_num;
+    use crate::schema::split_analysis::dsl::created_at;
+    use crate::schema::split_analysis_split::dsl::*;
 
     #[derive(Debug)]
     pub struct ContextAnalyses {
@@ -131,11 +137,8 @@ mod analyses {
     fn fetch_details(connection: &mut PgConnection, analysis: SplitAnalysis) -> Result<SplitAnalysisDetails> {
         let splits = Split::belonging_to(&analysis)
             .select(Split::as_select())
-            .order_by(split_num)
+            .order_by(net_index)
             .load(connection)?;
-        Ok(SplitAnalysisDetails {
-            analysis,
-            splits
-        })
+        Ok(SplitAnalysisDetails::new( analysis, splits))
     }
 }

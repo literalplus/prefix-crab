@@ -11,20 +11,31 @@ pub struct EchoProbeResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SplitResult {
-    pub net: Ipv6Net,
+    pub net_index: u8,
     /// This is a list s.t. it can be easily represented as JSON, but every key should
     /// only occur once. The recommended behaviour is to ignore any repetitions of a key, but
     /// undefined behaviour is also allowed if more convenient.
     pub responses: Vec<Responses>,
 }
 
-#[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize, Clone)]
 pub enum ResponseKey {
-    DestinationUnreachable { kind: DestUnreachKind, from: Ipv6Addr },
-    EchoReply { different_from: Option<Ipv6Addr>, sent_ttl: u8 },
+    DestinationUnreachable {
+        kind: DestUnreachKind,
+        from: Ipv6Addr,
+    },
+    EchoReply {
+        different_from: Option<Ipv6Addr>,
+        sent_ttl: u8,
+    },
     NoResponse,
-    TimeExceeded { from: Ipv6Addr, sent_ttl: u8 },
-    Other { description: String },
+    TimeExceeded {
+        from: Ipv6Addr,
+        sent_ttl: u8,
+    },
+    Other {
+        description: String,
+    },
 }
 
 impl ResponseKey {
@@ -53,7 +64,6 @@ impl Responses {
         self.len() == 0
     }
 }
-
 
 #[derive(Eq, PartialEq, Hash, Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum DestUnreachKind {

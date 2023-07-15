@@ -1,4 +1,5 @@
 use anyhow::*;
+use chrono::{Utc, NaiveDateTime};
 use diesel::dsl::*;
 use diesel::prelude::*;
 use diesel::PgConnection;
@@ -9,11 +10,14 @@ use crate::models::analysis;
 use crate::models::analysis::FollowUp;
 use crate::models::analysis::LastHopRouterData;
 
+use crate::models::analysis::Split;
 use crate::models::analysis::SplitAnalysis;
 use crate::models::analysis::SplitData;
+use crate::models::analysis::Stage;
 use crate::models::tree::PrefixTree;
 use crate::schema::split_analysis::dsl::*;
 
+use super::interpret::model::CanFollowUp;
 use super::interpret::model::EchoSplitResult;
 use super::interpret::model::FollowUpTraceRequest;
 use super::interpret::model::LastHopRouter;
@@ -33,28 +37,59 @@ pub fn create_analysis(
 }
 
 pub fn update_analysis_with_echo(
-    _conn: &mut PgConnection,
+    conn: &mut PgConnection,
     interpretation: EchoResult,
-    context: ProbeContext,
-) {
-    let details = match context.analyses.active {
+    context: &mut ProbeContext,
+) -> Result<()> {
+    let details = match &mut context.analyses.active {
         None => {
             warn!(
                 "Tried to update with analysis {:?} but none was active.",
                 interpretation
             );
-            return;
+            return Ok(());
         }
         Some(active) => active,
     };
-    for split in &interpretation.splits {
-        // TODO correlate split-ID with prefix -> extract split logic to common
+    for model in &interpretation.splits {
+        let work_split = &mut details[&model.net_index];
+        update_split_data(model, &mut work_split.data);
     }
+    conn.transaction(|conn| {
+        let mut parent = details.analysis;
+        let parent_change = if details.needs_follow_up() {
+            parent.stage = Stage::PendingTrace;
+            info!("Follow-up traces necessary for {}", context.path());
+            AnalysisStageUpdateDueToEcho {
+                stage: Stage::PendingTrace,
+                completed_at: None,
+            }
+        } else {
+            parent.stage = Stage::Completed;
+            info!("Data collection is complete for {}", context.path());
+            AnalysisStageUpdateDueToEcho {
+                stage: Stage::Completed,
+                completed_at: Some(Utc::now().naive_utc()),
+            }
+        };
+        diesel::update(split_analysis)
+        .set(parent_change)
+        .execute(conn)?;
+        Ok(())
+    }).context("while saving changes")?;
     // for each split:
     //  - find its corresponding entitiy
     //  - if missing, mark it to be inserted somehow
     //  - if existing, update it later
     // if no follow ups, mark completed
+    Ok(())
+}
+
+#[derive(AsChangeset)]
+#[diesel(table_name = crate::schema::split_analysis)]
+struct AnalysisStageUpdateDueToEcho {
+    stage: Stage,
+    completed_at: Option<NaiveDateTime>,
 }
 
 fn update_split_data(model: &EchoSplitResult, data: &mut SplitData) {

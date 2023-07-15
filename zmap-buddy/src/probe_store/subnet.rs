@@ -83,7 +83,7 @@ impl SubnetStore {
 
 impl RoutableProbeStore for SubnetStore {
     fn is_responsible_for(&self, response: &ProbeResponse) -> bool {
-        self.sample.subnet.contains(&response.original_dest_ip)
+        self.sample.network.contains(&response.original_dest_ip)
     }
 }
 
@@ -121,7 +121,7 @@ impl ProbeStore for SubnetStore {
 impl Into<SplitResult> for SubnetStore {
     fn into(self) -> SplitResult {
         SplitResult {
-            net: self.sample.subnet,
+            net_index: self.sample.index.into(),
             responses: self.responses.into_iter()
                 .map(|(k, v)| v.to_model(k))
                 .collect(),

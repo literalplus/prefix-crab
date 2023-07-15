@@ -1,5 +1,7 @@
 use anyhow::*;
 
+use log::warn;
+use prefix_crab::prefix_split::NetIndex;
 use queue_models::echo_response::EchoProbeResponse;
 
 use self::model::EchoResult;
@@ -28,17 +30,19 @@ pub mod model {
 pub fn process_echo(model: &EchoProbeResponse) -> Result<EchoResult> {
     let mut splits = vec![];
     for split in &model.splits {
-        splits.push(echo::process_split(split));
+        if let Result::Ok(valid_index) = split.net_index.try_into() {
+            splits.push(echo::process_split(split, valid_index));
+        } else {
+            warn!("Ignoring result[{}] due to net index out of range", split.net_index);
+        }
     }
     return Ok(EchoResult { splits });
 }
 
 mod echo {
-    
     use std::net::Ipv6Addr;
 
-    use ipnet::Ipv6Net;
-
+    use prefix_crab::prefix_split::NetIndex;
     use queue_models::echo_response::ResponseKey::*;
     use queue_models::echo_response::{DestUnreachKind, SplitResult};
     use FollowUpTraceRequest::*;
@@ -48,7 +52,7 @@ mod echo {
 
     #[derive(Debug)]
     pub struct EchoSplitResult {
-        pub split: Ipv6Net,
+        pub net_index: NetIndex,
         pub follow_ups: Vec<FollowUpTraceRequest>,
         pub last_hop_routers: Vec<LastHopRouter>,
         pub weird_behaviours: Vec<WeirdBehaviour>,
@@ -112,9 +116,9 @@ mod echo {
     }
 
     impl EchoSplitResult {
-        fn new(split: &SplitResult) -> EchoSplitResult {
+        fn new(net_index: NetIndex) -> EchoSplitResult {
             Self {
-                split: split.net,
+                net_index,
                 follow_ups: vec![],
                 last_hop_routers: vec![],
                 weird_behaviours: vec![],
@@ -122,8 +126,8 @@ mod echo {
         }
     }
 
-    pub fn process_split(split: &SplitResult) -> EchoSplitResult {
-        let mut result = EchoSplitResult::new(split);
+    pub fn process_split(split: &SplitResult, index: NetIndex) -> EchoSplitResult {
+        let mut result = EchoSplitResult::new(index);
         let mut unresponsive_addrs = vec![];
         for response in &split.responses {
             match &response.key {

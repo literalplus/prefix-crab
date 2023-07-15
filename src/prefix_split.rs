@@ -2,24 +2,23 @@ use anyhow::*;
 use ipnet::Ipv6Net;
 
 pub use sample::{IntoSubnetSamples, SubnetSample};
-pub use split::{PrefixSplit, SplitSubnet};
+pub use split::{PrefixSplit, SplitSubnet, NetIndex};
 
 pub const SAMPLES_PER_SUBNET: u16 = 16;
 pub const PREFIX_BITS_PER_SPLIT: u8 = 2;
 pub const SUBNETS_PER_SPLIT: u8 = 2u8.pow(PREFIX_BITS_PER_SPLIT as u32);
 pub const MAX_PREFIX_LEN: u8 = 64;
 
-/**
-Splits given network into [SUBNETS_PER_SPLIT] subnets, by increasing the
-prefix length by [PREFIX_BITS_PER_SPLIT] up to a maximum of
-[MAX_PREFIX_LEN].
- */
+/// Splits given network into [SUBNETS_PER_SPLIT] subnets, by increasing the
+/// prefix length by [PREFIX_BITS_PER_SPLIT] up to a maximum of
+/// [MAX_PREFIX_LEN].
 pub fn split(base_net: Ipv6Net) -> Result<PrefixSplit> {
     split::process(base_net)
 }
 
 mod split {
-    use std::iter::IntoIterator;
+    use std::iter::Map;
+    use std::{iter::IntoIterator, ops::Range};
 
     use std::ops::Index;
 
@@ -70,11 +69,11 @@ mod split {
 
     impl PrefixSplit {
         fn new(base_net: Ipv6Net, subnet_prefix_len: u8, subnets_raw: SplitSubnetsRaw) -> Self {
-            let mut next_index = 0;
+            let mut next_index = 0u8;
             let subnets = subnets_raw.map(|network| {
                 next_index += 1;
                 SplitSubnet {
-                    index: next_index - 1,
+                    index: (next_index - 1).try_into().unwrap(),
                     network,
                 }
             });
@@ -101,17 +100,66 @@ mod split {
         }
     }
 
-    impl<'a> Index<u8> for &'a PrefixSplit {
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub struct NetIndex(u8);
+
+    type NetIndexIter = Map<Range<u8>, fn (u8) -> NetIndex>;
+
+    impl NetIndex {
+        const RANGE: Range<u8> = (0..SUBNETS_PER_SPLIT);
+
+        pub fn iter_all_values() -> NetIndexIter {
+            Self::RANGE.map(|it| Self::try_from(it).expect("in-range value to convert"))
+        }
+
+        pub fn value_count() -> u8 {
+            Self::RANGE.len() as u8
+        }
+    }
+
+    impl TryFrom<u8> for NetIndex {
+        type Error = anyhow::Error;
+
+        fn try_from(value: u8) -> Result<Self> {
+            if !Self::RANGE.contains(&value) {
+                bail!("Network index out of range: {}", value);
+            }
+            Ok(NetIndex(value))
+        }
+    }
+
+    impl TryFrom<i16> for NetIndex {
+        type Error = anyhow::Error;
+
+        fn try_from(value: i16) -> Result<Self> {
+            let downcast = <u8>::try_from(value)?;
+            <NetIndex>::try_from(downcast)
+        }
+    }
+
+    impl From<NetIndex> for u8 {
+        fn from(value: NetIndex) -> Self {
+            value.0
+        }
+    }
+
+    impl From<NetIndex> for usize {
+        fn from(value: NetIndex) -> Self {
+            value.0 as usize
+        }
+    }
+
+    impl<'a> Index<NetIndex> for &'a PrefixSplit {
         type Output = SplitSubnet;
 
-        fn index(&self, index: u8) -> &Self::Output {
-            (&self.subnets).index(index as usize)
+        fn index(&self, index: NetIndex) -> &Self::Output {
+            (&self.subnets).index(index.0 as usize)
         }
     }
 
     #[derive(Debug)]
     pub struct SplitSubnet {
-        pub index: u8,
+        pub index: NetIndex,
         pub network: Ipv6Net,
     }
 
@@ -194,9 +242,42 @@ mod split {
 
             // then
             for (index, subnet) in result.iter().enumerate() {
-                assert_that!(subnet.index).is_equal_to(&(index as u8));
+                let expected: NetIndex = (index as u8).try_into().unwrap();
+                assert_that!(subnet.index).is_equal_to(expected);
             }
             Ok(())
+        }
+
+        #[test]
+        fn index_try_from_lower() {
+            // given
+            let index = 0u8;
+            // when
+            let result = NetIndex::try_from(index);
+            // then
+            assert_that!(result).is_ok();
+            assert_that!(result.unwrap()).is_equal_to(NetIndex(index));
+        }
+
+        #[test]
+        fn index_try_from_limit() {
+            // given
+            let index = SUBNETS_PER_SPLIT - 1;
+            // when
+            let result = NetIndex::try_from(index);
+            // then
+            assert_that!(result).is_ok();
+            assert_that!(result.unwrap()).is_equal_to(NetIndex(index));
+        }
+
+        #[test]
+        fn index_try_from_too_high() {
+            // given
+            let index = SUBNETS_PER_SPLIT;
+            // when
+            let result = NetIndex::try_from(index);
+            // then
+            assert_that!(result).is_err();
         }
     }
 }
@@ -207,11 +288,12 @@ mod sample {
     use ipnet::{IpAdd, Ipv6Net};
     use rand::distributions::{Distribution, Uniform};
 
-    use super::PrefixSplit;
+    use super::{PrefixSplit, SplitSubnet, split::NetIndex};
 
     #[derive(Debug, Clone)]
     pub struct SubnetSample {
-        pub subnet: Ipv6Net,
+        pub index: NetIndex,
+        pub network: Ipv6Net,
         pub addresses: Vec<Ipv6Addr>,
     }
 
@@ -233,7 +315,7 @@ mod sample {
             let distribution = Uniform::from(determine_host_range(&self));
             self.into_iter()
                 .to_owned()
-                .map(|subnet| into_sample(subnet.network, distribution, hosts_per_sample))
+                .map(|subnet| into_sample(subnet, distribution, hosts_per_sample))
                 .collect()
         }
     }
@@ -244,16 +326,16 @@ mod sample {
     }
 
     fn into_sample(
-        subnet: Ipv6Net,
+        subnet: &SplitSubnet,
         distribution: Uniform<u128>,
         hosts_per_sample: u16,
     ) -> SubnetSample {
-        let base_addr = subnet.network();
+        let base_addr = subnet.network.network();
         let mut rng = rand::thread_rng();
         let addresses = (0..hosts_per_sample)
             .map(|_| base_addr.saturating_add(distribution.sample(&mut rng)))
             .collect();
-        SubnetSample { subnet, addresses }
+        SubnetSample { network: subnet.network, index: subnet.index, addresses }
     }
 
     #[cfg(test)]
