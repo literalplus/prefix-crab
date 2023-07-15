@@ -31,6 +31,8 @@ pub struct Params {
 
 mod model;
 
+const SAMPLES_PER_SUBNET: u16 = 16;
+
 struct Scheduler {
     zmap_params: zmap_call::Params,
     result_tx: UnboundedSender<TaskResponse>,
@@ -104,7 +106,7 @@ mod task {
     use anyhow::{Context, Result};
     use log::trace;
 
-    use prefix_crab::prefix_split;
+    use prefix_crab::prefix_split::*;
     use crate::probe_store::{self, PrefixSplitProbeStore, PrefixStoreDispatcher, ProbeStore};
     use crate::zmap_call::{self, Caller, TargetCollector};
 
@@ -132,8 +134,8 @@ mod task {
         fn push_work_internal(&mut self, item: &'req TaskRequest) -> Result<()> {
             // TODO permute addresses
             let base_net = item.model.target_net;
-            let samples = prefix_split::process(base_net)
-                .with_context(|| "splitting IPv6 prefix")?;
+            let split = split(base_net).context("splitting IPv6 prefix")?;
+            let samples = split.into_samples(super::SAMPLES_PER_SUBNET);
             for sample in samples.iter() {
                 self.targets.push_slice(sample.addresses.as_slice())?;
             }

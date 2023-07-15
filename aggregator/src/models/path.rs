@@ -99,6 +99,9 @@ impl FromStr for PrefixPath {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s_as_bytes = s.as_bytes();
+        if s_as_bytes.len() < 3 {
+            bail!("Input {:?} is too short, min length is 3", s);
+        }
         let root_len_bits = 12u8;
         let mut bits = bitvec![u8, Msb0;];
         let two_hex_bytes = format!("{}0{}", &s[2..3], &s[0..2]); // inverted for byte order
@@ -120,8 +123,8 @@ impl FromStr for PrefixPath {
         }
 
         let mut work_prefix_len: Option<u8> = None;
-        // 4 characters root; (64 - 12) bits left, each has a dot
-        let end = 4 + (64 - root_len_bits) * 2u8;
+        // 4 characters root; (64 - 12) bits left, each has a dot (except the last one)
+        let end = 4 + (64 - root_len_bits) * 2 - 1u8;
         for char_idx in (4..end).step_by(2) {
             match s_as_bytes.get(char_idx as usize) {
                 Some(b'0') => bits.push(false),
@@ -141,7 +144,7 @@ impl FromStr for PrefixPath {
         }
         let prefix_len = match work_prefix_len {
             Some(len) => len,
-            None => if s_as_bytes.get((end + 1) as usize).is_some() {
+            None => if s_as_bytes.get(end as usize).is_some() {
                 bail!(
                 "Input was too long; An IPv6 prefix must not be longer than 64 bits to be \
                 standards-compliant. Input was: {}", s
@@ -331,6 +334,7 @@ mod tests {
             "asdf",
             "aaa.7",
             "aaaaa1",
+            &format!("{}.", doc_prefix()),
             &format!("{}.0", doc_prefix()),
         ];
         for input in test_cases {
@@ -338,7 +342,7 @@ mod tests {
             let parsed = PrefixPath::from_str(input);
             // then
             assert_that!(parsed).is_err();
-            println!("{:?}", parsed);
+            println!("{:?}", parsed.expect_err("?").to_string());
         }
     }
 }

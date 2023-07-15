@@ -56,6 +56,8 @@ mod data {
     use serde::{Deserialize, Serialize};
     use serde_json;
 
+    use crate::handle_probe::interpret::model::CanFollowUp;
+
     #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
     pub enum LastHopRouterSource {
         TraceUnresponsive,
@@ -113,6 +115,12 @@ mod data {
             let value = serde_json::to_value(self)?;
             // We need reborrow() to reduce the lifetime of &mut out; mustn't outlive `value`
             <serde_json::Value as ToSql<Jsonb, Pg>>::to_sql(&value, &mut out.reborrow())
+        }
+    }
+
+    impl CanFollowUp for SplitData {
+        fn needs_follow_up(&self) -> bool {
+            return !self.pending_follow_ups.is_empty();
         }
     }
 }

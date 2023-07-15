@@ -10,7 +10,7 @@ use queue_models::echo_response::EchoProbeResponse;
 
 use crate::models::path::PrefixPath;
 
-mod interpret;
+pub mod interpret;
 mod context;
 mod archive;
 mod store;

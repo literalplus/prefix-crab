@@ -1,53 +1,56 @@
 [workspace]
 members = ["zmap-buddy", "queue-models", "aggregator"]
 
-[workspace.package]
-version = "0.1.0"
-edition = "2021"
-authors = ["Philipp Nowak <prefixcrab@phnowak.eu>"]
-license = "MIT"
-rust-version = "1.59.0" # flexi_logger
+    [workspace.package]
+    version      = "0.1.0"
+    edition      = "2021"
+    authors      = ["Philipp Nowak <prefixcrab@phnowak.eu>"]
+    license      = "MIT"
+    rust-version = "1.59.0"                                  # flexi_logger
 
-[workspace.dependencies]
-amqprs = { version = "1.2.0", features = ["traces", "urispec"] }
-# To enable backtrace printing, set RUST_BACKTRACE=1 (see anyhow docs)
-anyhow = { version = "1.0.68", features = ["backtrace"] }
-clap = { version = "4.2", features = ["derive", "unicode", "env"] }
-clap-verbosity-flag = "2.0.0"
-flexi_logger = { version = "0.25.0", features = ["specfile", "async"] }
-human-panic = "1.1.0"
-serde = { version = "1.0.159", features = ["derive"] }
-log = "0.4.17"
-ipnet = { version = "2.7.1", features = ["serde"] }
-serde_json = "1.0.96"
-tokio = { version = "1.27.0", features = ["full"] }
-futures = "0.3.28"
-futures-util = "0.3.28"
-async-trait = "0.1.68" # https://github.com/rust-lang/rust/issues/91611
-dotenvy = { version = "0.15.7" }
-rand = "0.8.5"
+    [workspace.dependencies]
+    amqprs = { version = "1.2.0", features = ["traces", "urispec"] }
+    # To enable backtrace printing, set RUST_BACKTRACE=1 (see anyhow docs)
+    anyhow              = { version = "1.0.68", features = ["backtrace"] }
+    clap                = { version = "4.2", features = ["derive", "unicode", "env"] }
+    clap-verbosity-flag = "2.0.0"
+    flexi_logger        = { version = "0.25.0", features = ["specfile", "async"] }
+    human-panic         = "1.1.0"
+    serde               = { version = "1.0.159", features = ["derive"] }
+    log                 = "0.4.17"
+    ipnet               = { version = "2.7.1", features = ["serde"] }
+    serde_json          = "1.0.96"
+    tokio               = { version = "1.27.0", features = ["full"] }
+    futures             = "0.3.28"
+    futures-util        = "0.3.28"
+    async-trait         = "0.1.68"                                                     # https://github.com/rust-lang/rust/issues/91611
+    dotenvy             = { version = "0.15.7" }
+    rand                = "0.8.5"
+    assertor            = "0.0.2"
 
 [package]
-name = "prefix-crab"
-description = "Friendly multi-binary crab that inspects IPv6 prefixes to reveal all their secrets"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
+name                   = "prefix-crab"
+description            = "Friendly multi-binary crab that inspects IPv6 prefixes to reveal all their secrets"
+version.workspace      = true
+edition.workspace      = true
+authors.workspace      = true
+license.workspace      = true
 rust-version.workspace = true
 
 [dependencies]
-amqprs = { workspace = true }
-clap = { workspace = true }
+amqprs              = { workspace = true }
+clap                = { workspace = true }
 clap-verbosity-flag = { workspace = true }
-anyhow = { workspace = true }
-flexi_logger = { workspace = true }
-log = { workspace = true }
-human-panic = { workspace = true }
-tokio = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-async-trait = { workspace = true }
-dotenvy = { workspace = true }
-rand = { workspace = true }
-ipnet = { workspace = true }
+anyhow              = { workspace = true }
+flexi_logger        = { workspace = true }
+log                 = { workspace = true }
+human-panic         = { workspace = true }
+tokio               = { workspace = true }
+serde               = { workspace = true }
+serde_json          = { workspace = true }
+async-trait         = { workspace = true }
+dotenvy             = { workspace = true }
+rand                = { workspace = true }
+ipnet               = { workspace = true }
+assertor            = { workspace = true }
+readonly            = "0.2"

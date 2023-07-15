@@ -34,13 +34,15 @@ pub fn process_echo(model: &EchoProbeResponse) -> Result<EchoResult> {
 }
 
 mod echo {
-    use std::fmt::Display;
+    
     use std::net::Ipv6Addr;
 
     use ipnet::Ipv6Net;
 
     use queue_models::echo_response::ResponseKey::*;
     use queue_models::echo_response::{DestUnreachKind, SplitResult};
+    use FollowUpTraceRequest::*;
+    use WeirdBehaviour::*;
 
     use super::model::CanFollowUp;
 
@@ -93,7 +95,7 @@ mod echo {
     #[derive(Debug)]
     pub enum WeirdBehaviour {
         TtlExceeded { sent_ttl: u8 },
-        Other { description: String },
+        OtherWeird { description: String },
     }
 
     impl WeirdBehaviour {
@@ -101,8 +103,8 @@ mod echo {
             match &self {
                 Self::TtlExceeded { sent_ttl } => {
                     format!("ttl-xc-{}", sent_ttl)
-                },
-                Self::Other { description } => {
+                }
+                Self::OtherWeird { description } => {
                     format!("o-{}", description)
                 }
             }
@@ -139,28 +141,20 @@ mod echo {
                     // TODO handle different from somehow ?
                     result
                         .follow_ups
-                        .push(FollowUpTraceRequest::TraceResponsive {
+                        .push(TraceResponsive {
                             targets: response.intended_targets.clone(),
                             sent_ttl: *sent_ttl,
                         })
                 }
-                Other { description } => {
-                    for target in &response.intended_targets {
-                        result.weird_behaviours.push(WeirdBehaviour {
-                            from: *target,
-                            kind: WeirdBehaviourKind::Other {
-                                description: description.to_string(),
-                            },
-                        })
-                    }
-                }
-                NoResponse => unresponsive_addrs.extend(&response.intended_targets),
-                TimeExceeded { from, sent_ttl } => result.weird_behaviours.push(WeirdBehaviour {
-                    from: *from,
-                    kind: WeirdBehaviourKind::TtlExceeded {
-                        sent_ttl: *sent_ttl,
-                    },
+                Other { description } => result.weird_behaviours.push(OtherWeird {
+                    description: description.to_string(),
                 }),
+                NoResponse => unresponsive_addrs.extend(&response.intended_targets),
+                TimeExceeded { from: _, sent_ttl } => {
+                    result.weird_behaviours.push(TtlExceeded {
+                        sent_ttl: *sent_ttl,
+                    })
+                }
             }
         }
         let nothing_else_recorded =
@@ -168,7 +162,7 @@ mod echo {
         if !unresponsive_addrs.is_empty() && nothing_else_recorded {
             result
                 .follow_ups
-                .push(FollowUpTraceRequest::TraceUnresponsive {
+                .push(TraceUnresponsive {
                     candidates: unresponsive_addrs,
                 })
         }
