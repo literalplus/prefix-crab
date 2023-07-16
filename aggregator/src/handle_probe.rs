@@ -8,11 +8,12 @@ use tokio::sync::mpsc::{Receiver, UnboundedSender};
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
 use queue_models::echo_response::EchoProbeResponse;
 
-use crate::models::path::PrefixPath;
+use crate::analyse::store::UpdateAnalysis;
+use crate::model::PrefixPath;
+
+use crate::{analyse, prefix_tree};
 
 mod archive;
-mod context;
-pub mod interpret;
 mod store;
 
 #[derive(Args, Debug)]
@@ -94,25 +95,24 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
 
     archive::process(conn, &target_net, &req.model);
 
+    let tree_context =
+        prefix_tree::context::fetch(conn, &target_net).context("fetching tree context")?;
     let mut context =
-        context::fetch(conn, &target_net).with_context(|| "while fetching context")?;
+        analyse::context::fetch(conn, tree_context).context("fetching analyse context")?;
 
-    if context.analyses.active.is_none() {
+    if context.active.is_none() {
         // TODO probably shouldn't tolerate this any more once we actually create these analyses
         let split_prefix_len = req.model.subnet_prefix_len;
-        store::create_analysis(conn, &context.node, split_prefix_len)
+        context = analyse::store::begin(conn, context, split_prefix_len)
             .context("while creating missing open analysis")?;
-        context
-            .refresh_analyses(conn)
-            .context("while refreshing analyses after creating new")?;
     }
 
-    let interpretation = interpret::process_echo(&req.model);
+    let interpretation = analyse::echo::process(&req.model);
 
     info!("Context for this probe: {:?}", context);
     info!("Interpretation for this probe: {:?}", interpretation);
 
-    store::update_analysis_with_echo(conn, interpretation, &mut context)
+    interpretation.update_analysis(conn, &mut context)
         .context("while saving analysis data")?;
 
     // TODO schedule follow-ups now?

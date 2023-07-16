@@ -3,13 +3,13 @@ use std::io::{self, BufRead, Read};
 use std::net::Ipv6Addr;
 use std::process::{ChildStdout, Command, Stdio};
 
+use crate::schedule::ProbeResponse;
 use anyhow::{bail, Context, Result};
-use regex::Regex;
-use log::{debug, error, log_enabled, trace, warn};
 use log::Level::Debug;
+use log::{debug, error, log_enabled, trace, warn};
+use regex::Regex;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use crate::schedule::ProbeResponse;
 
 use super::targets::TargetCollector;
 
@@ -25,8 +25,13 @@ pub struct Caller {
 impl Caller {
     pub fn new(sudo_path: String, bin_path: String) -> Self {
         let mut cmd = Command::new(sudo_path);
-        cmd.arg("--non-interactive").arg("--").arg(bin_path.to_string());
-        return Caller { cmd, bin_path, sudo_verified: false, response_tx: None };
+        cmd.arg("--non-interactive").arg("--").arg(&bin_path);
+        Caller {
+            cmd,
+            bin_path,
+            sudo_verified: false,
+            response_tx: None,
+        }
     }
 
     pub fn verify_sudo_access(&mut self) -> Result<()> {
@@ -35,11 +40,17 @@ impl Caller {
             return Ok(());
         }
         let mut check_cmd = Command::new(self.cmd.get_program());
-        check_cmd.arg("--non-interactive").arg("--list").arg("--").arg(self.bin_path.to_string());
+        check_cmd
+            .arg("--non-interactive")
+            .arg("--list")
+            .arg("--")
+            .arg(&self.bin_path);
         check_cmd.stdout(Stdio::null()).stderr(Stdio::null());
-        let mut child = check_cmd.spawn()
+        let mut child = check_cmd
+            .spawn()
             .with_context(|| "Failed to spawn sudo check process")?;
-        let exit_status = child.wait()
+        let exit_status = child
+            .wait()
             .with_context(|| "Failed to wait for sudo check process to exit")?;
         debug!("Sudo checker exited with {}", exit_status);
         if !exit_status.success() {
@@ -56,9 +67,11 @@ impl Caller {
 
     /// Pushes an IPv6 source address to the generated command. Should only be called once.
     pub fn push_source_address(&mut self, source_address_string: String) -> Result<()> {
-        let parsed_source_address: Ipv6Addr = source_address_string.parse()
+        let parsed_source_address: Ipv6Addr = source_address_string
+            .parse()
             .with_context(|| format!("Failed to parse source IPv6: {}", source_address_string))?;
-        self.cmd.arg(format!("--ipv6-source-ip={}", parsed_source_address));
+        self.cmd
+            .arg(format!("--ipv6-source-ip={}", parsed_source_address));
         Ok(())
     }
 
@@ -90,7 +103,9 @@ impl Caller {
         // Collector moved intentionally; Writing to it while the program is running
         // has undefined effect, so we prohibit that.
         collector.flush()?;
-        let path_as_str = collector.path.to_str()
+        let path_as_str = collector
+            .path
+            .to_str()
             .with_context(|| "Non-UTF-8 path provided for targets file")?;
         self.cmd.arg(format!("--ipv6-target-file={}", path_as_str));
         Ok(())
@@ -98,13 +113,17 @@ impl Caller {
 
     fn do_call(&mut self) -> Result<()> {
         if log_enabled!(Debug) {
-            let args: Vec<Cow<'_, str>> = self.cmd.get_args()
+            let args: Vec<Cow<'_, str>> = self
+                .cmd
+                .get_args()
                 .map(|os_str| os_str.to_string_lossy())
                 .collect();
             debug!("Calling zmap with arguments: {}", args.join(" "));
         }
 
-        let mut child = self.cmd.spawn()
+        let mut child = self
+            .cmd
+            .spawn()
             .with_context(|| "Failed to spawn zmap process")?;
 
         self.watch_logger_fd(&mut child.stderr);
@@ -113,14 +132,18 @@ impl Caller {
             None => self.watch_logger_fd(&mut child.stdout),
         }
 
-        let exit_status = child.wait()
+        let exit_status = child
+            .wait()
             .with_context(|| "Failed to wait for child to exit")?;
 
         if exit_status.success() {
             debug!("zmap call exited successfully");
             Ok(())
         } else {
-            bail!("zmap call exited with non-successful status {:?}", exit_status)
+            bail!(
+                "zmap call exited with non-successful status {:?}",
+                exit_status
+            )
         }
     }
 
@@ -128,25 +151,20 @@ impl Caller {
         let taken = fd.take().expect("Failed to open output stream of child");
         std::thread::spawn(move || {
             let reader = io::BufReader::new(taken);
-            let logger_line_re = Regex::new(
-                r"^[a-zA-Z]{3} \d{1,2} [\d:.]+ \[(?P<level>[A-Z]+)]"
-            ).expect("Unable to compile logger line regex");
+            let logger_line_re = Regex::new(r"^[a-zA-Z]{3} \d{1,2} [\d:.]+ \[(?P<level>[A-Z]+)]")
+                .expect("Unable to compile logger line regex");
             let mut locs = logger_line_re.capture_locations();
-            for line in reader.lines() {
-                if let Ok(ln) = line {
-                    let ln_slice = ln.as_str();
-                    if let Some(_) = logger_line_re.captures_read(
-                        &mut locs, ln_slice
-                    ) {
-                        let (start, end) = locs.get(1).expect("First capture");
-                        match &ln[start..end] {
-                            "DEBUG" => trace!("zmap: {}", ln),
-                            "FATAL" => error!("zmap: {}", ln),
-                            _ => debug!("zmap: {}", ln)
-                        }
-                    } else {
-                        trace!("zmap: {}", ln);
+            for line in reader.lines().flatten() {
+                let line_slice = line.as_str();
+                if logger_line_re.captures_read(&mut locs, line_slice).is_some() {
+                    let (start, end) = locs.get(1).expect("First capture");
+                    match &line[start..end] {
+                        "DEBUG" => trace!("zmap: {}", line),
+                        "FATAL" => error!("zmap: {}", line),
+                        _ => debug!("zmap: {}", line),
                     }
+                } else {
+                    trace!("zmap: {}", line);
                 }
             }
         });
@@ -162,13 +180,14 @@ impl Caller {
                         trace!("[[zmap result]] {:?}", record);
                         if let Err(e) = tx.send(record) {
                             warn!(
-                            "Unable to send response over channel; \
-                            maybe the receiver disconnected? {}", e
-                        );
+                                "Unable to send response over channel; \
+                            maybe the receiver disconnected? {}",
+                                e
+                            );
                             break;
                         }
                     }
-                    Err(e) => warn!("Failed to parse CSV record from zmap: {}", e)
+                    Err(e) => warn!("Failed to parse CSV record from zmap: {}", e),
                 }
             }
             trace!("Done reading from zmap stdout");
@@ -184,21 +203,16 @@ impl Caller {
             // TODO: Permute addresses manually, as --seed is not supported for v6
             .arg("--probe-module=icmp6_echoscan")
             .arg("--probe-ttl=255")
-
             .arg("--output-fields=type,code,original_ttl,orig-dest-ip,saddr,classification")
             .arg("--output-module=csv")
-
             .arg("--disable-syslog")
-
             //.arg("--cores=idx,idx,idx") // cores to pin to
             .arg("--sender-threads=1")
             .arg("--ignore-blacklist-errors");
         // TODO: check that blocklist is actually used with --ipv6-target-file ?
-
 
         // self.cmd.stdin(Stdio::piped()); // Allow password entry for sudo (local debug)
         self.cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
         self.cmd.env_clear();
     }
 }
-

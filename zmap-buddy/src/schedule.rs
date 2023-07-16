@@ -85,7 +85,7 @@ impl Scheduler {
         let mut task = SchedulerTask::new(self.zmap_params.clone())?;
         let mut at_least_one_ok = false;
         for chunk in chunks.iter() {
-            match task.push_work(&chunk) {
+            match task.push_work(chunk) {
                 Err(e) => warn!("Unable to push work to task due to {}", e),
                 Ok(_) => at_least_one_ok = true,
             }
@@ -140,7 +140,7 @@ mod task {
             for sample in samples.iter() {
                 self.targets.push_slice(sample.addresses.as_slice())?;
             }
-            self.store.register_request(split, samples, &item);
+            self.store.register_request(split, samples, item);
             Ok(())
         }
 
@@ -165,7 +165,7 @@ mod task {
 
     fn map_into_responses(store: PrefixSplitProbeStore<&TaskRequest>) -> Vec<TaskResponse> {
         store.stores.into_iter()
-            .map(|it| map_into_response(it))
+            .map(map_into_response)
             .collect()
     }
 

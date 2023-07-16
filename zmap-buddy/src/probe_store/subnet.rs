@@ -23,9 +23,9 @@ pub struct Responses {
 
 impl Responses {
     fn empty() -> Self {
-        return Responses {
+        Responses {
             intended_targets: vec![],
-        };
+        }
     }
 
     fn add(&mut self, source: &ProbeResponse) {
@@ -41,7 +41,7 @@ impl Responses {
         self.intended_targets.len()
     }
 
-    fn to_model(self, key: ResponseKey) -> echo_response::Responses {
+    fn into_model(self, key: ResponseKey) -> echo_response::Responses {
         echo_response::Responses {
             key,
             intended_targets: self.intended_targets,
@@ -99,7 +99,7 @@ impl ProbeStore for SubnetStore {
     fn register_response(&mut self, response: &ProbeResponse) {
         let key = ResponseKey::from(response);
         let aggregate = self.entry(key);
-        aggregate.add(&response);
+        aggregate.add(response);
         // Using a HashSet here is unlikely to provide a good trade-off, as there
         // will usually only be 16 elements (potentially duplicated for small subnets)
         self.sample.addresses.retain(|el| *el != response.original_dest_ip);
@@ -118,12 +118,12 @@ impl ProbeStore for SubnetStore {
     }
 }
 
-impl Into<SplitResult> for SubnetStore {
-    fn into(self) -> SplitResult {
+impl From<SubnetStore> for SplitResult {
+    fn from(val: SubnetStore) -> Self {
         SplitResult {
-            net_index: self.sample.index.into(),
-            responses: self.responses.into_iter()
-                .map(|(k, v)| v.to_model(k))
+            net_index: val.sample.index.into(),
+            responses: val.responses.into_iter()
+                .map(|(k, v)| v.into_model(k))
                 .collect(),
         }
     }
@@ -142,7 +142,7 @@ mod tests {
     fn registered_response_is_retained() -> Result<()> {
         // given
         let prefix = gen_any_sample()?;
-        let ip_addr = prefix.addresses[0].clone();
+        let ip_addr = prefix.addresses[0];
         let mut store = SubnetStore::new(prefix);
         // when
         store.register_response(&gen_timxceed(ip_addr));
@@ -170,7 +170,7 @@ mod tests {
     fn fill_missing_ignores_existing() -> Result<()> {
         // given
         let prefix = gen_any_sample()?;
-        let responsive_addr = prefix.addresses[0].clone();
+        let responsive_addr = prefix.addresses[0];
         let mut store = SubnetStore::new(prefix);
         store.register_response(&gen_timxceed(responsive_addr));
         // when

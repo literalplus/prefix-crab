@@ -59,6 +59,6 @@ impl Params {
     pub fn to_caller_assuming_sudo(&self) -> Result<Caller> {
         let mut caller = self._make_caller()?;
         caller.assume_sudo_access();
-        return Ok(caller);
+        Ok(caller)
     }
 }

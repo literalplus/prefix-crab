@@ -34,7 +34,7 @@ impl TargetCollector {
             .with_context(|| format!("targets file has no parent {:?}", path))?;
         fs::create_dir_all(parent_dir)
             .with_context(|| format!("while creating targets parent directory ({:?})", path))?;
-        let file = File::create(&path) // <- truncates the file
+        let file = File::create(path) // <- truncates the file
             .with_context(|| format!("while creating targets file {:?}", path))?;
         Ok(BufWriter::new(file))
     }
@@ -54,7 +54,7 @@ impl TargetCollector {
     /// no longer be used. Further note that there is no guarantee that writes are immediately
     /// reflected in the target file, i.e. buffered I/O may be used.
     pub fn push(&mut self, addr: &Ipv6Addr) -> Result<()> {
-        write!(self.borrow_writer(), "{}\n", addr)
+        writeln!(self.borrow_writer(), "{}", addr)
             .with_context(|| format!("while writing a target to {:?}", self.path))?;
         self.count += 1;
         Ok(())
@@ -102,7 +102,7 @@ mod tests {
         let targets_path = tempdir.path().with_file_name(file_name);
         let collector = TargetCollector::new(targets_path)
             .expect("collector creation to succeed");
-        return (collector, tempdir);
+        (collector, tempdir)
     }
 
     fn new_with_same_file(existing: &TargetCollector) -> TargetCollector {

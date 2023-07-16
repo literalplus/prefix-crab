@@ -24,9 +24,9 @@ impl<T> ProbeStoreDispatcher<T> where T: RoutableProbeStore + ProbeStore {
 impl ProbeStoreDispatcher<SubnetStore> {
     pub fn new_prefilled(samples: Vec<SubnetSample>) -> Self {
         let stores = samples.into_iter()
-            .map(|it| SubnetStore::new(it))
+            .map(SubnetStore::new)
             .collect();
-        return Self { stores };
+        Self { stores }
     }
 }
 
@@ -34,7 +34,7 @@ impl<T> ProbeStore for ProbeStoreDispatcher<T> where T: RoutableProbeStore + Pro
     fn register_response(&mut self, response: &ProbeResponse) {
         let mut already_found = false;
         for store in self.stores.iter_mut() {
-            if store.is_responsible_for(&response) {
+            if store.is_responsible_for(response) {
                 if already_found {
                     warn!(
                         "A probe response {:?} was handled by more than one subnet. \
@@ -66,7 +66,7 @@ impl<T> RoutableProbeStore for ProbeStoreDispatcher<T> where T: RoutableProbeSto
                 return true;
             }
         }
-        return false;
+        false
     }
 }
 
@@ -81,7 +81,7 @@ mod tests {
     fn register_single_match() -> Result<()> {
         // given
         let sample_a = gen_sample("2001:db8:cafe::/48")?;
-        let addr_a = sample_a.addresses[0].clone();
+        let addr_a = sample_a.addresses[0];
         let sample_b = gen_sample("2001:db8:beef::/48")?;
         let mut dispatcher = ProbeStoreDispatcher::new_prefilled(
             vec![sample_a, sample_b]
@@ -107,9 +107,9 @@ mod tests {
 
         // given
         let sample_a = gen_sample("2001:db8::/32")?;
-        let addr_a = sample_a.addresses[0].clone();
+        let addr_a = sample_a.addresses[0];
         let sample_b = gen_sample("2001:db8::/32")?;
-        let addr_b = sample_b.addresses[0].clone();
+        let addr_b = sample_b.addresses[0];
         assert_ne!(addr_a, addr_b); // bad luck
         let mut dispatcher = ProbeStoreDispatcher::new_prefilled(
             vec![sample_a, sample_b]

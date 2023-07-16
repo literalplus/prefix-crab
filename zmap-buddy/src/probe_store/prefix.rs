@@ -42,17 +42,17 @@ impl<ExtraData: Sized> ProbeStoreDispatcher<PrefixStoreDispatcher<ExtraData>> {
     }
 }
 
-impl<ExtraData: Sized> Into<EchoProbeResponse> for PrefixStoreDispatcher<ExtraData> {
-    fn into(self) -> EchoProbeResponse {
+impl<ExtraData: Sized> From<PrefixStoreDispatcher<ExtraData>> for EchoProbeResponse {
+    fn from(val: PrefixStoreDispatcher<ExtraData>) -> Self {
         let PrefixSplit {
             base_net: target_net,
             subnet_prefix_len,
             ..
-        } = self.split;
+        } = val.split;
         EchoProbeResponse {
             target_net,
             subnet_prefix_len,
-            splits: self
+            splits: val
                 .dispatcher
                 .stores
                 .into_iter()

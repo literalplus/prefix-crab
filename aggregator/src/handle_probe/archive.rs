@@ -5,7 +5,7 @@ use log::{trace, warn};
 
 use queue_models::echo_response::EchoProbeResponse;
 
-use crate::models::path::PrefixPath;
+use crate::model::PrefixPath;
 use crate::schema::response_archive::dsl::*;
 
 pub fn process(
@@ -13,7 +13,7 @@ pub fn process(
 ) {
     // Note: This could technically be separated into a different component, then that should
     // be independent of any processing errors (giving us a decent chance at reprocessing if
-    // combined with some sort of success flag/DLQ
+    // combined with some sort of success flag/DLQ)
     if let Err(e) = archive_response(conn, target_net, model) {
         warn!("Unable to archive response: {:?} - due to {}", &model, e);
     } else {

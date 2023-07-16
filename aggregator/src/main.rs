@@ -9,9 +9,23 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use prefix_crab::helpers::signal_handler;
 
+// FQNs are needed in some Diesel macros, make them easier to read
+pub use persist::schema::{self, sql_types};
+
+/// RabbitMQ-specific logic (producers, consumers), encapsulated using in-memory senders/receivers
 mod rabbit;
-mod models;
-mod schema;
+/// Business logic for handling incoming probes
+mod handle_probe;
+/// Persistence-specific conversions & DSL
+mod persist;
+/// Analysis of incoming data in combination with existing knowledge
+mod analyse;
+/// Keeping track of prefix information in a tree structure
+mod prefix_tree;
+/// Scheduling new analyses based on priority and capacity
+mod schedule;
+/// Shared model
+mod model;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -65,5 +79,3 @@ async fn wait_for_exit(
     }?;
     inner_res.with_context(|| "a task exited unexpectedly")
 }
-
-mod handle_probe;

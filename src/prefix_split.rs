@@ -153,7 +153,7 @@ mod split {
         type Output = SplitSubnet;
 
         fn index(&self, index: NetIndex) -> &Self::Output {
-            (&self.subnets).index(index.0 as usize)
+            self.subnets.index(index.0 as usize)
         }
     }
 
@@ -312,7 +312,7 @@ mod sample {
 
     impl ToSubnetSamples for PrefixSplit {
         fn to_samples(&self, hosts_per_sample: u16) -> Vec<SubnetSample> {
-            let distribution = Uniform::from(determine_host_range(&self));
+            let distribution = Uniform::from(determine_host_range(self));
             self.into_iter()
                 .to_owned()
                 .map(|subnet| to_sample(subnet, distribution, hosts_per_sample))
