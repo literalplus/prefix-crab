@@ -18,15 +18,20 @@ pub struct ProbeContext {
 }
 
 impl ProbeContext {
-    pub fn path(&self) -> &PrefixPath {
-        &self.node.path
-    } 
+    pub fn log_id(&self) -> String {
+        self.node.path.to_string()
+    }
+
+    pub fn refresh_analyses(&mut self, conn: &mut PgConnection) -> Result<()> {
+        self.analyses = analyses::fetch(conn, &self.node)?;
+        Ok(())
+    }
 }
 
-pub fn fetch(connection: &mut PgConnection, target_net: &PrefixPath) -> Result<ProbeContext> {
-    insert_if_new(connection, target_net)?;
+pub fn fetch(conn: &mut PgConnection, target_net: &PrefixPath) -> Result<ProbeContext> {
+    insert_if_new(conn, target_net)?;
 
-    let ancestors_and_self = select_ancestors_and_self(connection, target_net)
+    let ancestors_and_self = select_ancestors_and_self(conn, target_net)
         .with_context(|| "while finding ancestors and self")?;
     let (ancestors, node) = match &ancestors_and_self[..] {
         [parents @ .., node] => (parents.to_vec(), *node),
@@ -35,8 +40,8 @@ pub fn fetch(connection: &mut PgConnection, target_net: &PrefixPath) -> Result<P
     Result::Ok(ProbeContext {
         node,
         ancestors,
-        unmerged_children: select_unmerged_children(connection, &node)?,
-        analyses: analyses::fetch(connection, &node)?,
+        unmerged_children: select_unmerged_children(conn, &node)?,
+        analyses: analyses::fetch(conn, &node)?,
     })
 }
 
@@ -105,8 +110,8 @@ mod analyses {
         pub active: Option<SplitAnalysisDetails>,
     }
 
-    pub fn fetch(connection: &mut PgConnection, node: &PrefixTree) -> Result<ContextAnalyses> {
-        let all = fetch_all(connection, node)?;
+    pub fn fetch(conn: &mut PgConnection, node: &PrefixTree) -> Result<ContextAnalyses> {
+        let all = fetch_all(conn, node)?;
         let completed = all
             .iter()
             .filter(|it| it.stage == Stage::Completed)
@@ -116,7 +121,7 @@ mod analyses {
         .filter(|it| it.stage != Stage::Completed)
         .next();
         let active = if let Some(analysis) = most_recent_and_active {
-            Some(fetch_details(connection, analysis)?)
+            Some(fetch_details(conn, analysis)?)
         } else {
             None
         };
@@ -126,19 +131,19 @@ mod analyses {
         })
     }
 
-    fn fetch_all(connection: &mut PgConnection, node: &PrefixTree) -> Result<Vec<SplitAnalysis>> {
+    fn fetch_all(conn: &mut PgConnection, node: &PrefixTree) -> Result<Vec<SplitAnalysis>> {
         // TODO ignore very old analyses or cleanup ?
         Ok(SplitAnalysis::belonging_to(node)
             .select(SplitAnalysis::as_select())
             .order_by(created_at.desc())
-            .load(connection)?)
+            .load(conn)?)
     }
 
-    fn fetch_details(connection: &mut PgConnection, analysis: SplitAnalysis) -> Result<SplitAnalysisDetails> {
+    fn fetch_details(conn: &mut PgConnection, analysis: SplitAnalysis) -> Result<SplitAnalysisDetails> {
         let splits = Split::belonging_to(&analysis)
             .select(Split::as_select())
             .order_by(net_index)
-            .load(connection)?;
+            .load(conn)?;
         Ok(SplitAnalysisDetails::new( analysis, splits))
     }
 }

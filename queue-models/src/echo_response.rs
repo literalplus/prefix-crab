@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EchoProbeResponse {
     pub target_net: Ipv6Net,
+    pub subnet_prefix_len: u8,
     pub splits: Vec<SplitResult>,
 }
 

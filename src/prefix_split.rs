@@ -1,7 +1,7 @@
 use anyhow::*;
 use ipnet::Ipv6Net;
 
-pub use sample::{IntoSubnetSamples, SubnetSample};
+pub use sample::{ToSubnetSamples, SubnetSample};
 pub use split::{PrefixSplit, SplitSubnet, NetIndex};
 
 pub const SAMPLES_PER_SUBNET: u16 = 16;
@@ -48,7 +48,7 @@ mod split {
         let len = base_net.prefix_len() + PREFIX_BITS_PER_SPLIT;
         if len > MAX_PREFIX_LEN {
             bail!(
-                "Cannot further split this prefix {} max split prefix len is {}",
+                "Cannot further split this prefix {}, max split prefix len is {}",
                 base_net,
                 MAX_PREFIX_LEN
             );
@@ -59,8 +59,7 @@ mod split {
     type SplitSubnetsRaw = [Ipv6Net; SUBNETS_PER_SPLIT as usize];
     type SplitSubnets = [SplitSubnet; SUBNETS_PER_SPLIT as usize];
 
-    #[derive(Debug)]
-    #[readonly::make]
+    #[derive(Debug, Clone)]
     pub struct PrefixSplit {
         pub base_net: Ipv6Net,
         pub subnet_prefix_len: u8,
@@ -94,6 +93,7 @@ mod split {
         }
     }
 
+    #[cfg(test)]
     impl<'a> PrefixSplit {
         fn iter(&'a self) -> <&'a Self as IntoIterator>::IntoIter {
             self.into_iter()
@@ -108,7 +108,7 @@ mod split {
     impl NetIndex {
         const RANGE: Range<u8> = (0..SUBNETS_PER_SPLIT);
 
-        pub fn iter_all_values() -> NetIndexIter {
+        pub fn iter_values() -> NetIndexIter {
             Self::RANGE.map(|it| Self::try_from(it).expect("in-range value to convert"))
         }
 
@@ -157,7 +157,7 @@ mod split {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct SplitSubnet {
         pub index: NetIndex,
         pub network: Ipv6Net,
@@ -306,16 +306,16 @@ mod sample {
         }
     }
 
-    pub trait IntoSubnetSamples {
-        fn into_samples(self, hosts_per_sample: u16) -> Vec<SubnetSample>;
+    pub trait ToSubnetSamples {
+        fn to_samples(&self, hosts_per_sample: u16) -> Vec<SubnetSample>;
     }
 
-    impl IntoSubnetSamples for PrefixSplit {
-        fn into_samples(self, hosts_per_sample: u16) -> Vec<SubnetSample> {
+    impl ToSubnetSamples for PrefixSplit {
+        fn to_samples(&self, hosts_per_sample: u16) -> Vec<SubnetSample> {
             let distribution = Uniform::from(determine_host_range(&self));
             self.into_iter()
                 .to_owned()
-                .map(|subnet| into_sample(subnet, distribution, hosts_per_sample))
+                .map(|subnet| to_sample(subnet, distribution, hosts_per_sample))
                 .collect()
         }
     }
@@ -325,7 +325,7 @@ mod sample {
         0_u128..(2_u128.pow(free_bits as u32))
     }
 
-    fn into_sample(
+    fn to_sample(
         subnet: &SplitSubnet,
         distribution: Uniform<u128>,
         hosts_per_sample: u16,
@@ -350,7 +350,7 @@ mod sample {
             let first_subnet = "2001:db8::/34".parse::<Ipv6Net>()?;
             let split = super::super::split(net)?;
             // when
-            let result = &split.into_samples(512)[0];
+            let result = &split.to_samples(512)[0];
 
             // then
             for address in &result.addresses {

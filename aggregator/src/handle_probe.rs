@@ -10,13 +10,12 @@ use queue_models::echo_response::EchoProbeResponse;
 
 use crate::models::path::PrefixPath;
 
-pub mod interpret;
-mod context;
 mod archive;
+mod context;
+pub mod interpret;
 mod store;
 
-#[derive(Args)]
-#[derive(Debug)]
+#[derive(Args, Debug)]
 #[group(id = "handler")]
 pub struct Params {
     /// URI for PostgreSQL server to connect to
@@ -75,7 +74,9 @@ fn connect_and_migrate_schema(params: &Params) -> Result<PgConnection, Error> {
 }
 
 fn handle_recv(
-    connection: &mut PgConnection, ack_tx: &UnboundedSender<TaskRequest>, req: TaskRequest
+    connection: &mut PgConnection,
+    ack_tx: &UnboundedSender<TaskRequest>,
+    req: TaskRequest,
 ) -> Result<()> {
     match handle_one(connection, &req) {
         Result::Ok(_) => ack_tx.send(req).map_err(Error::msg),
@@ -87,19 +88,34 @@ fn handle_recv(
     }
 }
 
-fn handle_one(connection: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
+fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
     let target_net: PrefixPath = req.model.target_net.into();
     debug!("Resolved path is {}", target_net);
 
-    archive::process(connection, &target_net, &req.model);
+    archive::process(conn, &target_net, &req.model);
 
-    let context = context::fetch(connection, &target_net)
-        .with_context(|| "while fetching context")?;
+    let mut context =
+        context::fetch(conn, &target_net).with_context(|| "while fetching context")?;
+
+    if context.analyses.active.is_none() {
+        // TODO probably shouldn't tolerate this any more once we actually create these analyses
+        let split_prefix_len = req.model.subnet_prefix_len;
+        store::create_analysis(conn, &context.node, split_prefix_len)
+            .context("while creating missing open analysis")?;
+        context
+            .refresh_analyses(conn)
+            .context("while refreshing analyses after creating new")?;
+    }
 
     let interpretation = interpret::process_echo(&req.model);
 
     info!("Context for this probe: {:?}", context);
     info!("Interpretation for this probe: {:?}", interpretation);
+
+    store::update_analysis_with_echo(conn, interpretation, &mut context)
+        .context("while saving analysis data")?;
+
+    // TODO schedule follow-ups now?
 
     Ok(())
 }

@@ -91,6 +91,7 @@ impl Scheduler {
             }
         }
         if !at_least_one_ok {
+            // TODO reconsider if this error handling makes sense
             return Err(anyhow!("None of the work in this chunk could be pushed successfully"));
         }
         let results = task.run().await?;
@@ -135,11 +136,11 @@ mod task {
             // TODO permute addresses
             let base_net = item.model.target_net;
             let split = split(base_net).context("splitting IPv6 prefix")?;
-            let samples = split.into_samples(super::SAMPLES_PER_SUBNET);
+            let samples = split.to_samples(super::SAMPLES_PER_SUBNET);
             for sample in samples.iter() {
                 self.targets.push_slice(sample.addresses.as_slice())?;
             }
-            self.store.register_request(base_net, samples, &item);
+            self.store.register_request(split, samples, &item);
             Ok(())
         }
 

@@ -1,7 +1,6 @@
 use anyhow::*;
 
 use log::warn;
-use prefix_crab::prefix_split::NetIndex;
 use queue_models::echo_response::EchoProbeResponse;
 
 use self::model::EchoResult;
@@ -27,7 +26,7 @@ pub mod model {
     }
 }
 
-pub fn process_echo(model: &EchoProbeResponse) -> Result<EchoResult> {
+pub fn process_echo(model: &EchoProbeResponse) -> EchoResult {
     let mut splits = vec![];
     for split in &model.splits {
         if let Result::Ok(valid_index) = split.net_index.try_into() {
@@ -36,7 +35,7 @@ pub fn process_echo(model: &EchoProbeResponse) -> Result<EchoResult> {
             warn!("Ignoring result[{}] due to net index out of range", split.net_index);
         }
     }
-    return Ok(EchoResult { splits });
+    return EchoResult { splits };
 }
 
 mod echo {

@@ -30,7 +30,7 @@ pub struct SplitAnalysis {
     pub split_prefix_len: i16,
 }
 
-#[derive(Queryable, Selectable, Identifiable, Associations, Debug, Clone)]
+#[derive(Queryable, Selectable, Insertable, Identifiable, Associations, Debug, Clone)]
 #[diesel(table_name = crate::schema::split_analysis_split)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(primary_key(analysis_id, net_index))]
@@ -55,34 +55,30 @@ impl Split {
 pub struct SplitAnalysisDetails {
     pub analysis: SplitAnalysis,
     splits: Vec<Split>,
-    missing_indices: Vec<NetIndex>, // small (≤ 16 entries), thus no need to use a HashSet
 }
 
 impl SplitAnalysisDetails {
     pub fn new(analysis: SplitAnalysis, existing_splits: Vec<Split>) -> Self {
         let mut map = HashMap::<NetIndex, Split>::with_capacity(NetIndex::value_count() as usize);
-        let mut missing_indices = vec![];
         for existing_split in existing_splits {
             if let Ok(valid_index) = <NetIndex>::try_from(existing_split.net_index) {
                 map.insert(valid_index, existing_split);
             }
         }
-        for index in NetIndex::iter_all_values() {
+        for index in NetIndex::iter_values() {
             if !map.contains_key(&index) {
                 map.insert(index, Split::new(&analysis, index));
-                missing_indices.push(index);
             }
         }
         let splits = map.into_values().collect();
         Self {
             analysis,
             splits,
-            missing_indices,
         }
     }
 
-    pub fn existed_initially(&self, idx: &NetIndex) -> bool {
-        return self.missing_indices.contains(idx)
+    pub fn borrow_splits(&self) -> &Vec<Split> {
+        &self.splits
     }
 }
 
@@ -137,7 +133,6 @@ mod tests {
         // when
         let created = SplitAnalysisDetails::new(analysis, existing);
         // then
-        assert_that!(created.missing_indices).has_length(15);
         assert_that!(created.splits).has_length(NetIndex::value_count() as usize);
         let mut expected = HashSet::<String>::new();
         expected.insert(my_weirdness.to_string());

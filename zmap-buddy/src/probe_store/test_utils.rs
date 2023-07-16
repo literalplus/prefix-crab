@@ -14,7 +14,7 @@ pub fn gen_any_sample() -> Result<SubnetSample> {
 
 pub fn gen_sample(ipv6_net_str: &str) -> Result<SubnetSample> {
     let net = ipv6_net_str.parse::<Ipv6Net>()?;
-    let prefix = split(net)?.into_samples(16)
+    let prefix = split(net)?.to_samples(16)
         .into_iter().next().ok_or(anyhow!("no addrs in prefix"))?;
     Ok(prefix)
 }

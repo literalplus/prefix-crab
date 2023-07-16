@@ -68,6 +68,12 @@ impl From<Ipv6Net> for PrefixPath {
     }
 }
 
+impl From<&PrefixPath> for Ipv6Net {
+    fn from(value: &PrefixPath) -> Self {
+        value.0.clone()
+    }
+}
+
 impl FromSql<Ltree, Pg> for PrefixPath {
     fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
         let buf = bytes.as_bytes();
