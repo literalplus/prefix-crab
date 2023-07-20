@@ -2,9 +2,9 @@ use anyhow::{*, Context as AnyhowContext};
 use diesel::dsl::not;
 use diesel::insert_into;
 use diesel::prelude::*;
+use ipnet::Ipv6Net;
 
-use crate::model::PrefixPath;
-use crate::persist::dsl::PathExpressionMethods;
+use crate::persist::dsl::CidrMethods;
 use crate::prefix_tree::PrefixTree;
 use crate::schema::prefix_tree::dsl::*;
 
@@ -33,7 +33,7 @@ impl ContextOps for Context {
     }
 }
 
-pub fn fetch(conn: &mut PgConnection, target_net: &PrefixPath) -> Result<Context> {
+pub fn fetch(conn: &mut PgConnection, target_net: &Ipv6Net) -> Result<Context> {
     insert_if_new(conn, target_net)?;
 
     let ancestors_and_self = select_ancestors_and_self(conn, target_net)
@@ -51,10 +51,10 @@ pub fn fetch(conn: &mut PgConnection, target_net: &PrefixPath) -> Result<Context
 
 fn select_ancestors_and_self(
     connection: &mut PgConnection,
-    target_net: &PrefixPath,
+    target_net: &Ipv6Net,
 ) -> Result<Vec<PrefixTree>> {
     let parents = prefix_tree
-        .filter(path.ancestor_or_same_as(target_net))
+        .filter(path.supernet_or_eq6(target_net))
         .select(PrefixTree::as_select())
         .order_by(path)
         .load(connection)
@@ -67,7 +67,7 @@ fn select_unmerged_children(
     node: &PrefixTree,
 ) -> Result<Vec<PrefixTree>> {
     let parents = prefix_tree
-        .filter(path.descendant_or_same_as(&node.path))
+        .filter(path.subnet_or_eq(&node.path))
         .filter(not(path.eq(&node.path)))
         .select(PrefixTree::as_select())
         .order_by(path)
@@ -76,10 +76,10 @@ fn select_unmerged_children(
     Ok(parents)
 }
 
-fn insert_if_new(connection: &mut PgConnection, target_net: &PrefixPath) -> Result<()> {
+fn insert_if_new(connection: &mut PgConnection, target_net: &Ipv6Net) -> Result<()> {
     insert_into(prefix_tree)
         .values((
-            path.eq(target_net),
+            path.eq6(target_net),
             is_routed.eq(true),
             merge_status.eq(MergeStatus::NotMerged),
             data.eq(ExtraData {

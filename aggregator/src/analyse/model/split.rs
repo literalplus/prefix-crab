@@ -30,14 +30,10 @@ mod data {
     use std::net::Ipv6Addr;
 
     use diesel;
-    use diesel::backend::Backend;
-    use diesel::deserialize::{FromSql, FromSqlRow};
+    use diesel::deserialize::FromSqlRow;
     use diesel::expression::AsExpression;
-    use diesel::pg::Pg;
-    use diesel::serialize::{Output, ToSql};
     use diesel::sql_types::Jsonb;
     use serde::{Deserialize, Serialize};
-    use serde_json;
 
     use crate::analyse::CanFollowUp;
 
@@ -81,24 +77,6 @@ mod data {
 
         #[serde(default)]
         pub weird_behaviours: HashSet<String>,
-    }
-
-    impl FromSql<Jsonb, Pg> for SplitData {
-        fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-            // NOTE: Diesel intentionally doesn't provide this implementation, as it may
-            // fail if invalid/unexpected data is stored in the DB... We need to be extra careful.
-
-            let value = <serde_json::Value as FromSql<Jsonb, Pg>>::from_sql(bytes)?;
-            Ok(serde_json::from_value(value)?)
-        }
-    }
-
-    impl ToSql<Jsonb, Pg> for SplitData {
-        fn to_sql(&self, out: &mut Output<Pg>) -> diesel::serialize::Result {
-            let value = serde_json::to_value(self)?;
-            // We need reborrow() to reduce the lifetime of &mut out; mustn't outlive `value`
-            <serde_json::Value as ToSql<Jsonb, Pg>>::to_sql(&value, &mut out.reborrow())
-        }
     }
 
     impl CanFollowUp for SplitData {

@@ -24,8 +24,6 @@ mod analyse;
 mod prefix_tree;
 /// Scheduling new analyses based on priority and capacity
 mod schedule;
-/// Shared model
-mod model;
 
 #[derive(Parser)]
 #[command(author, version, about)]

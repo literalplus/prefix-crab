@@ -9,7 +9,6 @@ use prefix_crab::helpers::rabbit::ack_sender::CanAck;
 use queue_models::echo_response::EchoProbeResponse;
 
 use crate::analyse::store::UpdateAnalysis;
-use crate::model::PrefixPath;
 
 use crate::{analyse, prefix_tree};
 
@@ -87,7 +86,7 @@ fn handle_recv(
 }
 
 fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
-    let target_net: PrefixPath = req.model.target_net.into();
+    let target_net = req.model.target_net;
     debug!("Resolved path is {}", target_net);
 
     archive::process(conn, &target_net, &req.model);
@@ -122,14 +121,15 @@ mod archive {
     use anyhow::*;
     use diesel::insert_into;
     use diesel::prelude::*;
+    use ipnet::Ipv6Net;
     use log::{trace, warn};
 
     use queue_models::echo_response::EchoProbeResponse;
 
-    use crate::model::PrefixPath;
+    use crate::persist::dsl::CidrMethods;
     use crate::schema::response_archive::dsl::*;
 
-    pub fn process(conn: &mut PgConnection, target_net: &PrefixPath, model: &EchoProbeResponse) {
+    pub fn process(conn: &mut PgConnection, target_net: &Ipv6Net, model: &EchoProbeResponse) {
         // Note: This could technically be separated into a different component, then that should
         // be independent of any processing errors (giving us a decent chance at reprocessing if
         // combined with some sort of success flag/DLQ)
@@ -142,13 +142,13 @@ mod archive {
 
     fn archive_response(
         conn: &mut PgConnection,
-        target_net: &PrefixPath,
+        target_net: &Ipv6Net,
         model: &EchoProbeResponse,
     ) -> Result<(), Error> {
         let model_jsonb = serde_json::to_value(model)
             .with_context(|| "failed to serialize to json for archiving")?;
         insert_into(response_archive)
-            .values((path.eq(target_net), data.eq(model_jsonb)))
+            .values((path.eq6(target_net), data.eq(model_jsonb)))
             .execute(conn)
             .with_context(|| "while trying to insert into response archive")?;
         Ok(())

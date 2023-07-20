@@ -1,69 +1,57 @@
-pub use path::*;
+pub use cidr::*;
 
-mod path {
-    use std::str::FromStr;
-
-    use anyhow::{anyhow, Context};
-    use diesel;
-    use diesel::backend::Backend;
-    use diesel::deserialize::FromSql;
+mod cidr {
+    use diesel::internal::derives::as_expression::Bound;
+    use diesel::{self, ExpressionMethods};
     use diesel::expression::AsExpression;
     use diesel::pg::Pg;
-    use diesel::sql_types::Bool;
+    use diesel::sql_types::{Bool, Cidr};
     use diesel::Expression;
+    use ipnet::{Ipv6Net, IpNet};
 
-    use crate::model::PrefixPath;
+    diesel::infix_operator!(SubnetOrEq, " <<= ", Bool, backend: Pg);
+    diesel::infix_operator!(SupernetOrEq, " >>= ", Bool, backend: Pg);
 
-    use super::super::schema::sql_types::Ltree;
-
-    diesel::infix_operator!(AncestorOrSame, " @> ", Bool, backend: Pg);
-    diesel::infix_operator!(DescendantOrSame, " <@ ", Bool, backend: Pg);
-
-    pub trait PathExpressionMethods
+    pub trait CidrMethods
     where
-        Self: AsExpression<Ltree> + Sized,
+        Self: AsExpression<Cidr> + Sized,
     {
         // Note: If there are issues with operator precedence (because of missing parentheses),
         // we can copy over Grouped from upstream (which is not public atm sadly)
         // https://github.com/diesel-rs/diesel/blob/13c237473627ea2500c2274e3b0cf8a54187079a/diesel/src/expression/grouped.rs#L8
 
-        fn ancestor_or_same_as<OtherType>(
+        fn subnet_or_eq<OtherType>(
             self,
             other: OtherType,
-        ) -> AncestorOrSame<Self::Expression, OtherType::Expression>
+        ) -> SubnetOrEq<Self::Expression, OtherType::Expression>
         where
-            OtherType: AsExpression<Ltree>,
+            OtherType: AsExpression<Cidr>,
         {
-            AncestorOrSame::new(self.as_expression(), other.as_expression())
+            SubnetOrEq::new(self.as_expression(), other.as_expression())
         }
 
-        fn descendant_or_same_as<OtherType>(
+        fn subnet_or_eq6(self, other: &Ipv6Net) -> SubnetOrEq<Self::Expression, Bound<Cidr, IpNet>> {
+            self.subnet_or_eq(IpNet::V6(*other))
+        }
+
+        fn supernet_or_eq<OtherType>(
             self,
             other: OtherType,
-        ) -> DescendantOrSame<Self::Expression, OtherType::Expression>
+        ) -> SupernetOrEq<Self::Expression, OtherType::Expression>
         where
-            OtherType: AsExpression<Ltree>,
+            OtherType: AsExpression<Cidr>,
         {
-            DescendantOrSame::new(self.as_expression(), other.as_expression())
+            SupernetOrEq::new(self.as_expression(), other.as_expression())
+        }
+
+        fn supernet_or_eq6(self, other: &Ipv6Net) -> SupernetOrEq<Self::Expression, Bound<Cidr, IpNet>> {
+            self.supernet_or_eq(IpNet::V6(*other))
+        }
+
+        fn eq6(self, other: &Ipv6Net) -> diesel::dsl::Eq<Self::Expression, IpNet> {
+            ExpressionMethods::eq(self.as_expression(), IpNet::V6(*other))
         }
     }
 
-    impl<T> PathExpressionMethods for T where T: Expression<SqlType = Ltree> {}
-
-    impl FromSql<Ltree, Pg> for PrefixPath {
-        fn from_sql(bytes: <Pg as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-            let buf = bytes.as_bytes();
-            if buf[0] != 1u8 {
-                return Err(
-                    anyhow!("Unexpected ltree version {}, only 1 is supported.", buf[0]).into(),
-                );
-            }
-            // Sadly, once we "open up" the RawValue, we cannot re-assemble it since all necessary
-            // functions are private / only-for-new-backends in Diesel. So we cannot reuse the
-            // existing (zero-copy) String impl but instead need to parse manually.
-            let as_str = String::from_utf8(buf[1..].to_vec())
-                .with_context(|| "while reading UTF-8 string")?;
-            Ok(PrefixPath::from_str(&as_str)?)
-        }
-    }
+    impl<T> CidrMethods for T where T: Expression<SqlType = Cidr> {}
 }

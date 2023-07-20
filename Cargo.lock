@@ -482,7 +482,9 @@ dependencies = [
  "byteorder",
  "chrono",
  "diesel_derives",
+ "ipnet",
  "itoa",
+ "libc",
  "pq-sys",
  "serde_json",
 ]

@@ -5,9 +5,8 @@ use diesel::prelude::*;
 use diesel::deserialize::FromSqlRow;
 use diesel::expression::AsExpression;
 use diesel::sql_types::Jsonb;
+use ipnet::IpNet;
 use serde::{Deserialize, Serialize};
-
-use crate::model::PrefixPath;
 
 #[derive(diesel_derive_enum::DbEnum, Debug, Copy, Clone)]
 #[ExistingTypePath = "crate::sql_types::PrefixMergeStatus"]
@@ -20,7 +19,7 @@ pub enum MergeStatus {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct PrefixTree {
     pub id: i64,
-    pub path: PrefixPath,
+    pub path: IpNet,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub is_routed: bool,
