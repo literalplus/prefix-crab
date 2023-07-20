@@ -5,10 +5,6 @@ use diesel::prelude::*;
 
 use diesel::PgConnection;
 
-
-
-
-
 use crate::prefix_tree::ContextOps;
 
 use crate::schema::split_analysis::dsl as analysis_dsl;
