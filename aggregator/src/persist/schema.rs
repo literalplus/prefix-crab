@@ -11,6 +11,17 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    prefix_lhr (target_net, router_ip) {
+        target_net -> Cidr,
+        router_ip -> Inet,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        hit_count -> Int4,
+        data -> Jsonb,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::PrefixMergeStatus;
 
@@ -60,6 +71,7 @@ diesel::joinable!(split_analysis -> prefix_tree (tree_id));
 diesel::joinable!(split_analysis_split -> split_analysis (analysis_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    prefix_lhr,
     prefix_tree,
     response_archive,
     split_analysis,

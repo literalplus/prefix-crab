@@ -1,5 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS "ltree";
-
 CREATE TYPE prefix_merge_status AS ENUM ('not_merged');
 
 CREATE TABLE public.prefix_tree
