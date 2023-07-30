@@ -11,13 +11,14 @@ pub mod sql_types {
 }
 
 diesel::table! {
-    prefix_lhr (target_net, router_ip) {
+    measurement_tree (target_net) {
         target_net -> Cidr,
-        router_ip -> Inet,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         hit_count -> Int4,
-        data -> Jsonb,
+        miss_count -> Int4,
+        last_hop_routers -> Jsonb,
+        weirdness -> Jsonb,
     }
 }
 
@@ -55,25 +56,16 @@ diesel::table! {
         created_at -> Timestamp,
         completed_at -> Nullable<Timestamp>,
         stage -> SplitAnalysisStage,
-        split_prefix_len -> Int2,
-    }
-}
-
-diesel::table! {
-    split_analysis_split (analysis_id, net_index) {
-        analysis_id -> Int8,
-        net_index -> Int2,
-        data -> Jsonb,
+        #[max_length = 30]
+        pending_follow_up -> Nullable<Bpchar>,
     }
 }
 
 diesel::joinable!(split_analysis -> prefix_tree (tree_id));
-diesel::joinable!(split_analysis_split -> split_analysis (analysis_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    prefix_lhr,
+    measurement_tree,
     prefix_tree,
     response_archive,
     split_analysis,
-    split_analysis_split,
 );

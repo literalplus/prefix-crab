@@ -5,6 +5,7 @@ use derive_where::derive_where;
 use queue_models::echo_response::EchoProbeResponse;
 
 use crate::schedule::ProbeResponse;
+use crate::zmap_call::SENT_TTL;
 use prefix_crab::prefix_split::{PrefixSplit, SubnetSample};
 
 use super::dispatch::ProbeStoreDispatcher;
@@ -52,6 +53,7 @@ impl<ExtraData: Sized> From<PrefixStoreDispatcher<ExtraData>> for EchoProbeRespo
         EchoProbeResponse {
             target_net,
             subnet_prefix_len,
+            sent_ttl: SENT_TTL,
             splits: val
                 .dispatcher
                 .stores

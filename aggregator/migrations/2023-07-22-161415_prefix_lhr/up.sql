@@ -1,17 +1,14 @@
-CREATE TABLE public.prefix_lhr(
-    target_net cidr NOT NULL, -- network that was (attempted to be) reached & yielded this LHR. /64 in the beginning, but may be merged up
-    router_ip inet NOT NULL,
+CREATE TABLE public.measurement_tree(
+    target_net cidr PRIMARY KEY NOT NULL, -- network that was (attempted to be) reached. /64 in the beginning, but may be merged up
     created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    hit_count int NOT NULL,
-    "data" jsonb NOT NULL DEFAULT '{}' ::jsonb,
-    PRIMARY KEY (target_net, router_ip)
+    hit_count int NOT NULL, -- times that a response was observed (regardless which type; excl. follow-ups)
+    miss_count int NOT NULL, -- times that a probe yielded no response
+    last_hop_routers jsonb NOT NULL DEFAULT '{}' ::jsonb,
+    weirdness jsonb NOT NULL DEFAULT '{}' ::jsonb
 );
 
-CREATE INDEX IF NOT EXISTS prefix_lhr_target_net_gist ON public.prefix_lhr USING gist(target_net inet_ops);
-
-ALTER TABLE prefix_lhr
-    ADD CONSTRAINT prefix_lhr_target_net_uq UNIQUE (target_net);
+CREATE INDEX IF NOT EXISTS measurement_tree_target_net_gist ON public.measurement_tree USING gist(target_net inet_ops);
 
 SELECT
-    diesel_manage_updated_at('prefix_lhr');
+    diesel_manage_updated_at('measurement_tree');

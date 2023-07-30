@@ -1,7 +1,7 @@
 pub use analysis::*;
-pub use split::*;
-pub use details::*;
+pub use measurement_tree::*;
 
 mod analysis;
-mod split;
-mod details;
+mod measurement_tree;
+
+pub type HitCount = i32;

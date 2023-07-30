@@ -39,11 +39,13 @@ dependencies = [
  "ipnet",
  "itertools",
  "log",
+ "nohash-hasher",
  "prefix-crab",
  "queue-models",
  "serde",
  "serde_json",
  "tokio",
+ "type-safe-id",
 ]
 
 [[package]]
@@ -152,6 +154,12 @@ checksum = "2cb2f989d18dd141ab8ae82f64d1a8cdd37e0840f73a406896cf5e99502fab61"
 dependencies = [
  "backtrace",
 ]
+
+[[package]]
+name = "arrayvec"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96d30a06541fbafbc7f82ed10c06164cfbd2c401138f6addd8404629c4b16711"
 
 [[package]]
 name = "assertor"
@@ -791,7 +799,7 @@ dependencies = [
  "serde_derive",
  "termcolor",
  "toml 0.5.11",
- "uuid",
+ "uuid 0.8.2",
 ]
 
 [[package]]
@@ -1025,6 +1033,12 @@ dependencies = [
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.42.0",
 ]
+
+[[package]]
+name = "nohash-hasher"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "nom8"
@@ -1628,6 +1642,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "type-safe-id"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb1211a53644c6a5ae26c45bdd520d1533b07dab50dc6af1a15063772f9061ad"
+dependencies = [
+ "arrayvec",
+ "rand",
+ "serde",
+ "thiserror",
+ "uuid 1.4.1",
+]
+
+[[package]]
 name = "unicase"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1672,6 +1699,12 @@ checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 dependencies = [
  "getrandom",
 ]
+
+[[package]]
+name = "uuid"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79daa5ed5740825c40b389c5e50312b9c86df53fccd33f281df655642b43869d"
 
 [[package]]
 name = "vcpkg"

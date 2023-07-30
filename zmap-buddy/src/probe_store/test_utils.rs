@@ -33,7 +33,6 @@ pub fn gen_timxceed(ip_addr: Ipv6Addr) -> ProbeResponse {
 pub fn then_timxceed_registered(store: &mut SubnetStore, ip_addr: Ipv6Addr) {
     let key = ResponseKey::TimeExceeded {
         from: ip_addr,
-        sent_ttl: 45,
     };
     let res = &store[key];
     assert_eq!(res.len(), 1);
@@ -45,7 +44,7 @@ pub fn then_no_timxceed_registered(store: &mut SubnetStore) {
     for stored in store.iter() {
         let (key, responses) = stored;
         match *key {
-            ResponseKey::TimeExceeded { from: _, sent_ttl: _ } => assert_eq!(responses.len(), 0),
+            ResponseKey::TimeExceeded { from: _ } => assert_eq!(responses.len(), 0),
             _ => {}
         }
     }

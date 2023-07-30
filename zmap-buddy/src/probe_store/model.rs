@@ -9,13 +9,12 @@ impl From<&ProbeResponse> for ResponseKey {
                 kind: DestUnreachKind::parse(source.icmp_code),
                 from: source.source_ip,
             },
-            3 => Self::TimeExceeded { from: source.source_ip, sent_ttl: source.original_ttl },
+            3 => Self::TimeExceeded { from: source.source_ip },
             129 => Self::EchoReply {
                 different_from: Some(source.source_ip)
                     .filter(|it| *it != source.original_dest_ip),
-                sent_ttl: source.original_ttl,
             },
-            _ => Self::Other { description: source.classification.to_string() }
+            _ => Self::Other { from: source.source_ip, description: source.classification.to_string() }
         }
     }
 }

@@ -11,18 +11,9 @@ CREATE TABLE split_analysis(
     created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     completed_at timestamp NULL DEFAULT NULL,
     stage split_analysis_stage NOT NULL DEFAULT 'requested',
-    split_prefix_len smallint NOT NULL
+    -- https://github.com/jetpack-io/typeid
+    -- 'fou_' + 26 character UUID
+    pending_follow_up character(30) NULL DEFAULT NULL
 );
 
 CREATE INDEX split_analysis_tree_id_idx ON split_analysis(tree_id);
-
-CREATE TABLE split_analysis_split(
-    analysis_id bigint NOT NULL REFERENCES split_analysis(id) ON DELETE CASCADE,
-    net_index smallint NOT NULL,
-    data jsonb NOT NULL DEFAULT '{}' ::jsonb,
-    PRIMARY KEY (analysis_id, net_index)
-);
-
--- could cluster the table on tree_id for select performance, but that would require a periodic
--- re-cluster job to stay effective with new data. one way to handle this could be pgagent,
--- provided by pgadmin (or a sufficiently-advanced cronjob).

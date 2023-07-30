@@ -34,3 +34,5 @@ pub struct ExtraData {
     // i.e. add only optional fields or provide defaults!
     pub ever_responded: bool,
 }
+
+crate::persist::configure_jsonb_serde!(ExtraData);

@@ -16,7 +16,6 @@ pub fn begin(conn: &mut PgConnection, context: Context, split_prefix_len: u8) ->
     insert_into(analysis_dsl::split_analysis)
         .values((
             analysis_dsl::tree_id.eq(&context.node().id),
-            analysis_dsl::split_prefix_len.eq(split_prefix_len as i16),
         ))
         .execute(conn)?;
     super::context::fetch(conn, context.parent)

@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS public.prefix_lhr;
+DROP TABLE IF EXISTS public.measurement_tree;

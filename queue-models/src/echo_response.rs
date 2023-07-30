@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct EchoProbeResponse {
     pub target_net: Ipv6Net,
     pub subnet_prefix_len: u8,
+    pub sent_ttl: u8,
     pub splits: Vec<SplitResult>,
 }
 
@@ -27,14 +28,13 @@ pub enum ResponseKey {
     },
     EchoReply {
         different_from: Option<Ipv6Addr>,
-        sent_ttl: u8,
     },
     NoResponse,
     TimeExceeded {
         from: Ipv6Addr,
-        sent_ttl: u8,
     },
     Other {
+        from: Ipv6Addr,
         description: String,
     },
 }

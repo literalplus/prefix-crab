@@ -8,7 +8,7 @@ use tokio::sync::mpsc::{Receiver, UnboundedSender};
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
 use queue_models::echo_response::EchoProbeResponse;
 
-use crate::analyse::store::UpdateAnalysis;
+use crate::analyse::persist::UpdateAnalysis;
 
 use crate::{analyse, prefix_tree};
 
@@ -99,7 +99,7 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
     if context.active.is_none() {
         // TODO probably shouldn't tolerate this any more once we actually create these analyses
         let split_prefix_len = req.model.subnet_prefix_len;
-        context = analyse::store::begin(conn, context, split_prefix_len)
+        context = analyse::persist::begin(conn, context, split_prefix_len)
             .context("while creating missing open analysis")?;
     }
 

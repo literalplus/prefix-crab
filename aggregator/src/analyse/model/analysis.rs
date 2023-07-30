@@ -11,7 +11,7 @@ pub enum Stage {
     Completed,
 }
 
-#[derive(Queryable, Selectable, Identifiable, Associations, Debug, Copy, Clone)]
+#[derive(Queryable, Selectable, Identifiable, Associations, Debug, Clone)]
 #[diesel(table_name = crate::schema::split_analysis)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(PrefixTree, foreign_key = tree_id))]
@@ -21,5 +21,5 @@ pub struct SplitAnalysis {
     pub created_at: NaiveDateTime,
     pub completed_at: Option<NaiveDateTime>,
     pub stage: Stage,
-    pub split_prefix_len: i16,
+    pub pending_follow_up: Option<String>,
 }

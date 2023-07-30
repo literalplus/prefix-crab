@@ -8,6 +8,11 @@ pub use self::targets::TargetCollector;
 mod targets;
 mod caller;
 
+// 64 is default for Linux and should be enough for most "reasonable" topologies
+// https://networkengineering.stackexchange.com/a/2222
+// https://www.rfc-editor.org/rfc/rfc1700 -> 64 is also the recommended default
+pub const SENT_TTL: u8 = 64;
+
 #[derive(Args)]
 #[derive(Clone)]
 #[group(id = "zmap")]

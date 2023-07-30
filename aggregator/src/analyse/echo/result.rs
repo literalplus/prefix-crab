@@ -1,52 +1,77 @@
+use std::collections::HashMap;
 use std::net::Ipv6Addr;
 
-use prefix_crab::prefix_split::NetIndex;
+use crate::analyse::{
+    map64::Net64Map,
+    HitCount, LastHopRouter, WeirdNode,
+    LhrSource::{self, *},
+};
 
-use crate::analyse::{LastHopRouterSource, FollowUp};
-
-pub use super::EchoResult;
-
-#[derive(Debug)]
-pub struct EchoSplitResult {
-    pub net_index: NetIndex,
-    pub follow_ups: Vec<FollowUp>,
-    pub last_hop_routers: Vec<LastHopRouter>,
-    pub weird_behaviours: Vec<WeirdBehaviour>,
+#[derive(Debug, Default)]
+pub struct EchoResult {
+    store: Net64Map<PrefixEntry>,
+    pub follow_ups: Vec<EchoFollowUp>,
 }
 
-impl EchoSplitResult {
-    pub fn new(net_index: NetIndex) -> EchoSplitResult {
-        Self {
-            net_index,
-            follow_ups: vec![],
-            last_hop_routers: vec![],
-            weird_behaviours: vec![],
+impl EchoResult {
+    pub fn register_lhrs(&mut self, target_addrs: &Vec<Ipv6Addr>, lhr: LhrAddr, source: LhrSource) {
+        for target in target_addrs.iter() {
+            self.store[target].register_lhr(lhr, source);
+        }
+    }
+
+    pub fn register_weirds(&mut self, target_addrs: &Vec<Ipv6Addr>, addr: WeirdAddr, description: &str) {
+        for target in target_addrs.iter() {
+            self.store[target].register_weird(addr, description)
+        }
+    }
+
+    pub fn count_other_responsive(&mut self, target_addrs: &Vec<Ipv6Addr>) {
+        for target in target_addrs.iter() {
+            self.store[target].responsive_count += 1;
+        }
+    }
+
+    pub fn count_unresponsive(&mut self, target_addrs: &Vec<Ipv6Addr>) {
+        for target in target_addrs.iter() {
+            self.store[target].unresponsive_count += 1;
         }
     }
 }
 
-#[derive(Debug)]
-pub struct LastHopRouter {
-    pub address: Ipv6Addr,
-    pub source: LastHopRouterSource,
-    pub hit_count: u16,
+pub type LhrAddr = Ipv6Addr;
+pub type WeirdAddr = Ipv6Addr;
+
+#[derive(Debug, Default)]
+pub struct PrefixEntry {
+    pub last_hop_routers: HashMap<LhrAddr, LastHopRouter>,
+    pub weird_nodes: HashMap<WeirdAddr, WeirdNode>,
+    /// Probes that results in any response
+    pub responsive_count: HitCount,
+    /// Probes that did not result in a response
+    pub unresponsive_count: HitCount,
 }
 
-#[derive(Debug)]
-pub enum WeirdBehaviour {
-    TtlExceeded { sent_ttl: u8 },
-    OtherWeird { description: String },
-}
-
-impl WeirdBehaviour {
-    pub fn get_id(&self) -> String {
-        match &self {
-            Self::TtlExceeded { sent_ttl } => {
-                format!("ttl-xc-{}", sent_ttl)
-            }
-            Self::OtherWeird { description } => {
-                format!("o-{}", description)
-            }
-        }
+impl PrefixEntry {
+    pub fn register_lhr(&mut self, lhr: LhrAddr, source: LhrSource) {
+        self.last_hop_routers
+            .entry(lhr)
+            .or_default()
+            .register(source);
+        self.responsive_count += 1;
     }
+
+    pub fn register_weird(&mut self, addr: WeirdAddr, description: &str) {
+        self.weird_nodes
+            .entry(addr)
+            .or_default()
+            .register(description);
+        self.responsive_count += 1;
+    }
+}
+
+#[derive(Debug)]
+pub enum EchoFollowUp {
+    TraceResponsive { targets: Vec<Ipv6Addr> },
+    TraceUnresponsive { targets: Vec<Ipv6Addr> },
 }
