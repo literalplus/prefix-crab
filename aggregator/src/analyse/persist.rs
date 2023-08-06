@@ -12,7 +12,7 @@ use crate::schema::split_analysis::dsl as analysis_dsl;
 
 use super::context::Context;
 
-pub fn begin(conn: &mut PgConnection, context: Context, split_prefix_len: u8) -> Result<Context> {
+pub fn begin(conn: &mut PgConnection, context: Context) -> Result<Context> {
     insert_into(analysis_dsl::split_analysis)
         .values((
             analysis_dsl::tree_id.eq(&context.node().id),

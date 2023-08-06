@@ -9,7 +9,7 @@ use std::{
 
 use ipnet::Ipv6Net;
 
-const PREFIX_LEN: u8 = 64;
+pub const PREFIX_LEN: u8 = 64;
 
 /// A map keyed by /64 networks. Currently assumes this exact size, but may
 /// be expanded to less-specific (but not more-specific) masks in the future.
@@ -43,7 +43,7 @@ fn addr_to_net(addr: Ipv6Addr) -> Ipv6Net {
     Ipv6Net::new(addr, PREFIX_LEN).expect("/64 to be a valid prefix length")
 }
 
-fn net_from_key(key: &u64) -> Ipv6Net {
+fn key_to_net(key: &u64) -> Ipv6Net {
     let expanded = *key as u128;
     let shifted = expanded
         .checked_shl(PREFIX_LEN as u32)
@@ -51,28 +51,28 @@ fn net_from_key(key: &u64) -> Ipv6Net {
     addr_to_net(Ipv6Addr::from(shifted))
 }
 
-pub struct Iter<'a, V> {
-    delegate: hash_map::Iter<'a, u64, V>,
+pub struct IntoIterValues<V> {
+    delegate: hash_map::IntoIter<u64, V>,
 }
 
 impl<V> Net64Map<V> {
-    pub fn iter(&self) -> Iter<'_, V> {
-        Iter {
-            delegate: self.per_net.iter(),
+    pub fn into_iter_values(self) -> IntoIterValues<V> {
+        IntoIterValues {
+            delegate: self.per_net.into_iter(),
         }
     }
 }
 
-impl<'a, V> Iterator for Iter<'a, V> {
-    type Item = (Ipv6Net, &'a V);
+impl<V> Iterator for IntoIterValues<V> {
+    type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
         let delegated = self.delegate.next();
         if delegated.is_none() {
             return None;
         }
-        let (raw_mask, value) = delegated.unwrap();
-        Some((net_from_key(raw_mask), value))
+        let (_, value) = delegated.unwrap();
+        Some(value)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -80,7 +80,71 @@ impl<'a, V> Iterator for Iter<'a, V> {
     }
 }
 
-impl<V> FusedIterator for Iter<'_, V> {}
+impl<V> FusedIterator for IntoIterValues<V> {}
+
+pub struct IterValues<'a, V> {
+    delegate: hash_map::Iter<'a, u64, V>,
+}
+
+impl<'a, V> Net64Map<V> {
+    pub fn iter_values(&'a self) -> IterValues<'a, V> {
+        IterValues {
+            delegate: self.per_net.iter(),
+        }
+    }
+}
+
+impl<'a, V> Iterator for IterValues<'a, V> {
+    type Item = &'a V;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let delegated = self.delegate.next();
+        if delegated.is_none() {
+            return None;
+        }
+        let (_, value) = delegated.unwrap();
+        Some(value)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.delegate.size_hint()
+    }
+}
+
+impl<'a, V> FusedIterator for IterValues<'a, V> {}
+
+pub struct IterEntries<'a, V> {
+    delegate: hash_map::Iter<'a, u64, V>,
+}
+
+impl<'a, V> Net64Map<V> {
+    pub fn iter_entries(&'a self) -> IterEntries<'a, V> {
+        IterEntries {
+            delegate: self.per_net.iter(),
+        }
+    }
+}
+
+impl<'a, V> Iterator for IterEntries<'a, V> {
+    type Item = (Ipv6Net, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let delegated = self.delegate.next();
+        if delegated.is_none() {
+            return None;
+        }
+        let (key_raw, value) = delegated.unwrap();
+        let key = key_to_net(key_raw);
+        Some((key, value))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.delegate.size_hint()
+    }
+}
+
+impl<'a, V> FusedIterator for IterEntries<'a, V> {}
+
 
 impl<V> Index<&Ipv6Net> for Net64Map<V> {
     type Output = V;
@@ -114,6 +178,10 @@ impl<V> Net64Map<V> {
 
     pub fn entry_by_addr_or(&mut self, addr: &Ipv6Addr, new_fn: fn(Ipv6Net) -> V) -> &mut V {
         self.entry_by_net_or(&addr_to_net(*addr), new_fn)
+    }
+
+    pub fn len(&self) -> usize {
+        self.per_net.len()
     }
 }
 
@@ -157,14 +225,28 @@ mod tests {
     }
 
     #[test]
-    fn test_iter_correct_net() -> Result<()> {
+    fn test_iter_value_one_value() -> Result<()> {
+        // given
+        let mut store = Net64Map::default();
+        let addr = Ipv6Addr::from_str("2001:db8::56")?;
+        store[&addr] = 42;
+        // when
+        let mut iter = store.iter_values();
+        // then
+        assert_eq!(iter.next(), Some(&42));
+        assert_eq!(iter.next(), None);
+        Ok(())
+    }
+
+    #[test]
+    fn test_iter_entries_correct_net() -> Result<()> {
         // given
         let mut store = Net64Map::default();
         let addr = Ipv6Addr::from_str("2001:db8::56")?;
         let net = Ipv6Net::from_str("2001:db8::/64")?;
         store[&addr] = 42;
         // when
-        let mut iter = store.iter();
+        let mut iter = store.iter_entries();
         // then
         assert_eq!(iter.next(), Some((net, &42)));
         assert_eq!(iter.next(), None);

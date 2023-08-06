@@ -4,8 +4,8 @@ CREATE TABLE public.prefix_tree
 (
     id           bigserial PRIMARY KEY NOT NULL,
     "path"       cidr                  NOT NULL,
-    created_at   timestamp             NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at   timestamp             NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at   timestamp             NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    updated_at   timestamp             NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
     is_routed    bool                  NOT NULL DEFAULT true,
     merge_status prefix_merge_status   NOT NULL DEFAULT 'not_merged',
     "data"       jsonb                 NOT NULL DEFAULT '{}'::jsonb

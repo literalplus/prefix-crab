@@ -15,8 +15,8 @@ diesel::table! {
         target_net -> Cidr,
         created_at -> Timestamp,
         updated_at -> Timestamp,
-        hit_count -> Int4,
-        miss_count -> Int4,
+        responsive_count -> Int4,
+        unresponsive_count -> Int4,
         last_hop_routers -> Jsonb,
         weirdness -> Jsonb,
     }

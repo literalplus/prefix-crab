@@ -19,6 +19,14 @@ sudo ip -6 route add fddc:9d0b:e318::/48 dev brgns3 via fddc:9d0b:e318:8710::bb:
 sudo ip -6 addr add fddc:9d0b:e318:8710::cc:1/64 dev brgns3
 ```
 
-`cargo run -- rabbit-mq-listen`
+```bash
+cd zmap-buddy
+cargo run -- rabbit-mq-listen
+cargo build --release
+../target/release/zmap-buddy prefix-scan fddc:9d0b:e318:8712::bc:1/48
+cd ..
+cd aggregator
+cargo run
+```
 
-`cargo run -- prefix-scan fddc:9d0b:e318:8712::bc:1/48`
+RabbitMQ: `http://10.45.87.51:15672/`

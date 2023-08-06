@@ -8,7 +8,7 @@ CREATE TABLE split_analysis(
     id bigserial PRIMARY KEY NOT NULL,
     -- deleting a prefix with stored analyses should be a conscious decision v
     tree_id bigint NOT NULL REFERENCES prefix_tree(id) ON DELETE       RESTRICT,
-    created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
     completed_at timestamp NULL DEFAULT NULL,
     stage split_analysis_stage NOT NULL DEFAULT 'requested',
     -- https://github.com/jetpack-io/typeid

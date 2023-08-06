@@ -98,15 +98,14 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
 
     if context.active.is_none() {
         // TODO probably shouldn't tolerate this any more once we actually create these analyses
-        let split_prefix_len = req.model.subnet_prefix_len;
-        context = analyse::persist::begin(conn, context, split_prefix_len)
+        context = analyse::persist::begin(conn, context)
             .context("while creating missing open analysis")?;
     }
 
     let interpretation = analyse::echo::process(&req.model);
 
     info!("Context for this probe: {:?}", context);
-    info!("Interpretation for this probe: {:?}", interpretation);
+    info!("Interpretation for this probe: {}", interpretation);
 
     interpretation
         .update_analysis(conn, &mut context)

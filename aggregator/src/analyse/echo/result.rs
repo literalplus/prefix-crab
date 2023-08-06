@@ -1,11 +1,8 @@
-use std::collections::HashMap;
 use std::net::Ipv6Addr;
+use std::{collections::HashMap, fmt::Display};
 
-use crate::analyse::{
-    map64::Net64Map,
-    HitCount, LastHopRouter, WeirdNode,
-    LhrSource::{self, *},
-};
+use crate::analyse::map64;
+use crate::analyse::{map64::Net64Map, HitCount, LastHopRouter, LhrSource, WeirdNode};
 
 #[derive(Debug, Default)]
 pub struct EchoResult {
@@ -20,7 +17,12 @@ impl EchoResult {
         }
     }
 
-    pub fn register_weirds(&mut self, target_addrs: &Vec<Ipv6Addr>, addr: WeirdAddr, description: &str) {
+    pub fn register_weirds(
+        &mut self,
+        target_addrs: &Vec<Ipv6Addr>,
+        addr: WeirdAddr,
+        description: &str,
+    ) {
         for target in target_addrs.iter() {
             self.store[target].register_weird(addr, description)
         }
@@ -36,6 +38,19 @@ impl EchoResult {
         for target in target_addrs.iter() {
             self.store[target].unresponsive_count += 1;
         }
+    }
+
+    pub fn iter(&self) -> map64::IterEntries<PrefixEntry> {
+        self.store.iter_entries()
+    }
+}
+
+impl Display for EchoResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EchoResult")
+            .field("store", &format!("{} entries", self.store.len()))
+            .field("follow_ups", &format!("{} entries", self.follow_ups.len()))
+            .finish()
     }
 }
 

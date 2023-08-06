@@ -2,12 +2,13 @@ pub use cidr::*;
 
 mod cidr {
     use diesel::internal::derives::as_expression::Bound;
-    use diesel::{self, ExpressionMethods};
+
     use diesel::expression::AsExpression;
     use diesel::pg::Pg;
     use diesel::sql_types::{Bool, Cidr};
     use diesel::Expression;
-    use ipnet::{Ipv6Net, IpNet};
+    use diesel::{self, ExpressionMethods};
+    use ipnet::{IpNet, Ipv6Net};
 
     diesel::infix_operator!(SubnetOrEq, " <<= ", Bool, backend: Pg);
     diesel::infix_operator!(SupernetOrEq, " >>= ", Bool, backend: Pg);
@@ -30,7 +31,10 @@ mod cidr {
             SubnetOrEq::new(self.as_expression(), other.as_expression())
         }
 
-        fn subnet_or_eq6(self, other: &Ipv6Net) -> SubnetOrEq<Self::Expression, Bound<Cidr, IpNet>> {
+        fn subnet_or_eq6(
+            self,
+            other: &Ipv6Net,
+        ) -> SubnetOrEq<Self::Expression, Bound<Cidr, IpNet>> {
             self.subnet_or_eq(IpNet::V6(*other))
         }
 
@@ -44,7 +48,10 @@ mod cidr {
             SupernetOrEq::new(self.as_expression(), other.as_expression())
         }
 
-        fn supernet_or_eq6(self, other: &Ipv6Net) -> SupernetOrEq<Self::Expression, Bound<Cidr, IpNet>> {
+        fn supernet_or_eq6(
+            self,
+            other: &Ipv6Net,
+        ) -> SupernetOrEq<Self::Expression, Bound<Cidr, IpNet>> {
             self.supernet_or_eq(IpNet::V6(*other))
         }
 

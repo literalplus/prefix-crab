@@ -1,8 +1,6 @@
 use std::net::Ipv6Addr;
 
-use anyhow::Result;
-use log::{debug, warn};
-use prefix_crab::prefix_split::NetIndex;
+use log::debug;
 use queue_models::echo_response::{
     DestUnreachKind::{self, *},
     EchoProbeResponse,
@@ -19,19 +17,12 @@ pub mod result;
 pub fn process(model: &EchoProbeResponse) -> EchoResult {
     let mut result = EchoResult::default();
     for split in &model.splits {
-        if let Result::Ok(valid_index) = split.net_index.try_into() {
-            process_split(&mut result, split, valid_index);
-        } else {
-            warn!(
-                "Ignoring result[{}] due to net index out of range",
-                split.net_index
-            );
-        }
+        process_split(&mut result, split);
     }
     result
 }
 
-fn process_split(result: &mut EchoResult, split: &SplitResult, index: NetIndex) {
+fn process_split(result: &mut EchoResult, split: &SplitResult) {
     let mut follow_up_collector = FollowUpCollector::new();
     for responses in &split.responses {
         process_responses(result, responses, &mut follow_up_collector);
