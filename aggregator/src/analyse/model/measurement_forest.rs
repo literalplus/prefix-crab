@@ -112,7 +112,7 @@ impl MeasurementForest {
             Greater => bail!("trees with prefixes longer than /64 may not be planted here: {}. best regards, the lorax.", net),
             Equal => {
                 let mut entry = self.trees64.entry_by_net_or(
-                    &net, |net_param| ModifiableTree::empty(net_param)
+                    &net, ModifiableTree::empty
                 );
                 entry.touched = touched;
                 entry.consume_merge(tree, should_touch)?;

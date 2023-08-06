@@ -10,7 +10,7 @@ pub trait CanFollowUp {
 
 impl CanFollowUp for EchoResult {
     fn needs_follow_up(&self) -> bool {
-        return !self.follow_ups.is_empty();
+        !self.follow_ups.is_empty()
     }
 }
 

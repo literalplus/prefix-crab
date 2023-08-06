@@ -67,11 +67,7 @@ impl<V> Iterator for IntoIterValues<V> {
     type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let delegated = self.delegate.next();
-        if delegated.is_none() {
-            return None;
-        }
-        let (_, value) = delegated.unwrap();
+        let (_, value) = self.delegate.next()?;
         Some(value)
     }
 
@@ -98,11 +94,7 @@ impl<'a, V> Iterator for IterValues<'a, V> {
     type Item = &'a V;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let delegated = self.delegate.next();
-        if delegated.is_none() {
-            return None;
-        }
-        let (_, value) = delegated.unwrap();
+        let (_, value) = self.delegate.next()?;
         Some(value)
     }
 
@@ -129,11 +121,7 @@ impl<'a, V> Iterator for IterEntries<'a, V> {
     type Item = (Ipv6Net, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let delegated = self.delegate.next();
-        if delegated.is_none() {
-            return None;
-        }
-        let (key_raw, value) = delegated.unwrap();
+        let (key_raw, value) = self.delegate.next()?;
         let key = key_to_net(key_raw);
         Some((key, value))
     }

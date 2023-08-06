@@ -11,7 +11,7 @@ pub struct EchoResult {
 }
 
 impl EchoResult {
-    pub fn register_lhrs(&mut self, target_addrs: &Vec<Ipv6Addr>, lhr: LhrAddr, source: LhrSource) {
+    pub fn register_lhrs(&mut self, target_addrs: &[Ipv6Addr], lhr: LhrAddr, source: LhrSource) {
         for target in target_addrs.iter() {
             self.store[target].register_lhr(lhr, source);
         }
@@ -19,7 +19,7 @@ impl EchoResult {
 
     pub fn register_weirds(
         &mut self,
-        target_addrs: &Vec<Ipv6Addr>,
+        target_addrs: &[Ipv6Addr],
         addr: WeirdAddr,
         description: &str,
     ) {
@@ -28,13 +28,13 @@ impl EchoResult {
         }
     }
 
-    pub fn count_other_responsive(&mut self, target_addrs: &Vec<Ipv6Addr>) {
+    pub fn count_other_responsive(&mut self, target_addrs: &[Ipv6Addr]) {
         for target in target_addrs.iter() {
             self.store[target].responsive_count += 1;
         }
     }
 
-    pub fn count_unresponsive(&mut self, target_addrs: &Vec<Ipv6Addr>) {
+    pub fn count_unresponsive(&mut self, target_addrs: &[Ipv6Addr]) {
         for target in target_addrs.iter() {
             self.store[target].unresponsive_count += 1;
         }
