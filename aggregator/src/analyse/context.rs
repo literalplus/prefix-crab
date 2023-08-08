@@ -1,18 +1,18 @@
-use anyhow::*;
-
 use diesel::prelude::*;
+use log::warn;
+use thiserror::Error;
 
 use crate::prefix_tree::context::ContextOps;
 use crate::prefix_tree::{self, PrefixTree};
 use crate::schema::split_analysis::dsl::created_at;
+use crate::schema::split_analysis::stage;
 
 use super::{SplitAnalysis, Stage};
 
 #[derive(Debug)]
 pub struct Context {
     pub parent: prefix_tree::Context,
-    pub completed: Vec<SplitAnalysis>,
-    pub active: Option<SplitAnalysis>,
+    pub analysis: SplitAnalysis,
 }
 
 impl ContextOps for Context {
@@ -25,25 +25,38 @@ impl ContextOps for Context {
     }
 }
 
-pub fn fetch(conn: &mut PgConnection, parent: prefix_tree::Context) -> Result<Context> {
-    let all = fetch_all(conn, &parent.node)?;
-    let completed = all
-        .iter()
-        .filter(|it| it.stage == Stage::Completed)
-        .cloned()
-        .collect();
-    let active = all.into_iter().find(|it| it.stage != Stage::Completed);
-    Ok(Context {
-        parent,
-        completed,
-        active,
-    })
+#[derive(Error, Debug)]
+pub enum ContextFetchError {
+    #[error("no analysis is active for {parent:?}")]
+    NoActiveAnalysis { parent: prefix_tree::Context },
+    #[error("problem talking to the database")]
+    DbError(#[from] diesel::result::Error),
 }
 
-fn fetch_all(conn: &mut PgConnection, node: &PrefixTree) -> Result<Vec<SplitAnalysis>> {
-    // TODO ignore very old analyses or cleanup ?
-    Ok(SplitAnalysis::belonging_to(node)
+pub type ContextFetchResult = Result<Context, ContextFetchError>;
+
+pub fn fetch(conn: &mut PgConnection, parent: prefix_tree::Context) -> ContextFetchResult {
+    let actives = fetch_active(conn, &parent.node)?;
+    if actives.is_empty() {
+        return Err(ContextFetchError::NoActiveAnalysis { parent });
+    } else if actives.len() > 1 {
+        warn!("Multiple analyses are active for {:?}", parent);
+    }
+    let analysis = actives
+        .into_iter()
+        .next()
+        .expect("a vector with one element to yield that element");
+    Ok(Context { parent, analysis })
+}
+
+fn fetch_active(
+    conn: &mut PgConnection,
+    node: &PrefixTree,
+) -> Result<Vec<SplitAnalysis>, ContextFetchError> {
+    SplitAnalysis::belonging_to(node)
         .select(SplitAnalysis::as_select())
+        .filter(stage.ne(Stage::Completed))
         .order_by(created_at.desc())
-        .load(conn)?)
+        .load(conn)
+        .map_err(|e| ContextFetchError::DbError(e))
 }

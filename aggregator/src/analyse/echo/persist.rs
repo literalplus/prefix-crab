@@ -31,30 +31,14 @@ use crate::schema::measurement_tree::target_net;
 impl UpdateAnalysis for EchoResult {
     fn update_analysis(&self, conn: &mut PgConnection, context: &mut Context) -> Result<()> {
         let log_id = context.log_id();
-        let active = self.extract_active_or_fail(context)?;
 
-        let update = self.determine_parent_update(active, log_id);
+        let update = self.determine_parent_update(&mut context.analysis, log_id);
         let forest = self.to_measurement_forest()?;
-        Self::save(conn, active, update, forest)
+        Self::save(conn, &mut context.analysis, update, forest)
     }
 }
 
 impl EchoResult {
-    fn extract_active_or_fail<'a>(
-        &self,
-        context: &'a mut Context,
-    ) -> Result<&'a mut SplitAnalysis> {
-        match &mut context.active {
-            None => {
-                bail!(
-                    "Tried to update with analysis {:?} but none was active.",
-                    self
-                );
-            }
-            Some(active) => Ok(active),
-        }
-    }
-
     fn determine_parent_update(&self, parent: &mut SplitAnalysis, log_id: String) -> ParentUpdate {
         // TODO also update follow-up id ?
         if self.needs_follow_up() {

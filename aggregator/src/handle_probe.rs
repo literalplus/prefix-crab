@@ -8,6 +8,7 @@ use tokio::sync::mpsc::{Receiver, UnboundedSender};
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
 use queue_models::echo_response::EchoProbeResponse;
 
+use crate::analyse::context::{ContextFetchError, ContextFetchResult};
 use crate::analyse::persist::UpdateAnalysis;
 
 use crate::{analyse, prefix_tree};
@@ -94,13 +95,7 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
     let tree_context =
         prefix_tree::context::fetch(conn, &target_net).context("fetching tree context")?;
     let mut context =
-        analyse::context::fetch(conn, tree_context).context("fetching analyse context")?;
-
-    if context.active.is_none() {
-        // TODO probably shouldn't tolerate this any more once we actually create these analyses
-        context = analyse::persist::begin(conn, context)
-            .context("while creating missing open analysis")?;
-    }
+        fetch_or_begin_context(conn, tree_context).context("fetch/begin for probe handling")?;
 
     let interpretation = analyse::echo::process(&req.model);
 
@@ -114,6 +109,18 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
     // TODO schedule follow-ups now?
 
     Ok(())
+}
+
+fn fetch_or_begin_context(
+    conn: &mut PgConnection,
+    parent: prefix_tree::context::Context,
+) -> ContextFetchResult {
+    let result = analyse::context::fetch(conn, parent);
+    if let Err(ContextFetchError::NoActiveAnalysis { parent }) = result {
+        // TODO probably shouldn't tolerate this any more once we actually create these analyses
+        return analyse::persist::begin(conn, parent);
+    }
+    result
 }
 
 mod archive {
