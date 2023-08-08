@@ -4,8 +4,8 @@ use ipnet::Ipv6Net;
 pub use sample::{ToSubnetSamples, SubnetSample};
 pub use split::{PrefixSplit, SplitSubnet, NetIndex};
 
-pub const SAMPLES_PER_SUBNET: u16 = 16;
-pub const PREFIX_BITS_PER_SPLIT: u8 = 2;
+pub const SAMPLES_PER_SUBNET: u16 = 16; // we could reduce this for more-specific prefixes
+pub const PREFIX_BITS_PER_SPLIT: u8 = 1;
 pub const SUBNETS_PER_SPLIT: u8 = 2u8.pow(PREFIX_BITS_PER_SPLIT as u32);
 pub const MAX_PREFIX_LEN: u8 = 64;
 

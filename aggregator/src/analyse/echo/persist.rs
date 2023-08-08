@@ -33,10 +33,6 @@ impl UpdateAnalysis for EchoResult {
         let log_id = context.log_id();
         let active = self.extract_active_or_fail(context)?;
 
-        // TODO need to update LHRs separately; it doesn't provide an additional benefit to store them
-        // in the split analysis as well (other than maybe ergonomics), and we can immediately commit
-        // them to the prefix_lhr table.
-
         let update = self.determine_parent_update(active, log_id);
         let forest = self.to_measurement_forest()?;
         Self::save(conn, active, update, forest)
