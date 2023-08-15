@@ -77,7 +77,7 @@ impl MeasurementForest {
     }
 
     fn insert_with_touch(&mut self, tree: MeasurementTree, should_touch: bool) -> Result<()> {
-        let net = Self::validate_ipv6(&tree)?;
+        let net = tree.try_net_into_v6()?;
         match self.merge_into_existing_or_return(tree, should_touch)? {
             Some(my_tree) => self.insert_no_merge(net, my_tree, should_touch)?,
             None => {
@@ -87,13 +87,6 @@ impl MeasurementForest {
             },
         };
         Ok(())
-    }
-
-    fn validate_ipv6(tree: &MeasurementTree) -> Result<Ipv6Net> {
-        match &tree.target_net {
-            IpNet::V4(_) => bail!("i am the lorax. i speak for the trees. they do not want an IPv4 in their forest. thansk"),
-            IpNet::V6(net) => Ok(*net),
-        }
     }
 
     fn merge_into_existing_or_return(&mut self, tree: MeasurementTree, should_touch: bool) -> Result<Option<MeasurementTree>> {

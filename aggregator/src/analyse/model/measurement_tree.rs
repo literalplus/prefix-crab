@@ -64,6 +64,13 @@ impl MeasurementTree {
     pub fn add_weird_no_sum(&mut self, addr: Ipv6Addr, descriptions: HashSet<String>, hits: HitCount) {
         self.weirdness.items.insert(addr, WeirdItem { descriptions, hit_count: hits });
     }
+
+    pub fn try_net_into_v6(&self) -> Result<Ipv6Net> {
+        match &self.target_net {
+            IpNet::V4(net) => bail!("i am the lorax. i speak for the trees. they do not want an IPv4 in their forest: {} thansk", net),
+            IpNet::V6(net) => Ok(*net),
+        }
+    }
 }
 
 impl IndexMut<&Ipv6Net> for Net64Map<MeasurementTree> {

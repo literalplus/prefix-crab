@@ -2,11 +2,12 @@ use anyhow::*;
 use ipnet::Ipv6Net;
 
 pub use sample::{ToSubnetSamples, SubnetSample};
-pub use split::{PrefixSplit, SplitSubnet, NetIndex};
+pub use split::{PrefixSplit, SplitSubnet, SplitSubnets, NetIndex};
 
 pub const SAMPLES_PER_SUBNET: u16 = 16; // we could reduce this for more-specific prefixes
 pub const PREFIX_BITS_PER_SPLIT: u8 = 1;
 pub const SUBNETS_PER_SPLIT: u8 = 2u8.pow(PREFIX_BITS_PER_SPLIT as u32);
+pub const SUBNETS_PER_SPLIT_USIZE: usize = 2u8.pow(PREFIX_BITS_PER_SPLIT as u32) as usize;
 pub const MAX_PREFIX_LEN: u8 = 64;
 
 /// Splits given network into [SUBNETS_PER_SPLIT] subnets, by increasing the
@@ -25,7 +26,7 @@ mod split {
     use anyhow::*;
     use ipnet::Ipv6Net;
 
-    use super::{MAX_PREFIX_LEN, PREFIX_BITS_PER_SPLIT, SUBNETS_PER_SPLIT};
+    use super::{MAX_PREFIX_LEN, PREFIX_BITS_PER_SPLIT, SUBNETS_PER_SPLIT, SUBNETS_PER_SPLIT_USIZE};
 
     pub fn process(base_net: Ipv6Net) -> Result<PrefixSplit> {
         let subnet_prefix_len = subnet_prefix_len_for(base_net).context("Base net too small")?;
@@ -56,8 +57,8 @@ mod split {
         Ok(len)
     }
 
-    type SplitSubnetsRaw = [Ipv6Net; SUBNETS_PER_SPLIT as usize];
-    type SplitSubnets = [SplitSubnet; SUBNETS_PER_SPLIT as usize];
+    type SplitSubnetsRaw = [Ipv6Net; SUBNETS_PER_SPLIT_USIZE];
+    pub type SplitSubnets = [SplitSubnet; SUBNETS_PER_SPLIT_USIZE];
 
     #[derive(Debug, Clone)]
     pub struct PrefixSplit {
@@ -82,21 +83,24 @@ mod split {
                 subnets,
             }
         }
-    }
 
-    impl<'a> IntoIterator for &'a PrefixSplit {
-        type Item = &'a SplitSubnet;
-        type IntoIter = std::slice::Iter<'a, SplitSubnet>;
-
-        fn into_iter(self) -> Self::IntoIter {
-            self.subnets.iter()
+        pub fn into_subnets(self) -> SplitSubnets {
+            self.subnets
         }
     }
 
-    #[cfg(test)]
+    impl IntoIterator for PrefixSplit {
+        type Item = SplitSubnet;
+        type IntoIter = std::array::IntoIter<SplitSubnet, SUBNETS_PER_SPLIT_USIZE>;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self.subnets.into_iter()
+        }
+    }
+
     impl<'a> PrefixSplit {
-        fn iter(&'a self) -> <&'a Self as IntoIterator>::IntoIter {
-            self.into_iter()
+        pub fn iter(&'a self) -> std::slice::Iter<'a, SplitSubnet> {
+            self.subnets.iter()
         }
     }
 
@@ -313,8 +317,7 @@ mod sample {
     impl ToSubnetSamples for PrefixSplit {
         fn to_samples(&self, hosts_per_sample: u16) -> Vec<SubnetSample> {
             let distribution = Uniform::from(determine_host_range(self));
-            self.into_iter()
-                .to_owned()
+            self.iter()
                 .map(|subnet| to_sample(subnet, distribution, hosts_per_sample))
                 .collect()
         }

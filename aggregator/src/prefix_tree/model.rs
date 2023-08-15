@@ -1,3 +1,4 @@
+use anyhow::{bail, Result};
 use chrono::NaiveDateTime;
 use diesel;
 use diesel::prelude::*;
@@ -5,7 +6,7 @@ use diesel::prelude::*;
 use diesel::deserialize::FromSqlRow;
 use diesel::expression::AsExpression;
 use diesel::sql_types::Jsonb;
-use ipnet::IpNet;
+use ipnet::{IpNet, Ipv6Net};
 use serde::{Deserialize, Serialize};
 
 #[derive(diesel_derive_enum::DbEnum, Debug, Copy, Clone)]
@@ -25,6 +26,15 @@ pub struct PrefixTree {
     pub is_routed: bool,
     pub merge_status: MergeStatus,
     pub data: ExtraData,
+}
+
+impl PrefixTree {
+    pub fn try_net_into_v6(&self) -> Result<Ipv6Net> {
+        match &self.path {
+            IpNet::V4(net) => bail!("encountered prefix tree with IPv4, which is super illegal: {}", net),
+            IpNet::V6(net) => Ok(*net),
+        }
+    }
 }
 
 #[derive(FromSqlRow, AsExpression, Serialize, Deserialize, Debug, Default, Copy, Clone)]
