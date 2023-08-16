@@ -41,6 +41,8 @@ impl MeasurementTree {
         }
     }
 
+    /// Merges `other` into `self`, consuming the value.
+    /// Fails if `other`'s network is not a subnet or the same as `self`'s.
     pub fn consume_merge(&mut self, other: Self) -> Result<()> {
         if !self.target_net.contains(&other.target_net) {
             bail!(
@@ -50,8 +52,8 @@ impl MeasurementTree {
             );
         }
         self.updated_at = Utc::now().naive_utc();
-        self.responsive_count += other.responsive_count;
-        self.unresponsive_count += other.unresponsive_count;
+        self.responsive_count = self.responsive_count.saturating_add(other.responsive_count);
+        self.unresponsive_count = self.unresponsive_count.saturating_add(other.unresponsive_count);
         self.last_hop_routers.consume_merge(other.last_hop_routers);
         self.weirdness.consume_merge(other.weirdness);
         Ok(())
@@ -98,14 +100,15 @@ impl LhrData {
     fn consume_merge(&mut self, other: Self) {
         for (lhr_addr, item) in other.items.into_iter() {
             let mut entry = self.items.entry(lhr_addr).or_default();
-            entry.sources.extend(item.sources);
-            entry.hit_count += item.hit_count;
+            entry.consume_merge(item);
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum LhrSource {
+    // IMPORTANT: Type must stay backwards-compatible with previously-written JSON,
+    // i.e. add only optional fields or provide defaults!
     TraceUnresponsive,
     TraceResponsive,
     DestUnreachProhibit, // admin-prohibit, failed-egress
@@ -115,8 +118,17 @@ pub enum LhrSource {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct LhrItem {
+    // IMPORTANT: Type must stay backwards-compatible with previously-written JSON,
+    // i.e. add only optional fields or provide defaults!
     pub sources: HashSet<LhrSource>,
     pub hit_count: HitCount,
+}
+
+impl LhrItem {
+    pub fn consume_merge(&mut self, other: Self) {
+        self.sources.extend(other.sources);
+        self.hit_count.saturating_add(other.hit_count);
+    }
 }
 
 crate::persist::configure_jsonb_serde!(LhrData);
@@ -133,7 +145,7 @@ impl WeirdData {
     fn consume_merge(&mut self, other: Self) {
         for (weird_addr, other_item) in other.items.into_iter() {
             let mut entry = self.items.entry(weird_addr).or_default();
-            entry.hit_count += other_item.hit_count;
+            entry.hit_count.saturating_add(other_item.hit_count);
             entry.descriptions.extend(other_item.descriptions);
         }
     }
@@ -141,6 +153,8 @@ impl WeirdData {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct WeirdItem {
+    // IMPORTANT: Type must stay backwards-compatible with previously-written JSON,
+    // i.e. add only optional fields or provide defaults!
     pub descriptions: HashSet<String>,
     pub hit_count: HitCount,
 }
