@@ -19,7 +19,6 @@ use crate::analyse::ModifiableTree;
 use crate::analyse::ModificationType;
 use crate::analyse::PrefixEntry;
 use crate::analyse::SplitAnalysis;
-use crate::analyse::WeirdNode;
 
 use crate::persist::dsl::CidrMethods;
 
@@ -29,11 +28,13 @@ use crate::schema::measurement_tree::dsl::measurement_tree;
 use crate::schema::measurement_tree::target_net;
 
 impl UpdateAnalysis for EchoResult {
-    fn update_analysis(&self, conn: &mut PgConnection, context: &mut Context) -> Result<()> {
+    fn update_analysis(mut self, conn: &mut PgConnection, context: &mut Context) -> Result<()> {
+        //              ^   Need move receiver due to `drain()` called in `save()`
+
         let log_id = context.log_id();
 
         let update = self.determine_parent_update(&mut context.analysis, log_id);
-        let forest = self.to_measurement_forest()?;
+        let forest = self.drain_to_measurement_forest()?;
         Self::save(conn, &mut context.analysis, update, forest)
     }
 }
@@ -79,7 +80,10 @@ impl EchoResult {
             }
             let obsolete_nets: Vec<&Ipv6Net> = remote_forest.obsolete_nets.iter().collect();
             if !obsolete_nets.is_empty() {
-                warn!("Encountered obsolete measurement nodes: {:?}", obsolete_nets);
+                warn!(
+                    "Encountered obsolete measurement nodes: {:?}",
+                    obsolete_nets
+                );
             }
             // Batching would be ideal, but Diesel doesn't seem to directly support that
             // ref: https://github.com/diesel-rs/diesel/issues/1517
@@ -99,7 +103,10 @@ impl EchoResult {
                 }
             }
             if !inserts.is_empty() {
-                trace!("Inserting {} FRESH trees for the CO2 credits", inserts.len());
+                trace!(
+                    "Inserting {} FRESH trees for the CO2 credits",
+                    inserts.len()
+                );
                 diesel::insert_into(measurement_tree)
                     .values(inserts)
                     .on_conflict_do_nothing()
@@ -112,26 +119,22 @@ impl EchoResult {
         .context("while saving changes")
     }
 
-    fn to_measurement_forest(&self) -> Result<MeasurementForest> {
+    fn drain_to_measurement_forest(&mut self) -> Result<MeasurementForest> {
         let mut forest = MeasurementForest::default();
-        for (net, entry) in self.iter() {
+        for (net, entry) in self.drain() {
             forest.insert(make_tree(net, entry))?;
         }
         Ok(forest)
     }
 }
 
-fn make_tree(net: Ipv6Net, entry: &PrefixEntry) -> MeasurementTree {
+fn make_tree(net: Ipv6Net, entry: PrefixEntry) -> MeasurementTree {
     let mut tree = MeasurementTree::empty(net);
-    for (addr, LastHopRouter { sources, hit_count }) in entry.last_hop_routers.iter() {
-        tree.add_lhr_no_sum(*addr, sources.clone(), *hit_count);
+    for (addr, LastHopRouter { sources, hit_count }) in entry.last_hop_routers.into_iter() {
+        tree.add_lhr_no_sum(addr, sources, hit_count);
     }
-    for (addr, node) in entry.weird_nodes.iter() {
-        let WeirdNode {
-            descriptions,
-            hit_count,
-        } = node;
-        tree.add_weird_no_sum(*addr, descriptions.clone(), *hit_count);
+    for (description, node) in entry.weird.into_iter() {
+        tree.add_weird_no_sum(description, node.hit_count);
     }
     tree.responsive_count = entry.responsive_count;
     tree.unresponsive_count = entry.unresponsive_count;

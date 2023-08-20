@@ -133,6 +133,34 @@ impl<'a, V> Iterator for IterEntries<'a, V> {
 
 impl<'a, V> FusedIterator for IterEntries<'a, V> {}
 
+pub struct Drain<'a, V> {
+    delegate: hash_map::Drain<'a, u64, V>,
+}
+
+impl<'a, V> Net64Map<V> {
+    pub fn drain(&'a mut self) -> Drain<'a, V> {
+        Drain {
+            delegate: self.per_net.drain(),
+        }
+    }
+}
+
+impl<'a, V> Iterator for Drain<'a, V> {
+    type Item = (Ipv6Net, V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (key_raw, value) = self.delegate.next()?;
+        let key = key_to_net(&key_raw);
+        Some((key, value))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.delegate.size_hint()
+    }
+}
+
+impl<'a, V> FusedIterator for Drain<'a, V> {}
+
 
 impl<V> Index<&Ipv6Net> for Net64Map<V> {
     type Output = V;

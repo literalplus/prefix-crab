@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
-use crate::analyse::{LhrSource, HitCount};
+use crate::analyse::{HitCount, LhrSource};
 
 pub use super::echo::result::*;
+use super::WeirdType;
 
 pub trait CanFollowUp {
     fn needs_follow_up(&self) -> bool;
@@ -29,15 +30,11 @@ impl LastHopRouter {
 
 #[derive(Debug, Default)]
 pub struct WeirdNode {
-    pub descriptions: HashSet<String>,
     pub hit_count: HitCount,
 }
 
 impl WeirdNode {
-    pub fn register(&mut self, description: &str) {
-        if !self.descriptions.contains(description) {
-            self.descriptions.insert(description.to_string());
-        }
+    pub fn register(&mut self) {
         self.hit_count += 1;
     }
 }

@@ -1,7 +1,7 @@
 use std::net::Ipv6Addr;
 use std::{collections::HashMap, fmt::Display};
 
-use crate::analyse::map64;
+use crate::analyse::{map64, WeirdType};
 use crate::analyse::{map64::Net64Map, HitCount, LastHopRouter, LhrSource, WeirdNode};
 
 #[derive(Debug, Default)]
@@ -11,37 +11,45 @@ pub struct EchoResult {
 }
 
 impl EchoResult {
-    pub fn register_lhrs(&mut self, target_addrs: &[Ipv6Addr], lhr: LhrAddr, source: LhrSource) {
-        for target in target_addrs.iter() {
+    pub fn register_lhrs(&mut self, targets: &[Ipv6Addr], lhr: LhrAddr, source: LhrSource) {
+        for target in targets.iter() {
             self.store[target].register_lhr(lhr, source);
         }
     }
 
     pub fn register_weirds(
         &mut self,
-        target_addrs: &[Ipv6Addr],
-        addr: WeirdAddr,
-        description: &str,
+        targets: &[Ipv6Addr],
+        description: WeirdType,
     ) {
-        for target in target_addrs.iter() {
-            self.store[target].register_weird(addr, description)
+        if targets.len() == 1 { // no need to clone if there is only one item (the usual case)
+            let only_item = targets.iter().next().expect("one target to be present if length is one");
+            self.store[only_item].register_weird(description);
+            return;
+        }
+        for target in targets.iter() {
+            self.store[target].register_weird(description.clone());
         }
     }
 
-    pub fn count_other_responsive(&mut self, target_addrs: &[Ipv6Addr]) {
-        for target in target_addrs.iter() {
+    pub fn count_other_responsive(&mut self, targets: &[Ipv6Addr]) {
+        for target in targets.iter() {
             self.store[target].responsive_count += 1;
         }
     }
 
-    pub fn count_unresponsive(&mut self, target_addrs: &[Ipv6Addr]) {
-        for target in target_addrs.iter() {
+    pub fn count_unresponsive(&mut self, targets: &[Ipv6Addr]) {
+        for target in targets.iter() {
             self.store[target].unresponsive_count += 1;
         }
     }
 
     pub fn iter(&self) -> map64::IterEntries<PrefixEntry> {
         self.store.iter_entries()
+    }
+
+    pub fn drain(&mut self) -> map64::Drain<PrefixEntry> {
+        self.store.drain()
     }
 }
 
@@ -60,7 +68,7 @@ pub type WeirdAddr = Ipv6Addr;
 #[derive(Debug, Default)]
 pub struct PrefixEntry {
     pub last_hop_routers: HashMap<LhrAddr, LastHopRouter>,
-    pub weird_nodes: HashMap<WeirdAddr, WeirdNode>,
+    pub weird: HashMap<WeirdType, WeirdNode>,
     /// Probes that results in any response
     pub responsive_count: HitCount,
     /// Probes that did not result in a response
@@ -76,11 +84,11 @@ impl PrefixEntry {
         self.responsive_count += 1;
     }
 
-    pub fn register_weird(&mut self, addr: WeirdAddr, description: &str) {
-        self.weird_nodes
-            .entry(addr)
+    pub fn register_weird(&mut self, description: WeirdType) {
+        self.weird
+            .entry(description)
             .or_default()
-            .register(description);
+            .register();
         self.responsive_count += 1;
     }
 }

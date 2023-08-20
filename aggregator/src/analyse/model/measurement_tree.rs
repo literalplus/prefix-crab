@@ -22,6 +22,7 @@ pub struct MeasurementTree {
     pub target_net: IpNet,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    /// Number of responses received from this prefix, including errors
     pub responsive_count: i32,
     pub unresponsive_count: i32,
     pub last_hop_routers: LhrData,
@@ -53,18 +54,28 @@ impl MeasurementTree {
         }
         self.updated_at = Utc::now().naive_utc();
         self.responsive_count = self.responsive_count.saturating_add(other.responsive_count);
-        self.unresponsive_count = self.unresponsive_count.saturating_add(other.unresponsive_count);
+        self.unresponsive_count = self
+            .unresponsive_count
+            .saturating_add(other.unresponsive_count);
         self.last_hop_routers.consume_merge(other.last_hop_routers);
         self.weirdness.consume_merge(other.weirdness);
         Ok(())
     }
 
     pub fn add_lhr_no_sum(&mut self, addr: Ipv6Addr, sources: HashSet<LhrSource>, hits: HitCount) {
-        self.last_hop_routers.items.insert(addr, LhrItem { sources, hit_count: hits });
+        self.last_hop_routers.items.insert(
+            addr,
+            LhrItem {
+                sources,
+                hit_count: hits,
+            },
+        );
     }
 
-    pub fn add_weird_no_sum(&mut self, addr: Ipv6Addr, descriptions: HashSet<String>, hits: HitCount) {
-        self.weirdness.items.insert(addr, WeirdItem { descriptions, hit_count: hits });
+    pub fn add_weird_no_sum(&mut self, description: WeirdType, hits: HitCount) {
+        self.weirdness
+            .items
+            .insert(description, WeirdItem { hit_count: hits });
     }
 
     pub fn try_net_into_v6(&self) -> Result<Ipv6Net> {
@@ -138,15 +149,22 @@ crate::persist::configure_jsonb_serde!(LhrData);
 pub struct WeirdData {
     // IMPORTANT: Type must stay backwards-compatible with previously-written JSON,
     // i.e. add only optional fields or provide defaults!
-    pub items: HashMap<Ipv6Addr, WeirdItem>,
+    pub items: HashMap<WeirdType, WeirdItem>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum WeirdType {
+    DestUnreachableUnexpectedKind { kind: u8 },
+    DifferentEchoReplySource,
+    UnexpectedIcmpType { description: String },
+    TtlExceededForEcho,
 }
 
 impl WeirdData {
     fn consume_merge(&mut self, other: Self) {
-        for (weird_addr, other_item) in other.items.into_iter() {
-            let mut entry = self.items.entry(weird_addr).or_default();
+        for (description, other_item) in other.items.into_iter() {
+            let mut entry = self.items.entry(description).or_default();
             entry.hit_count.saturating_add(other_item.hit_count);
-            entry.descriptions.extend(other_item.descriptions);
         }
     }
 }
@@ -155,7 +173,6 @@ impl WeirdData {
 pub struct WeirdItem {
     // IMPORTANT: Type must stay backwards-compatible with previously-written JSON,
     // i.e. add only optional fields or provide defaults!
-    pub descriptions: HashSet<String>,
     pub hit_count: HitCount,
 }
 
@@ -169,7 +186,7 @@ mod tests {
 
     use crate::analyse::HitCount;
 
-    use super::{LhrItem, LhrSource, MeasurementTree, WeirdItem};
+    use super::{LhrItem, LhrSource, MeasurementTree, WeirdItem, WeirdType};
 
     fn given_trees() -> (MeasurementTree, MeasurementTree) {
         let parent_tree = MeasurementTree::empty(Ipv6Net::from_str("2001:db8::/62").unwrap());
@@ -252,27 +269,20 @@ mod tests {
         parent_tree
             .weirdness
             .items
-            .insert(given_some_addr(), gen_weird(7, &["hehe", "oops"]));
+            .insert(WeirdType::TtlExceededForEcho, WeirdItem { hit_count: 7 });
         sub_tree
             .weirdness
             .items
-            .insert(given_some_addr(), gen_weird(2, &["oops", "top"]));
+            .insert(WeirdType::TtlExceededForEcho, WeirdItem { hit_count: 2 });
 
         // when
         parent_tree.consume_merge(sub_tree).unwrap();
 
         // then
-        let expected_item = gen_weird(9, &["hehe", "oops", "top"]);
-        assert_that!(parent_tree.weirdness.items).contains_entry(given_some_addr(), expected_item);
+        let expected_item = WeirdItem { hit_count: 9 };
+        assert_that!(parent_tree.weirdness.items)
+            .contains_entry(WeirdType::TtlExceededForEcho, expected_item);
         assert_that!(parent_tree.weirdness.items).has_length(1);
-    }
-
-    fn gen_weird(hit_count: HitCount, descriptions: &[&str]) -> WeirdItem {
-        let mut item = WeirdItem::default();
-        item.hit_count = hit_count;
-        item.descriptions
-            .extend(descriptions.into_iter().map(|x| x.to_string()));
-        item
     }
 
     #[test]
