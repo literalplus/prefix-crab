@@ -10,6 +10,7 @@ use queue_models::echo_response::EchoProbeResponse;
 
 use crate::analyse::context::{ContextFetchError, ContextFetchResult};
 use crate::analyse::persist::UpdateAnalysis;
+use crate::analyse::CanFollowUp;
 
 use crate::{analyse, prefix_tree};
 
@@ -102,11 +103,19 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
     info!("Context for this probe: {:?}", context);
     info!("Interpretation for this probe: {}", interpretation);
 
+    // TODO schedule follow-ups now & here (still save if f/u fails!)
+    let need_follow_up = interpretation.needs_follow_up();
+
     interpretation
         .update_analysis(conn, &mut context)
         .context("while saving analysis data")?;
 
-    // TODO schedule follow-ups now?
+    if need_follow_up {
+        info!("No further follow-up necessary, scheduling split analysis.");
+        analyse::split::process(conn, &context)?;
+    } else {
+        debug!("Follow-up needed, split analysis delayed.");
+    }
 
     Ok(())
 }

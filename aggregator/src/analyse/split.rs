@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use diesel::{prelude::*, PgConnection, QueryDsl, SelectableHelper};
 use ipnet::{IpNet, Ipv6Net};
 use itertools::Itertools;
-use log::warn;
+use log::{info, warn};
 use prefix_crab::prefix_split::{self, PrefixSplit, SplitSubnet};
 
 use crate::{
@@ -13,13 +13,13 @@ use crate::{
     schema::measurement_tree::{dsl::measurement_tree, target_net},
 };
 
-use self::subnet::{Subnets, Subnet};
+use self::subnet::{Subnet, Subnets};
 
-use super::{context, LhrItem, MeasurementTree};
+use super::{context, HitCount, LhrItem, MeasurementTree};
 
 mod subnet;
 
-pub fn process(conn: &mut PgConnection, request: context::Context) -> Result<()> {
+pub fn process(conn: &mut PgConnection, request: &context::Context) -> Result<()> {
     let relevant_measurements = measurement_tree
         .filter(target_net.subnet_or_eq(request.node().path))
         .select(MeasurementTree::as_select())
@@ -32,41 +32,89 @@ pub fn process(conn: &mut PgConnection, request: context::Context) -> Result<()>
         })?;
     let base_net = request.node().try_net_into_v6()?;
     let subnets = Subnets::new(base_net, relevant_measurements)?;
+    let rec = SplitRecommendation::new(subnets);
+    info!("Parks & {:?}", rec);
     Ok(())
 }
 
-enum SplitAction {
+#[derive(Debug)]
+enum SplitRecommendation {
     /// Two different subnets have been detected & a split is suggested
-    YesSplit,
+    YesSplit { priority: ReProbePriority },
     /// The two subnets look similar & a split is not suggested.
-    NoKeep { consider_merge: bool },
+    NoKeep { priority: ReProbePriority },
     /// An action could not be determined
     CannotDetermine { maybe_with_more_data: bool },
 }
 
-type SplitConfidence = i32;
+#[derive(Debug)]
+struct ReProbePriority {
+    class: PriorityClass,
+    supporting_observations: HitCount,
+}
 
-struct SplitRecommendation {
-    pub action: SplitAction,
-    pub confidence: SplitConfidence,
+#[derive(Debug)]
+enum PriorityClass {
+    Low,
+    MediumLow,
+    Medium,
+    MediumHigh,
+    High,
 }
 
 impl SplitRecommendation {
-    fn new(subnets: Subnets) {
-        use self::subnet::LhrSetDifference::*;
+    fn new(subnets: Subnets) -> Self {
+        use self::subnet::Diff::*;
+        use PriorityClass::*;
+        use SplitRecommendation::*;
 
         match subnets.lhr_diff() {
-            BothNone => {
-
+            BothNone => Self::new_without_lhr_data(subnets),
+            BothSameSingle { shared } => NoKeep {
+                priority: ReProbePriority {
+                    class: Medium,
+                    supporting_observations: shared.hit_count,
+                },
             },
-            BothSameSingle { lhr } => todo!(),
-            BothSameMultiple { lhrs } => todo!(),
-            Overlapping { shared, distinct } => todo!(),
-            Disjoint { lhrs } => todo!(),
+            BothSameMultiple { shared } => YesSplit {
+                priority: ReProbePriority {
+                    class: MediumHigh,
+                    supporting_observations: todo!(), // hits NOT on most popular LHR
+                },
+            },
+            OverlappingOrDisjoint { shared: _, distinct: is_superset } => YesSplit {
+                priority: ReProbePriority {
+                    class: High,
+                    supporting_observations: subnets
+                        .sum_subtrees(|t| t.last_hop_routers.sum_hits()), // TODO: or just all responsives?
+                },
+            },
+        }
+    }
+
+    fn new_without_lhr_data(subnets: Subnets) -> Self {
+        use self::subnet::Diff::*;
+        use PriorityClass::*;
+        use SplitRecommendation::*;
+
+        match subnets.weird_diff() {
+            BothNone => NoKeep {
+                priority: ReProbePriority {
+                    class: Low,
+                    supporting_observations: subnets.sum_subtrees(|t| t.unresponsive_count),
+                },
+            },
+            BothSameSingle { shared } => NoKeep {
+                priority: ReProbePriority {
+                    class: Low,
+                    supporting_observations: shared.hit_count,
+                },
+            },
+            BothSameMultiple { shared } => todo!(),
+            OverlappingOrDisjoint { shared, distinct } => todo!(),
         }
     }
 }
-
 
 // impl TryFrom<Subnet> for (SubnetInterpretation, i32) {
 //     type Error = anyhow::Error;

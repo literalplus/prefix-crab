@@ -110,9 +110,17 @@ pub struct LhrData {
 impl LhrData {
     fn consume_merge(&mut self, other: Self) {
         for (lhr_addr, item) in other.items.into_iter() {
-            let mut entry = self.items.entry(lhr_addr).or_default();
+            let entry = self.items.entry(lhr_addr).or_default();
             entry.consume_merge(item);
         }
+    }
+
+    pub fn sum_hits(&self) -> HitCount {
+        let mut result = 0;
+        for item in self.items.values() {
+            result += item.hit_count;
+        }
+        result
     }
 }
 
@@ -138,7 +146,7 @@ pub struct LhrItem {
 impl LhrItem {
     pub fn consume_merge(&mut self, other: Self) {
         self.sources.extend(other.sources);
-        self.hit_count.saturating_add(other.hit_count);
+        self.hit_count = self.hit_count.saturating_add(other.hit_count);
     }
 }
 
@@ -164,7 +172,7 @@ impl WeirdData {
     fn consume_merge(&mut self, other: Self) {
         for (description, other_item) in other.items.into_iter() {
             let mut entry = self.items.entry(description).or_default();
-            entry.hit_count.saturating_add(other_item.hit_count);
+            entry.consume_merge(other_item);
         }
     }
 }
@@ -174,6 +182,12 @@ pub struct WeirdItem {
     // IMPORTANT: Type must stay backwards-compatible with previously-written JSON,
     // i.e. add only optional fields or provide defaults!
     pub hit_count: HitCount,
+}
+
+impl WeirdItem {
+    pub fn consume_merge(&mut self, other: Self) {
+        self.hit_count = self.hit_count.saturating_add(other.hit_count);
+    }
 }
 
 crate::persist::configure_jsonb_serde!(WeirdData);

@@ -63,7 +63,6 @@ impl Display for EchoResult {
 }
 
 pub type LhrAddr = Ipv6Addr;
-pub type WeirdAddr = Ipv6Addr;
 
 #[derive(Debug, Default)]
 pub struct PrefixEntry {
