@@ -171,7 +171,7 @@ pub enum WeirdType {
 impl WeirdData {
     fn consume_merge(&mut self, other: Self) {
         for (description, other_item) in other.items.into_iter() {
-            let mut entry = self.items.entry(description).or_default();
+            let entry = self.items.entry(description).or_default();
             entry.consume_merge(other_item);
         }
     }
@@ -220,12 +220,16 @@ mod tests {
     fn merge_counts() {
         // given
         let (mut parent_tree, mut sub_tree) = given_trees();
+
         parent_tree.responsive_count = 7;
         sub_tree.responsive_count = 4;
+
         parent_tree.unresponsive_count = 3;
-        sub_tree.responsive_count = 2;
+        sub_tree.unresponsive_count = 2;
+
         // when
         parent_tree.consume_merge(sub_tree).unwrap();
+
         // then
         assert_that!(parent_tree.responsive_count).is_equal_to(11);
         assert_that!(parent_tree.unresponsive_count).is_equal_to(5);

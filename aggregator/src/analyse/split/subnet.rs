@@ -2,7 +2,6 @@ use std::{
     array::from_fn,
     collections::{HashMap, HashSet},
     hash::Hash,
-    net::Ipv6Addr,
     ops::Deref,
 };
 
@@ -16,17 +15,17 @@ use crate::analyse::{HitCount, LhrAddr, LhrItem, WeirdItem, WeirdType};
 use super::MeasurementTree;
 
 pub struct Subnet {
-    pub subnet: SplitSubnet,
+    subnet: SplitSubnet,
     /// All measurement trees found in this subnet, merged into one.
-    pub synthetic_tree: MeasurementTree,
+    synthetic_tree: MeasurementTree,
 }
 
 impl Subnet {
-    pub fn iter_lhrs(&self) -> std::collections::hash_map::Iter<'_, LhrAddr, LhrItem> {
+    fn iter_lhrs(&self) -> std::collections::hash_map::Iter<'_, LhrAddr, LhrItem> {
         self.synthetic_tree.last_hop_routers.items.iter()
     }
 
-    pub fn iter_weirds(&self) -> std::collections::hash_map::Iter<'_, WeirdType, WeirdItem> {
+    fn iter_weirds(&self) -> std::collections::hash_map::Iter<'_, WeirdType, WeirdItem> {
         self.synthetic_tree.weirdness.items.iter()
     }
 }
@@ -53,10 +52,10 @@ impl Subnets {
         let split_nets: [IpNet; 2] = from_fn(|i| IpNet::V6(*&splits[i].subnet.network));
         for tree in relevant_measurements {
             let mut unused_tree = Some(tree);
-            for (i, subnet) in splits.iter_mut().enumerate() {
-                let net_borrow = &unused_tree.as_ref().expect("tree for net").target_net;
-                if net_borrow <= &split_nets[i] {
-                    subnet
+            for (i, candidate_split) in splits.iter_mut().enumerate() {
+                let tree_net = &unused_tree.as_ref().expect("tree for net").target_net;
+                if split_nets[i].contains(tree_net) {
+                    candidate_split
                         .synthetic_tree
                         .consume_merge(unused_tree.take().expect("tree for merge"))?;
                     break;
@@ -73,14 +72,6 @@ impl Subnets {
             net: base_net,
             splits,
         })
-    }
-
-    fn left(&self) -> &Subnet {
-        &self.splits[0]
-    }
-
-    fn right(&self) -> &Subnet {
-        &self.splits[1]
     }
 
     pub fn lhr_diff(&self) -> Diff<LhrItem> {
@@ -112,14 +103,6 @@ impl Subnets {
         lookup_diff(type_sets, lookup)
     }
 
-    // pub fn as_synthetic_tree(&self) -> MeasurementTree {
-    //     let mut tree = MeasurementTree::empty(self.net);
-    //     for subnet in self.iter() {
-    //         tree.consume_merge(subnet.synthetic_tree.clone());
-    //     }
-    //     tree
-    // }
-
     pub fn sum_subtrees(&self, count_fn: fn(&MeasurementTree) -> HitCount) -> HitCount {
         let mut result = 0;
         for subnet in self.iter() {
@@ -137,6 +120,7 @@ impl Deref for Subnets {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Diff<I> {
     BothNone,
     BothSameSingle { shared: I },
@@ -146,19 +130,29 @@ pub enum Diff<I> {
 
 fn lookup_diff<K, I>(sets: [HashSet<K>; 2], lookup: HashMap<K, I>) -> Diff<I>
 where
-    K: Hash + Eq + PartialEq,
+    K: Hash + Eq + PartialEq + std::fmt::Debug,
     I: Clone,
 {
     let [left_set, right_set] = sets;
     // If we implement `difference` & `intersection` ourselves in one step, we could skip the
     // clone() on the key; doesn't seem worth it atm but could improve performance in the future.
     let distinct: Vec<I> = left_set
-        .difference(&right_set)
-        .map(|k| lookup[k].clone())
+        .symmetric_difference(&right_set)
+        .map(|k| {
+            lookup
+                .get(k)
+                .unwrap_or_else(|| panic!("lookup should have {:?} (a distinct key)", k))
+                .clone()
+        })
         .collect();
     let shared: Vec<I> = left_set
         .intersection(&right_set)
-        .map(|k| lookup[k].clone())
+        .map(|k| {
+            lookup
+                .get(k)
+                .unwrap_or_else(|| panic!("lookup should have {:?} (a shared key)", k))
+                .clone()
+        })
         .collect();
     Diff::from(shared, distinct)
 }
@@ -192,5 +186,176 @@ impl<I> Diff<I> {
                 OverlappingOrDisjoint { shared, distinct }
             }
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::{HashMap, HashSet};
+
+    use assertor::{assert_that, EqualityAssertion, MapAssertion};
+
+    use super::*;
+    use crate::{analyse::LhrSource, test_utils::*};
+
+    #[test]
+    fn new_empty() {
+        // given
+        let base_net = net(TREE_BASE_NET);
+        let relevant_measurements = vec![];
+
+        // when
+        let subnets = Subnets::new(base_net, relevant_measurements).unwrap();
+
+        // then
+        assert_that!(subnets.net).is_equal_to(base_net);
+    }
+
+    #[test]
+    fn new_check_merge() {
+        // given
+        let base_net = net(TREE_BASE_NET);
+        let relevant_measurements = gen_measurements_complex();
+
+        // when
+        let subnets = Subnets::new(base_net, relevant_measurements).unwrap();
+
+        // then
+        let [left, right] = subnets.deref();
+        then_contains_lhr_101(&left, 14);
+        then_contains_lhr_beef(&right, 24);
+        then_contains_lhr_101(&right, 9);
+        then_lhr_count(&left, 1);
+        then_lhr_count(&right, 2);
+    }
+
+    fn then_contains_lhr_101(sub: &Subnet, hit_count: HitCount) {
+        assert_that!(sub.synthetic_tree.last_hop_routers.items).contains_entry(
+            addr(TREE_LHR_101),
+            LhrItem {
+                hit_count,
+                sources: vec![LhrSource::TraceResponsive].into_iter().collect(),
+            },
+        );
+    }
+
+    fn then_contains_lhr_beef(sub: &Subnet, hit_count: HitCount) {
+        assert_that!(sub.synthetic_tree.last_hop_routers.items).contains_entry(
+            addr(TREE_LHR_BEEF),
+            LhrItem {
+                hit_count,
+                sources: vec![LhrSource::TraceUnresponsive].into_iter().collect(),
+            },
+        );
+    }
+
+    fn then_lhr_count(sub: &Subnet, expected: usize) {
+        assert_that!(sub.synthetic_tree.last_hop_routers.items).has_length(expected);
+    }
+
+    #[test]
+    fn new_check_disjoint() {
+        // given
+        let base_net = net(TREE_BASE_NET);
+        let relevant_measurements = vec![
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 2),
+            gen_tree_with_lhr_beef(TREE_RIGHT_NET, 3),
+            gen_tree_with_lhr_beef(TREE_RIGHT_NET_ALT, 3),
+        ];
+
+        // when
+        let subnets = Subnets::new(base_net, relevant_measurements).unwrap();
+
+        // then
+        let [left, right] = subnets.deref();
+        then_contains_lhr_101(&left, 2);
+        then_contains_lhr_beef(&right, 6);
+        then_lhr_count(&left, 1);
+        then_lhr_count(&right, 1);
+    }
+
+    #[test]
+    fn diff_from_both_none() {
+        // given
+        let shared: Vec<i32> = vec![];
+        let distinct: Vec<i32> = vec![];
+
+        // when
+        let diff = Diff::from(shared, distinct);
+
+        // then
+        assert_that!(diff).is_equal_to(Diff::BothNone);
+    }
+
+    #[test]
+    fn diff_from_disjoint() {
+        // given
+        let shared: Vec<i32> = vec![];
+        let distinct: Vec<i32> = vec![12];
+
+        // when
+        let diff = Diff::from(shared.clone(), distinct.clone());
+
+        // then
+        assert_that!(diff).is_equal_to(Diff::OverlappingOrDisjoint { shared, distinct });
+    }
+
+    #[test]
+    fn diff_from_distinct_with_shared() {
+        // given
+        let shared: Vec<i32> = vec![4];
+        let distinct: Vec<i32> = vec![12];
+
+        // when
+        let diff = Diff::from(shared.clone(), distinct.clone());
+
+        // then
+        assert_that!(diff).is_equal_to(Diff::OverlappingOrDisjoint { shared, distinct });
+    }
+
+    #[test]
+    fn diff_from_same_single() {
+        // given
+        let shared: Vec<i32> = vec![4];
+        let distinct: Vec<i32> = vec![];
+
+        // when
+        let diff = Diff::from(shared.clone(), distinct.clone());
+
+        // then
+        assert_that!(diff).is_equal_to(Diff::BothSameSingle { shared: 4 });
+    }
+
+    #[test]
+    fn diff_from_same_multi() {
+        // given
+        let shared: Vec<i32> = vec![4, 8];
+        let distinct: Vec<i32> = vec![];
+
+        // when
+        let diff = Diff::from(shared.clone(), distinct.clone());
+
+        // then
+        assert_that!(diff).is_equal_to(Diff::BothSameMultiple { shared });
+    }
+
+    #[test]
+    fn diff_lookup_both_set() {
+        // given
+        let left_set: HashSet<i32> = vec![4, 8].into_iter().collect();
+        let right_set: HashSet<i32> = vec![4, 12].into_iter().collect();
+        let mut lookup = HashMap::new();
+        lookup.insert(4, "shared");
+        lookup.insert(8, "left only");
+        lookup.insert(12, "right only");
+
+        // when
+        let diff = lookup_diff([left_set, right_set], lookup);
+
+        // then
+        assert_that!(diff).is_equal_to(Diff::OverlappingOrDisjoint {
+            shared: vec!["shared"],
+            distinct: vec!["left only", "right only"],
+        });
     }
 }

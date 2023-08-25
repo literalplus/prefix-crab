@@ -222,6 +222,7 @@ where
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
+    use assertor::{assert_that, EqualityAssertion};
     use ipnet::Ipv6Net;
     use std::{net::Ipv6Addr, str::FromStr};
 
@@ -284,12 +285,12 @@ mod tests {
     #[test]
     fn test_key_conversion() -> Result<()> {
         // given
-        let expected = 0x2001db8000000u64;
+        let expected = 0x20010db800000000u64;
         let net = Ipv6Net::from_str("2001:db8::865/64")?;
         // when
         let net_key = to_key(&net);
         // then
-        assert_eq!(net_key, expected);
+        assert_that!(net_key).is_equal_to(expected);
         Ok(())
     }
 }

@@ -189,7 +189,7 @@ mod split {
         #[test]
         fn prefix_len_boundary() -> Result<()> {
             // given
-            let net = "2001:db8::/62".parse::<Ipv6Net>()?;
+            let net = "2001:db8::/63".parse::<Ipv6Net>()?;
 
             // when
             let len = subnet_prefix_len_for(net);
@@ -218,10 +218,8 @@ mod split {
             // given
             let net = "2001:db8::/32".parse::<Ipv6Net>()?;
             let expected_subnets: Vec<Ipv6Net> = vec![
-                "2001:db8::/34",
-                "2001:db8:4000::/34",
-                "2001:db8:8000::/34",
-                "2001:db8:c000::/34",
+                "2001:db8::/33",
+                "2001:db8:8000::/33",
             ]
             .iter()
             .map(|s| s.parse().unwrap())
@@ -350,14 +348,19 @@ mod sample {
         fn addresses_in_subnet() -> Result<()> {
             // given
             let net = "2001:db8::/32".parse::<Ipv6Net>()?;
-            let first_subnet = "2001:db8::/34".parse::<Ipv6Net>()?;
+            let subnets = [
+                "2001:db8::/33".parse::<Ipv6Net>()?,
+                "2001:db8:8000::/33".parse::<Ipv6Net>()?
+            ];
             let split = super::super::split(net)?;
             // when
-            let result = &split.to_samples(512)[0];
+            let result = &split.to_samples(512);
 
             // then
-            for address in &result.addresses {
-                assert!(first_subnet.contains(address));
+            for (i, subnet) in subnets.iter().enumerate() {
+                for address in &result[i].addresses {
+                    assert!(subnet.contains(address));
+                }
             }
             Ok(())
         }
