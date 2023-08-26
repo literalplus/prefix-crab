@@ -6,6 +6,7 @@ use crate::prefix_tree::context::ContextOps;
 use crate::prefix_tree::{self, PrefixTree};
 use crate::schema::split_analysis::dsl::created_at;
 use crate::schema::split_analysis::stage;
+use crate::persist::DieselErrorFixCause;
 
 use super::{SplitAnalysis, Stage};
 
@@ -30,7 +31,7 @@ pub enum ContextFetchError {
     #[error("no analysis is active for {parent:?}")]
     NoActiveAnalysis { parent: prefix_tree::Context },
     #[error("problem talking to the database")]
-    DbError(#[from] diesel::result::Error),
+    DbError(#[from] anyhow::Error),
 }
 
 pub type ContextFetchResult = Result<Context, ContextFetchError>;
@@ -58,5 +59,6 @@ fn fetch_active(
         .filter(stage.ne(Stage::Completed))
         .order_by(created_at.desc())
         .load(conn)
-        .map_err(|e| ContextFetchError::DbError(e))
+        .fix_cause()
+        .map_err(ContextFetchError::DbError)
 }

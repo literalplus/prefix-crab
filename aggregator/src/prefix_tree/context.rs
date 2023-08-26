@@ -7,6 +7,7 @@ use ipnet::Ipv6Net;
 use crate::persist::dsl::CidrMethods;
 use crate::prefix_tree::PrefixTree;
 use crate::schema::prefix_tree::dsl::*;
+use crate::persist::DieselErrorFixCause;
 
 use super::ExtraData;
 use super::MergeStatus;
@@ -58,6 +59,7 @@ fn select_ancestors_and_self(
         .select(PrefixTree::as_select())
         .order_by(path)
         .load(connection)
+        .fix_cause()
         .with_context(|| "while selecting parents")?;
     Ok(parents)
 }
@@ -72,6 +74,7 @@ fn select_unmerged_children(
         .select(PrefixTree::as_select())
         .order_by(path)
         .load(connection)
+        .fix_cause()
         .with_context(|| "while selecting unmerged children")?;
     Ok(parents)
 }

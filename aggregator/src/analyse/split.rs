@@ -6,6 +6,7 @@ use crate::{
     persist::dsl::CidrMethods,
     prefix_tree::ContextOps,
     schema::measurement_tree::{dsl::measurement_tree, target_net},
+    persist::DieselErrorFixCause,
 };
 
 use self::subnet::Subnets;
@@ -20,6 +21,7 @@ pub fn process(conn: &mut PgConnection, request: &context::Context) -> Result<()
         .filter(target_net.subnet_or_eq(request.node().path))
         .select(MeasurementTree::as_select())
         .load(conn)
+        .fix_cause()
         .with_context(|| {
             format!(
                 "Unable to load existing measurements for {}",

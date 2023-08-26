@@ -25,6 +25,7 @@ cd zmap-buddy
 cargo run -- rabbit-mq-listen
 cargo build --release
 ../target/release/zmap-buddy prefix-scan fddc:9d0b:e318:8712::bc:1/48
+../target/release/zmap-buddy prefix-scan fddc:9d0b:e318:8680::/62
 cd ..
 cd aggregator
 cargo run

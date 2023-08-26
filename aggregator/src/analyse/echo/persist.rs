@@ -4,6 +4,7 @@ use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::*;
 use diesel::PgConnection;
 use ipnet::Ipv6Net;
+use itertools::Itertools;
 use log::info;
 use log::trace;
 use log::warn;
@@ -21,6 +22,7 @@ use crate::analyse::PrefixEntry;
 use crate::analyse::SplitAnalysis;
 
 use crate::persist::dsl::CidrMethods;
+use crate::persist::DieselErrorFixCause;
 
 use crate::analyse::Stage;
 use crate::prefix_tree::context::ContextOps;
@@ -35,7 +37,7 @@ impl UpdateAnalysis for EchoResult {
 
         let update = self.determine_parent_update(&mut context.analysis, log_id);
         let forest = self.drain_to_measurement_forest()?;
-        Self::save(conn, &mut context.analysis, update, forest)
+        Self::save(conn, &context.analysis, update, forest)
     }
 }
 
@@ -66,52 +68,8 @@ impl EchoResult {
         forest: MeasurementForest,
     ) -> Result<()> {
         conn.transaction(|conn| {
-            let mut query = measurement_tree.into_boxed();
-            for net in forest.to_iter_all_nets() {
-                query = query.or_filter(target_net.supernet_or_eq6(&net));
-            }
-            // trace!("query is {:?}", debug_query(&query));
-            let trees = query.load(conn)?;
-            let num_trees = trees.len();
-            let mut remote_forest = MeasurementForest::with_untouched(trees)?;
-            trace!("Remote forest has {} trees: {}", num_trees, remote_forest);
-            for tree_from_result in forest.into_iter_touched() {
-                remote_forest.insert(tree_from_result.tree)?
-            }
-            let obsolete_nets: Vec<&Ipv6Net> = remote_forest.obsolete_nets.iter().collect();
-            if !obsolete_nets.is_empty() {
-                warn!(
-                    "Encountered obsolete measurement nodes: {:?}",
-                    obsolete_nets
-                );
-            }
-            // Batching would be ideal, but Diesel doesn't seem to directly support that
-            // ref: https://github.com/diesel-rs/diesel/issues/1517
-            let mut inserts = vec![];
-            for updated_tree in remote_forest.into_iter_touched() {
-                let ModifiableTree { tree, touched } = updated_tree;
-                match touched {
-                    ModificationType::Untouched => {}
-                    ModificationType::Inserted => inserts.push(tree),
-                    ModificationType::Updated => {
-                        trace!("Update {}", tree.target_net);
-                        diesel::update(measurement_tree)
-                            .filter(target_net.eq(tree.target_net))
-                            .set(tree)
-                            .execute(conn)?;
-                    }
-                }
-            }
-            if !inserts.is_empty() {
-                trace!(
-                    "Inserting {} FRESH trees for the CO2 credits",
-                    inserts.len()
-                );
-                diesel::insert_into(measurement_tree)
-                    .values(inserts)
-                    .on_conflict_do_nothing()
-                    .execute(conn)?;
-            }
+            let relevant_measurements = load_relevant_measurements(conn, analysis, &forest)?;
+            save_merging_into_existing(conn, relevant_measurements, forest)?;
 
             diesel::update(analysis).set(update).execute(conn)?;
             Ok(())
@@ -126,6 +84,75 @@ impl EchoResult {
         }
         Ok(forest)
     }
+}
+
+fn load_relevant_measurements(
+    conn: &mut PgConnection,
+    analysis: &SplitAnalysis,
+    forest: &MeasurementForest,
+) -> Result<Vec<MeasurementTree>> {
+    let mut query = measurement_tree.into_boxed();
+    for net in forest.to_iter_all_nets() {
+        query = query.or_filter(target_net.supernet_or_eq6(&net));
+    }
+    query.load(conn).fix_cause().with_context(|| {
+        format!(
+            "while loading existing trees for amendment related to PrefixTree[{}], \n\
+            with potential MeasurementTree prefixes: {:?}.",
+            analysis.tree_id,
+            forest.to_iter_all_nets().collect_vec(),
+        )
+    })
+}
+
+fn save_merging_into_existing(
+    conn: &mut PgConnection,
+    relevant_measurements: Vec<MeasurementTree>,
+    local_forest: MeasurementForest,
+) -> Result<()> {
+    let num_trees = relevant_measurements.len();
+    let mut remote_forest = MeasurementForest::with_untouched(relevant_measurements)?;
+    trace!("Remote forest has {} trees: {}", num_trees, remote_forest);
+    for tree_from_result in local_forest.into_iter_touched() {
+        remote_forest.insert(tree_from_result.tree)?
+    }
+    let obsolete_nets: Vec<&Ipv6Net> = remote_forest.obsolete_nets.iter().collect();
+    if !obsolete_nets.is_empty() {
+        warn!(
+            "Encountered obsolete measurement nodes: {:?}",
+            obsolete_nets
+        );
+    }
+    // Batching would be ideal, but Diesel doesn't seem to directly support that
+    // ref: https://github.com/diesel-rs/diesel/issues/1517
+    let mut inserts = vec![];
+    for updated_tree in remote_forest.into_iter_touched() {
+        let ModifiableTree { tree, touched } = updated_tree;
+        match touched {
+            ModificationType::Untouched => {}
+            ModificationType::Inserted => inserts.push(tree),
+            ModificationType::Updated => {
+                trace!("Update {}", tree.target_net);
+                diesel::update(measurement_tree)
+                    .filter(target_net.eq(tree.target_net))
+                    .set(tree)
+                    .execute(conn)
+                    .fix_cause()?;
+            }
+        }
+    }
+    if !inserts.is_empty() {
+        trace!(
+            "Inserting {} FRESH trees for the CO2 credits",
+            inserts.len()
+        );
+        diesel::insert_into(measurement_tree)
+            .values(inserts)
+            .on_conflict_do_nothing()
+            .execute(conn)
+            .fix_cause()?;
+    }
+    Ok(())
 }
 
 fn make_tree(net: Ipv6Net, entry: PrefixEntry) -> MeasurementTree {

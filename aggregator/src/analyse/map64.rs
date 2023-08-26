@@ -105,34 +105,6 @@ impl<'a, V> Iterator for IterValues<'a, V> {
 
 impl<'a, V> FusedIterator for IterValues<'a, V> {}
 
-pub struct IterEntries<'a, V> {
-    delegate: hash_map::Iter<'a, u64, V>,
-}
-
-impl<'a, V> Net64Map<V> {
-    pub fn iter_entries(&'a self) -> IterEntries<'a, V> {
-        IterEntries {
-            delegate: self.per_net.iter(),
-        }
-    }
-}
-
-impl<'a, V> Iterator for IterEntries<'a, V> {
-    type Item = (Ipv6Net, &'a V);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let (key_raw, value) = self.delegate.next()?;
-        let key = key_to_net(key_raw);
-        Some((key, value))
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.delegate.size_hint()
-    }
-}
-
-impl<'a, V> FusedIterator for IterEntries<'a, V> {}
-
 pub struct Drain<'a, V> {
     delegate: hash_map::Drain<'a, u64, V>,
 }
@@ -251,21 +223,6 @@ mod tests {
         let mut iter = store.iter_values();
         // then
         assert_eq!(iter.next(), Some(&42));
-        assert_eq!(iter.next(), None);
-        Ok(())
-    }
-
-    #[test]
-    fn test_iter_entries_correct_net() -> Result<()> {
-        // given
-        let mut store = Net64Map::default();
-        let addr = Ipv6Addr::from_str("2001:db8::56")?;
-        let net = Ipv6Net::from_str("2001:db8::/64")?;
-        store[&addr] = 42;
-        // when
-        let mut iter = store.iter_entries();
-        // then
-        assert_eq!(iter.next(), Some((net, &42)));
         assert_eq!(iter.next(), None);
         Ok(())
     }

@@ -9,6 +9,7 @@ use crate::prefix_tree;
 use crate::prefix_tree::ContextOps;
 
 use crate::schema::split_analysis::dsl as analysis_dsl;
+use crate::persist::DieselErrorFixCause;
 
 
 use super::context::Context;
@@ -19,7 +20,8 @@ pub fn begin(conn: &mut PgConnection, parent: prefix_tree::Context) -> ContextFe
         .values((
             analysis_dsl::tree_id.eq(&parent.node().id),
         ))
-        .execute(conn)?;
+        .execute(conn)
+        .fix_cause()?;
     super::context::fetch(conn, parent)
 }
 

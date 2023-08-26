@@ -32,7 +32,7 @@ impl Subnet {
 
 impl From<SplitSubnet> for Subnet {
     fn from(subnet: SplitSubnet) -> Self {
-        let synthetic_tree = MeasurementTree::empty(subnet.network.clone());
+        let synthetic_tree = MeasurementTree::empty(subnet.network);
         Self {
             subnet,
             synthetic_tree,
@@ -49,7 +49,7 @@ impl Subnets {
     pub fn new(base_net: Ipv6Net, relevant_measurements: Vec<MeasurementTree>) -> Result<Self> {
         let split = prefix_split::split(base_net).context("trying to split for split analysis")?;
         let mut splits: [Subnet; 2] = split.into_subnets().map(From::from);
-        let split_nets: [IpNet; 2] = from_fn(|i| IpNet::V6(*&splits[i].subnet.network));
+        let split_nets: [IpNet; 2] = from_fn(|i| IpNet::V6(splits[i].subnet.network));
         for tree in relevant_measurements {
             let mut unused_tree = Some(tree);
             for (i, candidate_split) in splits.iter_mut().enumerate() {
@@ -161,7 +161,7 @@ impl<I> Diff<I> {
     fn from(shared: Vec<I>, distinct: Vec<I>) -> Self {
         use Diff::*;
 
-        return if shared.is_empty() {
+        if shared.is_empty() {
             if distinct.is_empty() {
                 BothNone
             } else {
@@ -170,22 +170,20 @@ impl<I> Diff<I> {
                     distinct,
                 }
             }
-        } else {
-            if distinct.is_empty() {
-                if shared.len() == 1 {
-                    BothSameSingle {
-                        shared: shared
-                            .into_iter()
-                            .next()
-                            .expect("vec with length one to have item"),
-                    }
-                } else {
-                    BothSameMultiple { shared }
+        } else if distinct.is_empty() {
+            if shared.len() == 1 {
+                BothSameSingle {
+                    shared: shared
+                        .into_iter()
+                        .next()
+                        .expect("vec with length one to have item"),
                 }
             } else {
-                OverlappingOrDisjoint { shared, distinct }
+                BothSameMultiple { shared }
             }
-        };
+        } else {
+            OverlappingOrDisjoint { shared, distinct }
+        }
     }
 }
 
