@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use crate::analyse::{HitCount, LhrSource};
 
 pub use super::echo::result::*;
-use super::WeirdType;
 
 pub trait CanFollowUp {
     fn needs_follow_up(&self) -> bool;

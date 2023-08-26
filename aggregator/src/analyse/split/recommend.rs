@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use log::trace;
 
 use crate::analyse::{HitCount, LhrItem, WeirdItem};
 
@@ -38,7 +39,9 @@ pub fn recommend(subnets: Subnets) -> SplitRecommendation {
     use PriorityClass::*;
     use SplitRecommendation::*;
 
-    match subnets.lhr_diff() {
+    let diff = subnets.lhr_diff();
+    trace!("LHR diff: {:?}", diff);
+    match diff {
         BothNone => recommend_without_lhr_data(subnets),
         BothSameSingle { shared } => NoKeep {
             priority: ReProbePriority {
@@ -78,7 +81,9 @@ fn recommend_without_lhr_data(subnets: Subnets) -> SplitRecommendation {
     use PriorityClass::*;
     use SplitRecommendation::*;
 
-    match subnets.weird_diff() {
+    let diff = subnets.weird_diff();
+    trace!("Weirdness diff: {:?}", diff);
+    match diff {
         BothNone => CannotDetermine {
             priority: ReProbePriority {
                 class: Low,

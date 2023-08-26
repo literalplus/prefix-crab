@@ -60,12 +60,12 @@ mod process {
                 result.count_other_responsive(targets);
             }
             EchoReply {
-                different_from: Some(from),
+                different_from: Some(_),
             } => {
                 follow_up_collector.stage_responsive(targets);
                 result.register_weirds(targets, WeirdType::DifferentEchoReplySource);
             }
-            ResponseKey::Other { from, description } => {
+            ResponseKey::Other { from: _, description } => {
                 result.register_weirds(
                     targets,
                     WeirdType::UnexpectedIcmpType {
@@ -77,7 +77,7 @@ mod process {
                 follow_up_collector.stage_unresponsive(targets);
                 result.count_unresponsive(targets);
             }
-            TimeExceeded { from } => result.register_weirds(targets, WeirdType::TtlExceededForEcho),
+            TimeExceeded { from: _ } => result.register_weirds(targets, WeirdType::TtlExceededForEcho),
         }
     }
 
@@ -128,10 +128,10 @@ mod process {
 
     fn kind_to_source(value: &DestUnreachKind) -> Result<LhrSource, u8> {
         Ok(match value {
-            NoRoute => DestUnreachReject,
-            AdminProhibited => DestUnreachProhibit,
-            AddressUnreachable => DestUnreachAddrPort,
-            PortUnreachable => DestUnreachAddrPort,
+            NoRoute => UnreachRoute,
+            AdminProhibited => UnreachAdmin,
+            AddressUnreachable => UnreachAddr,
+            PortUnreachable => UnreachPort,
             DestUnreachKind::Other(kind) => return Err(*kind),
         })
     }

@@ -44,10 +44,6 @@ impl EchoResult {
         }
     }
 
-    pub fn iter(&self) -> map64::IterEntries<PrefixEntry> {
-        self.store.iter_entries()
-    }
-
     pub fn drain(&mut self) -> map64::Drain<PrefixEntry> {
         self.store.drain()
     }

@@ -130,9 +130,10 @@ pub enum LhrSource {
     // i.e. add only optional fields or provide defaults!
     TraceUnresponsive,
     TraceResponsive,
-    DestUnreachProhibit, // admin-prohibit, failed-egress
-    DestUnreachAddrPort, // addr/port unreach
-    DestUnreachReject,   // reject-route
+    UnreachAdmin, // admin-prohibit, failed-egress
+    UnreachPort, // port unreach
+    UnreachAddr, // addr unreach
+    UnreachRoute,   // no route
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -244,7 +245,7 @@ mod tests {
             given_some_addr(),
             gen_lhr(
                 6,
-                &[LhrSource::TraceResponsive, LhrSource::DestUnreachAddrPort],
+                &[LhrSource::TraceResponsive, LhrSource::UnreachAddr],
             ),
         );
         sub_tree.last_hop_routers.items.insert(
@@ -263,7 +264,7 @@ mod tests {
             8,
             &[
                 LhrSource::TraceResponsive,
-                LhrSource::DestUnreachAddrPort,
+                LhrSource::UnreachAddr,
                 LhrSource::TraceUnresponsive,
             ],
         );

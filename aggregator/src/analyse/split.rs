@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use diesel::{prelude::*, PgConnection, QueryDsl, SelectableHelper};
-use log::info;
+use log::debug;
 
 use crate::{
     persist::dsl::CidrMethods,
@@ -29,7 +29,7 @@ pub fn process(conn: &mut PgConnection, request: &context::Context) -> Result<()
     let base_net = request.node().try_net_into_v6()?;
     let subnets = Subnets::new(base_net, relevant_measurements)?;
     let rec = recommend::recommend(subnets);
-    info!("Parks & {:?}", rec);
+    debug!("For {}, the department is: Parks & {:?}", request.log_id(), rec);
     Ok(())
 }
 
