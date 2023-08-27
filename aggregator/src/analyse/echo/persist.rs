@@ -58,6 +58,7 @@ impl EchoResult {
                 "Data collection is complete for {}, not follow-up necessary.",
                 log_id
             );
+            // Removal of an existing follow-up should be done by the code handling follow-up responses
             RegisterFollowUpChangeset {
                 pending_follow_up: None,
             }

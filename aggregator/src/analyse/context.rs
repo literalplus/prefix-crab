@@ -2,9 +2,10 @@ use diesel::prelude::*;
 use log::warn;
 use thiserror::Error;
 
+use crate::persist::DieselErrorFixCause;
+use crate::persist::dsl::CidrMethods;
 use crate::prefix_tree::context::ContextOps;
 use crate::prefix_tree::{self, PrefixTree};
-use crate::persist::DieselErrorFixCause;
 
 use super::SplitAnalysis;
 
@@ -54,8 +55,8 @@ fn fetch_active(
 ) -> Result<Vec<SplitAnalysis>, ContextFetchError> {
     use crate::schema::split_analysis::dsl::*;
 
-    SplitAnalysis::belonging_to(node)
-        .select(SplitAnalysis::as_select())
+    split_analysis
+        .filter(tree_net.eq6(&node.net))
         .filter(result.is_not_null())
         .order_by(created_at.desc())
         .load(conn)

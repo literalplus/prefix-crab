@@ -1,6 +1,10 @@
-pub(crate) use conversions::configure_jsonb_serde;
-pub(crate) use conversions::DieselErrorFixCause;
+pub(crate) use macros::configure_jsonb_serde;
+pub use loader::*;
+pub use error::*;
 
-mod conversions;
 pub mod dsl;
 pub mod schema;
+
+mod macros;
+mod loader;
+mod error;

@@ -19,13 +19,23 @@ pub enum SplitRecommendation {
     CannotDetermine { priority: ReProbePriority },
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub struct ReProbePriority {
-    class: PriorityClass,
-    supporting_observations: HitCount,
+impl<'a> SplitRecommendation {
+    pub fn priority(&'a self) -> &'a ReProbePriority {
+        match self {
+            SplitRecommendation::YesSplit { priority } => priority,
+            SplitRecommendation::NoKeep { priority } => priority,
+            SplitRecommendation::CannotDetermine { priority } => priority,
+        }
+    }
 }
 
-pub fn recommend(subnets: Subnets) -> SplitRecommendation {
+#[derive(Debug, Eq, PartialEq)]
+pub struct ReProbePriority {
+    pub class: PriorityClass,
+    pub supporting_observations: HitCount,
+}
+
+pub fn recommend(subnets: &Subnets) -> SplitRecommendation {
     use super::subnet::Diff::*;
     use PriorityClass::*;
     use SplitRecommendation::*;
@@ -71,7 +81,7 @@ fn sum_lhr_hits(lhrs: Vec<LhrItem>) -> HitCount {
     lhrs.into_iter().map(|it| it.hit_count).sum()
 }
 
-fn recommend_without_lhr_data(subnets: Subnets) -> SplitRecommendation {
+fn recommend_without_lhr_data(subnets: &Subnets) -> SplitRecommendation {
     use super::subnet::Diff::*;
     use PriorityClass::*;
     use SplitRecommendation::*;
@@ -146,7 +156,7 @@ mod tests {
     }
 
     fn when_recommend(measurements: Vec<MeasurementTree>) -> SplitRecommendation {
-        recommend(Subnets::new(net(TREE_BASE_NET), measurements).unwrap())
+        recommend(&Subnets::new(net(TREE_BASE_NET), measurements).unwrap())
     }
 
     #[test]

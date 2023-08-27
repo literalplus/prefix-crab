@@ -53,7 +53,7 @@ fn select_ancestors_and_self(
 ) -> Result<Vec<PrefixTree>> {
     let parents = prefix_tree
         .filter(net.supernet_or_eq6(target_net))
-        .select(PrefixTree::as_select())
+        //.select(PrefixTree::as_select())
         .order_by(net)
         .load(connection)
         .fix_cause()
@@ -66,9 +66,9 @@ fn select_unmerged_children(
     node: &PrefixTree,
 ) -> Result<Vec<PrefixTree>> {
     let parents = prefix_tree
-        .filter(net.subnet_or_eq(&node.net))
-        .filter(not(net.eq(&node.net)))
-        .select(PrefixTree::as_select())
+        .filter(net.subnet_or_eq6(&node.net))
+        .filter(not(net.eq6(&node.net)))
+        //.select(PrefixTree::as_select())
         .order_by(net)
         .load(connection)
         .fix_cause()

@@ -15,7 +15,7 @@ CREATE TABLE public.prefix_tree
     is_routed           bool                  NOT NULL DEFAULT true,
     merge_status        prefix_merge_status   NOT NULL DEFAULT 'leaf',
     priority_class      prefix_priority_class NOT NULL DEFAULT 'high_fresh',
-    supporting_evidence integer               NOT NULL DEFAULT 0
+    confidence          smallint              NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS prefix_tree_gist_idx ON public.prefix_tree USING gist (net inet_ops);

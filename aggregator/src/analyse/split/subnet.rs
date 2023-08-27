@@ -14,8 +14,9 @@ use crate::analyse::{HitCount, LhrAddr, LhrItem, WeirdItem, WeirdType};
 
 use super::MeasurementTree;
 
+#[derive(Debug)]
 pub struct Subnet {
-    subnet: SplitSubnet,
+    pub subnet: SplitSubnet,
     /// All measurement trees found in this subnet, merged into one.
     synthetic_tree: MeasurementTree,
 }
@@ -40,8 +41,8 @@ impl From<SplitSubnet> for Subnet {
     }
 }
 
+#[derive(Debug)]
 pub struct Subnets {
-    net: Ipv6Net,
     splits: [Subnet; 2],
 }
 
@@ -68,10 +69,7 @@ impl Subnets {
                 );
             }
         }
-        Ok(Self {
-            net: base_net,
-            splits,
-        })
+        Ok(Self { splits })
     }
 
     pub fn lhr_diff(&self) -> Diff<LhrItem> {
@@ -191,7 +189,7 @@ impl<I> Diff<I> {
 mod tests {
     use std::collections::{HashMap, HashSet};
 
-    use assertor::{assert_that, EqualityAssertion, MapAssertion};
+    use assertor::{assert_that, EqualityAssertion, MapAssertion, IteratorAssertion};
 
     use super::*;
     use crate::{analyse::LhrSource, test_utils::*};
@@ -206,7 +204,7 @@ mod tests {
         let subnets = Subnets::new(base_net, relevant_measurements).unwrap();
 
         // then
-        assert_that!(subnets.net).is_equal_to(base_net);
+        assert_that!(subnets.iter()).has_length(2);
     }
 
     #[test]

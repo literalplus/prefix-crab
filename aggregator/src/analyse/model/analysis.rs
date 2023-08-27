@@ -1,19 +1,23 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-use ipnet::IpNet;
+use ipnet::Ipv6Net;
 use serde::{Serialize, Deserialize};
 
 use crate::{prefix_tree::{PrefixTree, PriorityClass}, persist::configure_jsonb_serde};
 
 use super::HitCount;
 
-#[derive(Queryable, Selectable, Identifiable, Associations, Debug, Clone)]
+#[derive(Queryable, Identifiable, Associations, PartialEq, Debug, Clone)]
 #[diesel(table_name = crate::schema::split_analysis)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(PrefixTree, foreign_key = tree_net))]
 pub struct SplitAnalysis {
+    // NOTE: `belonging_to` doesn't work for this struct since the parent doesn't return an &IpNet for its ID
+    // - that is not possible because we construct it directly in the function as a temporary value.
+
     pub id: i64,
-    pub tree_net: IpNet,
+    #[diesel(deserialize_as = crate::persist::Ipv6NetLoader)]
+    pub tree_net: Ipv6Net,
     pub created_at: NaiveDateTime,
     pub completed_at: Option<NaiveDateTime>,
     pub pending_follow_up: Option<String>,
@@ -26,25 +30,8 @@ pub struct SplitAnalysisResult {
 
     pub class: PriorityClass,
     pub evidence: HitCount,
+    pub should_split: Option<bool>, // missing = we don't know
+    pub algo_version: i32,
 }
 
 configure_jsonb_serde!(SplitAnalysisResult);
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Stage {
-    Requested,
-    PendingTrace,
-    Completed,
-}
-
-impl SplitAnalysis {
-    fn stage(&self) -> Stage {
-        if self.result.is_some() {
-            Stage::Completed
-        } else if self.pending_follow_up.is_some() {
-            Stage::PendingTrace
-        } else {
-            Stage::Requested
-        }
-    }
-}

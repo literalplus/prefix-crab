@@ -5,6 +5,7 @@ use diesel::prelude::*;
 
 use diesel::PgConnection;
 
+use crate::persist::dsl::CidrMethods;
 use crate::prefix_tree;
 use crate::prefix_tree::ContextOps;
 
@@ -18,7 +19,7 @@ use super::context::ContextFetchResult;
 pub fn begin(conn: &mut PgConnection, parent: prefix_tree::Context) -> ContextFetchResult {
     insert_into(analysis_dsl::split_analysis)
         .values((
-            analysis_dsl::tree_net.eq(&parent.node().net),
+            analysis_dsl::tree_net.eq6(&parent.node().net),
         ))
         .execute(conn)
         .fix_cause()?;

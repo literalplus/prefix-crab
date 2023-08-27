@@ -34,7 +34,7 @@ diesel::table! {
         is_routed -> Bool,
         merge_status -> PrefixMergeStatus,
         priority_class -> PrefixPriorityClass,
-        supporting_evidence -> Int4,
+        confidence -> Int2,
     }
 }
 
