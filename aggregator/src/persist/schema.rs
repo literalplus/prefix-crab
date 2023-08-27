@@ -6,8 +6,8 @@ pub mod sql_types {
     pub struct PrefixMergeStatus;
 
     #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "split_analysis_stage"))]
-    pub struct SplitAnalysisStage;
+    #[diesel(postgres_type(name = "prefix_priority_class"))]
+    pub struct PrefixPriorityClass;
 }
 
 diesel::table! {
@@ -25,15 +25,16 @@ diesel::table! {
 diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::PrefixMergeStatus;
+    use super::sql_types::PrefixPriorityClass;
 
-    prefix_tree (id) {
-        id -> Int8,
-        path -> Cidr,
+    prefix_tree (net) {
+        net -> Cidr,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         is_routed -> Bool,
         merge_status -> PrefixMergeStatus,
-        data -> Jsonb,
+        priority_class -> PrefixPriorityClass,
+        supporting_evidence -> Int4,
     }
 }
 
@@ -47,21 +48,18 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::SplitAnalysisStage;
-
     split_analysis (id) {
         id -> Int8,
-        tree_id -> Int8,
+        tree_net -> Cidr,
         created_at -> Timestamp,
         completed_at -> Nullable<Timestamp>,
-        stage -> SplitAnalysisStage,
         #[max_length = 30]
         pending_follow_up -> Nullable<Bpchar>,
+        result -> Nullable<Jsonb>,
     }
 }
 
-diesel::joinable!(split_analysis -> prefix_tree (tree_id));
+diesel::joinable!(split_analysis -> prefix_tree (tree_net));
 
 diesel::allow_tables_to_appear_in_same_query!(
     measurement_tree,

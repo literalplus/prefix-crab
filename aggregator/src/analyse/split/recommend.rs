@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use log::trace;
 
-use crate::analyse::{HitCount, LhrItem, WeirdItem};
+use crate::{analyse::{HitCount, LhrItem, WeirdItem}, prefix_tree::PriorityClass};
 
 use super::subnet::Subnets;
 
@@ -25,15 +25,6 @@ pub struct ReProbePriority {
     supporting_observations: HitCount,
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum PriorityClass {
-    Low,
-    MediumLow,
-    Medium,
-    MediumHigh,
-    High,
-}
-
 pub fn recommend(subnets: Subnets) -> SplitRecommendation {
     use super::subnet::Diff::*;
     use PriorityClass::*;
@@ -45,19 +36,23 @@ pub fn recommend(subnets: Subnets) -> SplitRecommendation {
         BothNone => recommend_without_lhr_data(subnets),
         BothSameSingle { shared } => NoKeep {
             priority: ReProbePriority {
-                class: Medium,
+                class: MediumSameSingle,
                 supporting_observations: shared.hit_count,
             },
         },
         BothSameMultiple { shared } => YesSplit {
             priority: ReProbePriority {
-                class: MediumHigh,
+                class: MediumSameMulti,
                 supporting_observations: sum_except_most_popular(shared), // supporting the observation that there is more than one LHR
             },
         },
         OverlappingOrDisjoint { shared, distinct } => YesSplit {
             priority: ReProbePriority {
-                class: High,
+                class: if shared.is_empty() {
+                    HighDisjoint
+                } else {
+                    HighOverlapping
+                },
                 supporting_observations: sum_except_most_popular(shared) + sum_lhr_hits(distinct), // supporting the observation that there is more than one LHR a) where the overall set is the same and b) the sets are distinct
             },
         },
@@ -86,13 +81,13 @@ fn recommend_without_lhr_data(subnets: Subnets) -> SplitRecommendation {
     match diff {
         BothNone => CannotDetermine {
             priority: ReProbePriority {
-                class: Low,
+                class: LowUnknown,
                 supporting_observations: subnets.sum_subtrees(|t| t.unresponsive_count),
             },
         },
         BothSameSingle { shared } => NoKeep {
             priority: ReProbePriority {
-                class: Low,
+                class: LowWeird,
                 supporting_observations: shared.hit_count,
             },
         },
@@ -100,7 +95,7 @@ fn recommend_without_lhr_data(subnets: Subnets) -> SplitRecommendation {
             // TODO what should we do in this case, especially if it keeps being like this?
             // e.g. check ratio, or perform more analyses deeper into the tree, or group by /64 and see if the pattern can be split
             priority: ReProbePriority {
-                class: MediumLow,
+                class: MediumMultiWeird,
                 supporting_observations: sum_weird_hits(shared),
             },
         },
@@ -109,7 +104,7 @@ fn recommend_without_lhr_data(subnets: Subnets) -> SplitRecommendation {
             distinct,
         } => YesSplit {
             priority: ReProbePriority {
-                class: Low,
+                class: MediumMultiWeird,
                 supporting_observations: sum_weird_hits(distinct), // supporting the observation that the weirdness signatures are different
             },
         },
@@ -124,7 +119,7 @@ fn sum_weird_hits(weirds: Vec<WeirdItem>) -> HitCount {
 mod tests {
     use assertor::{assert_that, EqualityAssertion};
 
-    use super::{*, PriorityClass::*, SplitRecommendation::*};
+    use super::{PriorityClass::*, SplitRecommendation::*, *};
     use crate::{
         analyse::{split::subnet::Subnets, MeasurementTree},
         test_utils::*,
@@ -144,7 +139,7 @@ mod tests {
         // then
         assert_that!(rec).is_equal_to(NoKeep {
             priority: ReProbePriority {
-                class: Medium,
+                class: MediumSameSingle,
                 supporting_observations: 9,
             },
         })
@@ -169,9 +164,9 @@ mod tests {
         let rec = when_recommend(measurements);
 
         // then
-        assert_that!(rec).is_equal_to(YesSplit{
+        assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
-                class: MediumHigh,
+                class: MediumSameMulti,
                 supporting_observations: 8,
             },
         })
@@ -190,9 +185,9 @@ mod tests {
         let rec = when_recommend(measurements);
 
         // then
-        assert_that!(rec).is_equal_to(YesSplit{
+        assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
-                class: High,
+                class: HighOverlapping,
                 supporting_observations: 12,
             },
         })
@@ -211,9 +206,9 @@ mod tests {
         let rec = when_recommend(measurements);
 
         // then
-        assert_that!(rec).is_equal_to(YesSplit{
+        assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
-                class: High,
+                class: HighDisjoint,
                 supporting_observations: 8,
             },
         })

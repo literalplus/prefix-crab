@@ -16,9 +16,9 @@ use super::{context, MeasurementTree};
 mod subnet;
 mod recommend;
 
-pub fn process(conn: &mut PgConnection, request: &context::Context) -> Result<()> {
+pub fn process(conn: &mut PgConnection, request: context::Context) -> Result<()> {
     let relevant_measurements = measurement_tree
-        .filter(target_net.subnet_or_eq(request.node().path))
+        .filter(target_net.subnet_or_eq(request.node().net))
         .select(MeasurementTree::as_select())
         .load(conn)
         .fix_cause()
@@ -35,3 +35,6 @@ pub fn process(conn: &mut PgConnection, request: &context::Context) -> Result<()
     Ok(())
 }
 
+fn save_recommendation(conn: &mut PgConnection, context: context::Context) {
+
+}

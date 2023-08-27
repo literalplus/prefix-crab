@@ -9,9 +9,6 @@ use crate::prefix_tree::PrefixTree;
 use crate::schema::prefix_tree::dsl::*;
 use crate::persist::DieselErrorFixCause;
 
-use super::ExtraData;
-use super::MergeStatus;
-
 #[derive(Debug)]
 pub struct Context {
     pub node: PrefixTree,
@@ -26,7 +23,7 @@ pub trait ContextOps {
 
 impl ContextOps for Context {
     fn log_id(&self) -> String {
-        self.node.path.to_string()
+        self.node.net.to_string()
     }
 
     fn node(&self) -> &PrefixTree {
@@ -55,9 +52,9 @@ fn select_ancestors_and_self(
     target_net: &Ipv6Net,
 ) -> Result<Vec<PrefixTree>> {
     let parents = prefix_tree
-        .filter(path.supernet_or_eq6(target_net))
+        .filter(net.supernet_or_eq6(target_net))
         .select(PrefixTree::as_select())
-        .order_by(path)
+        .order_by(net)
         .load(connection)
         .fix_cause()
         .with_context(|| "while selecting parents")?;
@@ -69,10 +66,10 @@ fn select_unmerged_children(
     node: &PrefixTree,
 ) -> Result<Vec<PrefixTree>> {
     let parents = prefix_tree
-        .filter(path.subnet_or_eq(&node.path))
-        .filter(not(path.eq(&node.path)))
+        .filter(net.subnet_or_eq(&node.net))
+        .filter(not(net.eq(&node.net)))
         .select(PrefixTree::as_select())
-        .order_by(path)
+        .order_by(net)
         .load(connection)
         .fix_cause()
         .with_context(|| "while selecting unmerged children")?;
@@ -82,15 +79,10 @@ fn select_unmerged_children(
 fn insert_if_new(connection: &mut PgConnection, target_net: &Ipv6Net) -> Result<()> {
     insert_into(prefix_tree)
         .values((
-            path.eq6(target_net),
+            net.eq6(target_net),
             is_routed.eq(true),
-            merge_status.eq(MergeStatus::NotMerged),
-            data.eq(ExtraData {
-                ever_responded: true,
-            }),
         ))
         .on_conflict_do_nothing()
-        .returning(id)
         .execute(connection)
         .with_context(|| "while trying to insert into prefix_tree")?;
     Ok(())

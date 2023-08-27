@@ -1,5 +1,4 @@
 use anyhow::{Context as AnyhowContext, *};
-use chrono::{NaiveDateTime, Utc};
 
 use diesel::prelude::*;
 use diesel::PgConnection;
@@ -24,8 +23,8 @@ use crate::analyse::SplitAnalysis;
 use crate::persist::dsl::CidrMethods;
 use crate::persist::DieselErrorFixCause;
 
-use crate::analyse::Stage;
 use crate::prefix_tree::context::ContextOps;
+use crate::schedule::FollowUpId;
 use crate::schema::measurement_tree::dsl::measurement_tree;
 use crate::schema::measurement_tree::target_net;
 
@@ -42,21 +41,25 @@ impl UpdateAnalysis for EchoResult {
 }
 
 impl EchoResult {
-    fn determine_parent_update(&self, parent: &mut SplitAnalysis, log_id: String) -> ParentUpdate {
-        // TODO also update follow-up id ?
+    fn determine_parent_update(
+        &self,
+        parent: &mut SplitAnalysis,
+        log_id: String,
+    ) -> RegisterFollowUpChangeset {
         if self.needs_follow_up() {
-            parent.stage = Stage::PendingTrace;
+            let id = FollowUpId::new();
+            parent.pending_follow_up = Some(id.to_string());
             info!("Follow-up traces necessary for {}", log_id);
-            ParentUpdate {
-                stage: Stage::PendingTrace,
-                completed_at: None,
+            RegisterFollowUpChangeset {
+                pending_follow_up: Some(id.to_string()),
             }
         } else {
-            parent.stage = Stage::Completed;
-            info!("Data collection is complete for {}", log_id);
-            ParentUpdate {
-                stage: Stage::Completed,
-                completed_at: Some(Utc::now().naive_utc()),
+            info!(
+                "Data collection is complete for {}, not follow-up necessary.",
+                log_id
+            );
+            RegisterFollowUpChangeset {
+                pending_follow_up: None,
             }
         }
     }
@@ -64,14 +67,17 @@ impl EchoResult {
     fn save(
         conn: &mut PgConnection,
         analysis: &SplitAnalysis,
-        update: ParentUpdate,
+        update: RegisterFollowUpChangeset,
         forest: MeasurementForest,
     ) -> Result<()> {
         conn.transaction(|conn| {
             let relevant_measurements = load_relevant_measurements(conn, analysis, &forest)?;
             save_merging_into_existing(conn, relevant_measurements, forest)?;
 
-            diesel::update(analysis).set(update).execute(conn)?;
+            if update.has_changes() {
+                diesel::update(analysis).set(update).execute(conn)?;
+            }
+            
             Ok(())
         })
         .context("while saving changes")
@@ -99,7 +105,7 @@ fn load_relevant_measurements(
         format!(
             "while loading existing trees for amendment related to PrefixTree[{}], \n\
             with potential MeasurementTree prefixes: {:?}.",
-            analysis.tree_id,
+            analysis.tree_net,
             forest.to_iter_all_nets().collect_vec(),
         )
     })
@@ -170,7 +176,12 @@ fn make_tree(net: Ipv6Net, entry: PrefixEntry) -> MeasurementTree {
 
 #[derive(AsChangeset)]
 #[diesel(table_name = crate::schema::split_analysis)]
-struct ParentUpdate {
-    stage: Stage,
-    completed_at: Option<NaiveDateTime>,
+struct RegisterFollowUpChangeset {
+    pending_follow_up: Option<String>,
+}
+
+impl RegisterFollowUpChangeset {
+    fn has_changes(&self) -> bool {
+        self.pending_follow_up.is_some()
+    }
 }

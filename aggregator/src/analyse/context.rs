@@ -4,11 +4,9 @@ use thiserror::Error;
 
 use crate::prefix_tree::context::ContextOps;
 use crate::prefix_tree::{self, PrefixTree};
-use crate::schema::split_analysis::dsl::created_at;
-use crate::schema::split_analysis::stage;
 use crate::persist::DieselErrorFixCause;
 
-use super::{SplitAnalysis, Stage};
+use super::SplitAnalysis;
 
 #[derive(Debug)]
 pub struct Context {
@@ -46,7 +44,7 @@ pub fn fetch(conn: &mut PgConnection, parent: prefix_tree::Context) -> ContextFe
     let analysis = actives
         .into_iter()
         .next()
-        .expect("a vector with one element to yield that element");
+        .expect("a non-empty vector to yield an element");
     Ok(Context { parent, analysis })
 }
 
@@ -54,9 +52,11 @@ fn fetch_active(
     conn: &mut PgConnection,
     node: &PrefixTree,
 ) -> Result<Vec<SplitAnalysis>, ContextFetchError> {
+    use crate::schema::split_analysis::dsl::*;
+
     SplitAnalysis::belonging_to(node)
         .select(SplitAnalysis::as_select())
-        .filter(stage.ne(Stage::Completed))
+        .filter(result.is_not_null())
         .order_by(created_at.desc())
         .load(conn)
         .fix_cause()

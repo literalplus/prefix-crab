@@ -110,9 +110,9 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
         .update_analysis(conn, &mut context)
         .context("while saving analysis data")?;
 
-    if need_follow_up {
+    if !need_follow_up {
         info!("No further follow-up necessary, scheduling split analysis.");
-        analyse::split::process(conn, &context)?;
+        analyse::split::process(conn, context)?;
     } else {
         debug!("Follow-up needed, split analysis delayed.");
     }
