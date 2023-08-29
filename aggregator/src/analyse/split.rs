@@ -1,12 +1,9 @@
 use anyhow::{Context, Result};
 use diesel::{prelude::*, PgConnection, QueryDsl, SelectableHelper};
 use ipnet::Ipv6Net;
-use log::debug;
+use log::{debug, info};
 
-use crate::{
-    persist::dsl::CidrMethods,
-    persist::DieselErrorFixCause, prefix_tree::ContextOps,
-};
+use crate::{persist::dsl::CidrMethods, persist::DieselErrorFixCause, prefix_tree::ContextOps};
 
 use self::subnet::Subnets;
 
@@ -31,7 +28,29 @@ pub fn process(conn: &mut PgConnection, request: context::Context) -> Result<()>
     let confidence = confidence::rate(&request, &rec);
     persist::save_recommendation(conn, &request, &rec, confidence)?;
     if confidence >= MAX_CONFIDENCE {
-        persist::perform_prefix_split(conn, request, subnets)?;
+        if rec.should_split() {
+            info!(
+                "Splitting prefix {} due to recommendation {:?} at {}% confidence.",
+                request.log_id(),
+                rec.priority().class,
+                confidence
+            );
+            persist::perform_prefix_split(conn, request, subnets)?;
+        } else {
+            debug!(
+                "Keeping prefix {} due to recommendation {:?} at {}% confidence.",
+                request.log_id(),
+                rec.priority().class,
+                confidence
+            );
+        }
+    } else {
+        debug!(
+            "No action on prefix {} due to recommendation {:?} at insufficient {}% confidence.",
+            request.log_id(),
+            rec.priority().class,
+            confidence
+        );
     }
     Ok(())
 }

@@ -1,7 +1,10 @@
 use itertools::Itertools;
 use log::trace;
 
-use crate::{analyse::{HitCount, LhrItem, WeirdItem}, prefix_tree::PriorityClass};
+use crate::{
+    analyse::{HitCount, LhrItem, WeirdItem},
+    prefix_tree::PriorityClass,
+};
 
 use super::subnet::Subnets;
 
@@ -25,6 +28,13 @@ impl<'a> SplitRecommendation {
             SplitRecommendation::YesSplit { priority } => priority,
             SplitRecommendation::NoKeep { priority } => priority,
             SplitRecommendation::CannotDetermine { priority } => priority,
+        }
+    }
+
+    pub fn should_split(&self) -> bool {
+        match self {
+            SplitRecommendation::YesSplit { priority: _ } => true,
+            _ => false,
         }
     }
 }

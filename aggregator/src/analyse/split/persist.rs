@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use diesel::dsl::now;
 use diesel::{prelude::*, PgConnection};
 use ipnet::IpNet;
 use log::warn;
@@ -59,7 +60,7 @@ impl<'a, 'b> SaveRecommendation<'a, 'b> {
 
         let rec_model: Option<SplitAnalysisResult> = Some(self.recommendation.into());
         diesel::update(self.analysis())
-            .set(result.eq(rec_model))
+            .set((result.eq(rec_model), completed_at.eq(now)))
             .execute(conn)
             .fix_cause()
             .with_context(|| {

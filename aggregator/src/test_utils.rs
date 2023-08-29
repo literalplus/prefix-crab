@@ -14,6 +14,7 @@ pub fn addr(input: &str) -> Ipv6Addr {
 }
 
 pub const TREE_BASE_NET: &str = "2001:db8::/32";
+pub const TREE_UNRELATED_NET: &str = "2001:db9::/64";
 pub const TREE_LEFT_NET: &str = "2001:db8:101::/64";
 pub const TREE_RIGHT_NET: &str = "2001:db8:beef::/64";
 pub const TREE_RIGHT_NET_ALT: &str = "2001:db8:b00f::/64";

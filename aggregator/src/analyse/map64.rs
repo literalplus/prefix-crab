@@ -171,6 +171,13 @@ impl<V> Net64Map<V> {
     pub fn len(&self) -> usize {
         self.per_net.len()
     }
+
+    pub fn contains_net(&mut self, net: &Ipv6Net) -> bool {
+        match self.entry_by_net(net) {
+            hash_map::Entry::Occupied(_) => true,
+            hash_map::Entry::Vacant(_) => false,
+        }
+    }
 }
 
 impl<V> IndexMut<&Ipv6Net> for Net64Map<V>

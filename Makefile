@@ -73,7 +73,7 @@ in-tmux:
 	@tmux set -g remain-on-exit failed
 	@tmux bind-key r "run-shell 'kill #{pane_pid}'; respawn-pane -k"
 	@tmux bind-key e "display-popup -T 'Example Scan' -EE './scan-oneoff.sh fddc:9d0b:e318:8712::bc:1/48 && sleep 1';"
-	@tmux bind-key t "display-popup -T 'Custom Scan' -EE './scan-oneoff.sh && sleep 5';"
+	@tmux bind-key t "display-popup -T 'Custom Scan' -EE './scan-oneoff.sh && sleep 3';"
 	@tmux set status-bg lightblue
 	@tmux set -g window-status-current-style bg=green
 	@if ! [[ -f .env ]]; then make configure-env; fi

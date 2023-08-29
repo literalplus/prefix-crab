@@ -18,3 +18,8 @@ make tmux
 ```
 
 All further instructions are provided by the program.
+
+Test data:
+
+ * `fddc:9d0b:e318::/48` - full base prefix
+ * `fddc:9d0b:e318:8680::/60` - a non-homogenous subnet
