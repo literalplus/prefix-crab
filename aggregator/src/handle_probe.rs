@@ -49,7 +49,7 @@ pub async fn run(
     loop {
         if let Some(req) = task_rx.recv().await {
             trace!("Received something: {:?}", req);
-            handle_recv(&mut connection, &ack_tx, req)?;
+            handle_recv(&mut connection, &ack_tx, req).context("handling probe responses")?;
         } else {
             info!("Probe handler shutting down.");
             return Ok(());
@@ -96,7 +96,7 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
     let tree_context =
         prefix_tree::context::fetch(conn, &target_net).context("fetching tree context")?;
     let mut context =
-        fetch_or_begin_context(conn, tree_context).context("fetch/begin for probe handling")?;
+        fetch_or_begin_context(conn, tree_context).context("fetch/begin context for probe handling")?;
 
     let interpretation = analyse::echo::process(&req.model);
 
@@ -104,7 +104,7 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
     info!("Interpretation for this probe: {}", interpretation);
 
     // TODO schedule follow-ups now & here (still save if f/u fails!)
-    let need_follow_up = interpretation.needs_follow_up();
+    let need_follow_up = interpretation.needs_follow_up() && false;
 
     interpretation
         .update_analysis(conn, &mut context)

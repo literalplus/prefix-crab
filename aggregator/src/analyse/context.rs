@@ -40,7 +40,7 @@ pub fn fetch(conn: &mut PgConnection, parent: prefix_tree::Context) -> ContextFe
     if actives.is_empty() {
         return Err(ContextFetchError::NoActiveAnalysis { parent });
     } else if actives.len() > 1 {
-        warn!("Multiple analyses are active for {:?}", parent);
+        warn!("Multiple analyses are active for {}.", parent.log_id());
     }
     let analysis = actives
         .into_iter()
@@ -57,7 +57,7 @@ fn fetch_active(
 
     split_analysis
         .filter(tree_net.eq6(&node.net))
-        .filter(result.is_not_null())
+        .filter(result.is_null())
         .order_by(created_at.desc())
         .load(conn)
         .fix_cause()

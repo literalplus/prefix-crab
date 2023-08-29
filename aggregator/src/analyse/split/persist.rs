@@ -1,9 +1,7 @@
 use anyhow::{Context, Result};
-use diesel::sql_types::Cidr;
 use diesel::{prelude::*, PgConnection};
-use ipnet::{IpNet, Ipv6Net};
+use ipnet::IpNet;
 use log::warn;
-use serde::Deserialize;
 
 use crate::analyse::SplitAnalysis;
 use crate::persist::dsl::CidrMethods;
@@ -12,7 +10,7 @@ use crate::{persist::DieselErrorFixCause, prefix_tree::ContextOps};
 
 use super::recommend::{self, ReProbePriority, SplitRecommendation};
 
-use super::subnet::{Subnet, Subnets};
+use super::subnet::Subnets;
 use super::{context, Confidence, SplitAnalysisResult};
 
 pub fn save_recommendation(
