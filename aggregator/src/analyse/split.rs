@@ -25,7 +25,7 @@ pub fn process(conn: &mut PgConnection, request: context::Context) -> Result<()>
         request.log_id(),
         rec
     );
-    let confidence = confidence::rate(&request, &rec);
+    let confidence = confidence::rate(request.node().net, &rec);
     persist::save_recommendation(conn, &request, &rec, confidence)?;
     if confidence >= MAX_CONFIDENCE {
         if rec.should_split() {

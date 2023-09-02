@@ -1,8 +1,6 @@
 use ipnet::Ipv6Net;
 use prefix_crab::prefix_split;
 
-use crate::{analyse::context, prefix_tree::ContextOps};
-
 use super::recommend::{ReProbePriority, SplitRecommendation};
 
 /// percent rating, i.e. between 0 and 100
@@ -10,14 +8,13 @@ pub type Confidence = u8;
 
 pub const MAX_CONFIDENCE: Confidence = 100;
 
-pub fn rate(context: &context::Context, rec: &SplitRecommendation) -> Confidence {
-    use SplitRecommendation::*;
+pub fn rate(net: Ipv6Net, rec: &SplitRecommendation) -> Confidence {
+    use SplitRecommendation as R;
 
-    let net = context.node().net;
     match rec {
-        YesSplit { priority } => rate_yes(priority, &net),
-        NoKeep { priority } => rate_no(priority, &net),
-        CannotDetermine { priority } => rate_no(priority, &net),
+        R::YesSplit { priority } => rate_yes(priority, &net),
+        R::NoKeep { priority } => rate_no(priority, &net),
+        R::CannotDetermine { priority } => rate_no(priority, &net),
     }
 }
 
@@ -52,7 +49,108 @@ const THRESH_FOR_64_CONST: u32 = (prefix_split::SAMPLES_PER_SUBNET as u32) * 4u3
 fn min_equivalent_responses_thresh(net: &Ipv6Net) -> u32 {
     // https://docs.google.com/spreadsheets/d/1rOlf3MNCSIj58b9yB1Ni-Dnr2sWrostZoqOcSjIm_To/edit#gid=0
     let prefix_len_capped = MIN_REALISTIC_AGGREGATE.max(net.prefix_len());
-    let depth = 64u8.saturating_sub(prefix_len_capped);
-    let min_response_exp = 2u32.saturating_pow(depth as u32);
-    min_response_exp.saturating_mul(THRESH_FOR_64_CONST)
+    let height = 64u8.saturating_sub(prefix_len_capped);
+    let min_response_exp = 2f64.powf(height as f64 / 4f64);
+    debug_assert!(min_response_exp >= 1.0);
+    (min_response_exp * (THRESH_FOR_64_CONST as f64)).trunc() as u32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{prefix_tree::PriorityClass::MediumSameMulti, test_utils::*};
+    use anyhow::*;
+
+    // "Google Sheet cases" are based on https://docs.google.com/spreadsheets/d/1rOlf3MNCSIj58b9yB1Ni-Dnr2sWrostZoqOcSjIm_To/edit#gid=164692237
+
+    #[test]
+    fn min_responses_google_sheet_cases() -> Result<()> {
+        // given
+        let cases = [
+            (64, 64),
+            (63, 76),
+            (62, 90),
+            (61, 107),
+            (60, 128),
+            (16, 262_144),
+            (12, 262_144),
+        ];
+
+        // when, then
+        for (prefix_size, threshold) in cases {
+            let net = Ipv6Net::new(addr(TREE_LHR_BEEF), prefix_size).unwrap();
+            let actual = min_equivalent_responses_thresh(&net);
+            if actual != threshold {
+                bail!(
+                    "Prefix size {}: Expected threshold {} but got {}",
+                    prefix_size,
+                    threshold,
+                    actual
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn max_responses_google_sheet_cases() -> Result<()> {
+        // given
+        let cases = [
+            (64, 64),
+            (63, 76),
+            (62, 90),
+            (61, 107),
+            (60, 128),
+            (16, 262_144),
+            (12, 262_144),
+        ];
+
+        // when, then
+        for (prefix_size, threshold) in cases {
+            let net = Ipv6Net::new(addr(TREE_LHR_BEEF), prefix_size).unwrap();
+            let actual = min_equivalent_responses_thresh(&net);
+            if actual != threshold {
+                bail!(
+                    "Prefix size {}: Expected threshold {} but got {}",
+                    prefix_size,
+                    threshold,
+                    actual
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn keep_responses_confidence_google_sheet() -> Result<()> {
+        // given
+        let cases = [
+            (64, 4, 6),
+            (64, 32, 50),
+            (64, 64, 100),
+            (64, 678123, 100),
+            (24, 32768, 50),
+        ];
+
+        // when, then
+        for (prefix_size, evidence, expected) in cases {
+            let rec = SplitRecommendation::NoKeep {
+                priority: ReProbePriority {
+                    class: MediumSameMulti,
+                    supporting_observations: evidence,
+                },
+            };
+            let net = Ipv6Net::new(addr(TREE_LHR_BEEF), prefix_size).unwrap();
+            let actual = rate(net, &rec);
+            if actual != expected {
+                bail!(
+                    "Prefix size {}: Expected confidence {}% but got {}%",
+                    prefix_size,
+                    expected,
+                    actual
+                );
+            }
+        }
+        Ok(())
+    }
 }
