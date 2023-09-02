@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::analyse::split::Confidence;
 
 
-#[derive(diesel_derive_enum::DbEnum, Debug, Copy, Clone)]
+#[derive(diesel_derive_enum::DbEnum, Debug, Copy, Clone, PartialEq, Eq)]
 #[ExistingTypePath = "crate::sql_types::PrefixMergeStatus"]
 pub enum MergeStatus {
     Leaf,

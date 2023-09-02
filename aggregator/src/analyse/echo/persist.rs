@@ -139,7 +139,6 @@ fn save_merging_into_existing(
             ModificationType::Untouched => {}
             ModificationType::Inserted => inserts.push(tree),
             ModificationType::Updated => {
-                trace!("Update {}", tree.target_net);
                 diesel::update(measurement_tree)
                     .filter(target_net.eq(tree.target_net))
                     .set(tree)

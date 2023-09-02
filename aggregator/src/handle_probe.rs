@@ -2,7 +2,7 @@ use anyhow::*;
 use clap::Args;
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use log::{debug, error, info, trace};
+use log::{debug, error, info, trace, warn};
 use tokio::sync::mpsc::{Receiver, UnboundedSender};
 
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
@@ -12,6 +12,8 @@ use crate::analyse::context::{ContextFetchError, ContextFetchResult};
 use crate::analyse::persist::UpdateAnalysis;
 use crate::analyse::CanFollowUp;
 
+use crate::analyse::split::SplitError;
+use crate::prefix_tree::ContextOps;
 use crate::{analyse, prefix_tree};
 
 #[derive(Args, Debug)]
@@ -95,8 +97,8 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
 
     let tree_context =
         prefix_tree::context::fetch(conn, &target_net).context("fetching tree context")?;
-    let mut context =
-        fetch_or_begin_context(conn, tree_context).context("fetch/begin context for probe handling")?;
+    let mut context = fetch_or_begin_context(conn, tree_context)
+        .context("fetch/begin context for probe handling")?;
 
     let interpretation = analyse::echo::process(&req.model);
 
@@ -112,7 +114,13 @@ fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
 
     if !need_follow_up {
         info!("No further follow-up necessary, scheduling split analysis.");
-        analyse::split::process(conn, context)?;
+        match analyse::split::process(conn, context) {
+            Err(SplitError::PrefixNotLeaf { request }) => warn!(
+                "Handled prefix is (no longer?) a leaf, split not possible: {:?}",
+                request.node()
+            ),
+            r => r?,
+        }
     } else {
         debug!("Follow-up needed, split analysis delayed.");
     }
