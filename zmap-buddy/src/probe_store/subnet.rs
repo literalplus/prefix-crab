@@ -4,8 +4,8 @@ use std::collections::hash_map::Iter;
 use std::net::Ipv6Addr;
 use std::ops::Index;
 
-use queue_models::echo_response;
-use queue_models::echo_response::SplitResult;
+use queue_models::probe_response;
+use queue_models::probe_response::SplitResult;
 
 use prefix_crab::prefix_split::SubnetSample;
 use crate::probe_store::model::RoutableProbeStore;
@@ -41,8 +41,8 @@ impl Responses {
         self.intended_targets.len()
     }
 
-    fn into_model(self, key: ResponseKey) -> echo_response::Responses {
-        echo_response::Responses {
+    fn into_model(self, key: ResponseKey) -> probe_response::Responses {
+        probe_response::Responses {
             key,
             intended_targets: self.intended_targets,
         }

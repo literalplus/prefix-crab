@@ -48,7 +48,7 @@ impl TypeRoutedMessage for TraceRequest {
 }
 
 // Use a marker type, otherwise TraceRequest can't refer to its own ID (recursive type)
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq, Hash)]
 pub struct TraceIdTypeMarker;
 
 impl StaticType for TraceIdTypeMarker {

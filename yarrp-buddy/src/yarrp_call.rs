@@ -5,32 +5,47 @@ use log::debug;
 pub use self::caller::Caller;
 pub use self::targets::TargetCollector;
 
-mod targets;
 mod caller;
+mod targets;
 
-// 64 is default for Linux and should be enough for most "reasonable" topologies
-// https://networkengineering.stackexchange.com/a/2222
-// https://www.rfc-editor.org/rfc/rfc1700 -> 64 is also the recommended default
-pub const SENT_TTL: u8 = 64;
-
-#[derive(Args)]
-#[derive(Clone)]
-#[group(id = "zmap")]
+#[derive(Args, Clone)]
+#[group(id = "yarrp")]
 pub struct Params {
     /// Source IPv6 address to use for zmap
-    #[arg(long, env = "ZMAP_SOURCE_ADDRESS")]
+    #[arg(long, env = "YARRP_SOURCE_ADDRESS")]
     source_address: String,
 
     /// Optional gateway MAC, needed if there is no default route via the specified interface
     #[arg(long, env = "GATEWAY_MAC")]
     gateway_mac: Option<String>,
 
+    #[arg(long, env = "MIN_TTL", default_value = "2")]
+    min_ttl: u8,
+
+    #[arg(long, env = "MAX_TTL", default_value = "16")]
+    max_ttl: u8,
+
+    /// If yarrp receives a response with TTL > max_ttl, it expands the
+    /// TTL range up to this value, which is called fill mode.
+    /// This means that we can probe with a relatively low max_ttl of
+    /// 16 and still trace hosts that need higher TTLs.
+    #[arg(long, env = "FILL_MODE_MAX_TTL", default_value = "32")]
+    fill_mode_max_ttl: u8,
+
+    /// Don't probe low TTLs since they likely are just our "own" outgoing
+    /// hops. 3 should be probably safe.
+    #[arg(long, env = "NEIGHBORHOOD_MAX_TTL", default_value = "3")]
+    neighborhood_max_ttl: u8,
+
     /// Name of the source interface to use for zmap
     #[arg(long, env = "INTERFACE")]
     interface: Option<String>,
 
+    #[arg(long, env = "YARRP_RATE_PPS", default_value = "10")] // upstream default
+    yarrp_rate_pps: i16,
+
     /// FQ path to zmap binary
-    #[arg(long, default_value = "/usr/local/sbin/zmap")]
+    #[arg(long, default_value = "/usr/local/bin/yarrp")]
     bin_path: String,
 
     /// FQ path to sudo binary
@@ -41,23 +56,16 @@ pub struct Params {
 impl Params {
     pub fn to_caller_verifying_sudo(&self) -> Result<Caller> {
         let mut caller = self._make_caller()?;
-        caller.verify_sudo_access()
+        caller
+            .verify_sudo_access()
             .with_context(|| "If not using NOPASSWD, you might need to re-run sudo manually.")?;
         Ok(caller)
     }
 
     fn _make_caller(&self) -> Result<Caller> {
-        let mut caller = Caller::new(
-            self.sudo_path.to_string(), self.bin_path.to_string(),
-        );
-        if let Some(interface_name) = &self.interface {
-            caller.request_interface(interface_name.to_string());
-        }
-        if let Some(gateway_mac) = &self.gateway_mac {
-            caller.request_gateway_mac(gateway_mac.to_string());
-        }
+        let mut caller = Caller::new(self.sudo_path.to_string(), self.bin_path.to_string());
+        caller.setup(&self);
         debug!("Using zmap caller: {:?}", caller);
-        caller.push_source_address(self.source_address.to_string())?;
         Ok(caller)
     }
 

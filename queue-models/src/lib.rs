@@ -1,4 +1,4 @@
-pub mod echo_response;
+pub mod probe_response;
 pub mod probe_request;
 
 /// Types that have a (constant) routing key to be used to indicate messages of this type on an exchange where multiple

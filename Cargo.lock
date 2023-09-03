@@ -183,17 +183,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atty"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
-dependencies = [
- "hermit-abi 0.1.19",
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -586,27 +575,27 @@ dependencies = [
 
 [[package]]
 name = "filetime"
-version = "0.2.19"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e884668cd0c7480504233e951174ddc3b382f7c2666e3b7310b5c4e7b0c37f9"
+checksum = "d4029edd3e734da6fe05b6cd7bd2960760a616bd2ddd0d59a0124746d6272af0"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall 0.2.16",
- "windows-sys 0.42.0",
+ "redox_syscall 0.3.5",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
 name = "flexi_logger"
-version = "0.25.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "697edabaa7d0cd4317d5ddb36ace29782e79ff04b7fd0b5bd757855532b78ae7"
+checksum = "7bce3f7c47b1db54c6f069388db50c82c0cf12268759a360c15d21b81f5e6123"
 dependencies = [
- "atty",
  "chrono",
  "crossbeam-channel",
  "crossbeam-queue",
  "glob",
+ "is-terminal",
  "lazy_static",
  "log",
  "notify-debouncer-mini",
@@ -762,15 +751,6 @@ name = "heck"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
-
-[[package]]
-name = "hermit-abi"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "hermit-abi"
@@ -1052,39 +1032,39 @@ dependencies = [
 
 [[package]]
 name = "notify"
-version = "5.1.0"
+version = "6.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58ea850aa68a06e48fdb069c0ec44d0d64c8dbffa49bf3b6f7f0a901fdea1ba9"
+checksum = "6205bd8bb1e454ad2e27422015fb5e4f2bcc7e08fa8f27058670d208324a4d2d"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.3.3",
  "crossbeam-channel",
  "filetime",
  "fsevent-sys",
  "inotify",
  "kqueue",
  "libc",
+ "log",
  "mio",
  "walkdir",
- "windows-sys 0.42.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
 name = "notify-debouncer-mini"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e23e9fa24f094b143c1eb61f90ac6457de87be6987bc70746e0179f7dbc9007b"
+checksum = "e55ee272914f4563a2f8b8553eb6811f3c0caea81c756346bad15b7e3ef969f0"
 dependencies = [
  "notify",
 ]
 
 [[package]]
 name = "nu-ansi-term"
-version = "0.46.0"
+version = "0.49.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84"
+checksum = "c073d3c1930d0751774acf49e66653acecb416c3a54c6ec095a9b11caddb5a68"
 dependencies = [
- "overload",
- "winapi",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1131,12 +1111,6 @@ dependencies = [
  "serde",
  "winapi",
 ]
-
-[[package]]
-name = "overload"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "parking_lot"
@@ -1204,7 +1178,6 @@ dependencies = [
  "ipnet",
  "log",
  "rand",
- "readonly",
  "serde",
  "serde_json",
  "tokio",
@@ -1271,17 +1244,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom",
-]
-
-[[package]]
-name = "readonly"
-version = "0.2.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfe81e96d650b917d5a211305f8da52baad38f23d2e047c0645e7ddaa1189ea2"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.26",
 ]
 
 [[package]]
@@ -1982,6 +1944,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
+]
+
+[[package]]
+name = "yarrp-buddy"
+version = "0.1.0"
+dependencies = [
+ "amqprs",
+ "anyhow",
+ "assertor",
+ "async-trait",
+ "clap",
+ "clap-verbosity-flag",
+ "csv",
+ "derive-where",
+ "flexi_logger",
+ "futures",
+ "futures-util",
+ "human-panic",
+ "ipnet",
+ "log",
+ "prefix-crab",
+ "queue-models",
+ "rand",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]

@@ -2,7 +2,7 @@
 
 use derive_where::derive_where;
 
-use queue_models::echo_response::EchoProbeResponse;
+use queue_models::probe_response::EchoProbeResponse;
 
 use crate::schedule::ProbeResponse;
 use crate::zmap_call::SENT_TTL;

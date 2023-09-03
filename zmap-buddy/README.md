@@ -3,12 +3,19 @@ zmap-buddy
 
 Spawns a ZMAPv6 instance and forwards probe requests to it.
 
-## RabbitMQ Setup
+ZMAPv6 Setup
+------------
 
-Queue: `prefix-crab.probe-request.echo`
+Clone the AIM ZMAP fork from https://gitlab.sba-research.org/austrian-internet-measurements/tools/aim_zmap/-/tree/master/src
 
-Type should be classic, unless deploying RabbitMQ HA, then it should be quorum (Note: Performance impact).
+This is in turn a fork of https://github.com/tumi8/zmap - which should also work if you don't have access.
 
-Further parameters: durable, no auto delete.
+Follow the instructions in `INSTALL.md`: https://gitlab.sba-research.org/austrian-internet-measurements/tools/aim_zmap/-/blob/master/INSTALL.md
 
-Bind to direct exchange `prefix-crab.probe-request` with routing key `echo`.
+
+```bash
+yay -Sy gmp json-c libpcap byacc cmake gengetopt git # other common distros can be found in INSTALL.md directly
+cmake -DENABLE_DEVELOPMENT=off -DENABLE_LOG_TRACE=OFF .
+make -j4
+sudo make install
+```

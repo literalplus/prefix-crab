@@ -3,11 +3,12 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 
-use prefix_crab::helpers::rabbit::RabbitHandle;
 use prefix_crab::helpers::rabbit::receive::{self as helpers_receive, MessageHandler};
-use queue_models::probe_response::EchoProbeResponse;
+use queue_models::probe_request::TraceRequest;
 
-use crate::handle_probe::TaskRequest;
+use crate::schedule::TaskRequest;
+
+use super::prepare::RabbitHandle;
 
 pub async fn run(
     handle: &RabbitHandle,
@@ -23,18 +24,21 @@ struct TaskHandler {
 
 #[async_trait]
 impl MessageHandler for TaskHandler {
-    type Model = EchoProbeResponse;
+    type Model = TraceRequest;
 
     async fn handle_msg<'de>(
         &self, model: Self::Model, delivery_tag: u64,
     ) -> Result<()> where Self::Model: Deserialize<'de> {
-        let request = TaskRequest { model, delivery_tag };
+        let request = TaskRequest {
+            model,
+            delivery_tag_to_ack: delivery_tag,
+        };
         self.work_sender.send(request)
             .await
             .with_context(|| "while passing received message")
     }
 
     fn consumer_tag() -> &'static str {
-        "aggregator combined probe response receiver"
+        "yarrp-buddy trace request receiver"
     }
 }

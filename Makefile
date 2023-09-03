@@ -4,7 +4,8 @@ BRIDGE_IF := brgns3
 ULA_PFX := fddc:9d0b:e318
 ULA_PFX_CIDR := $(ULA_PFX)::/48
 ROUTER := $(ULA_PFX):8710::bb:1
-MY_ADDR := $(ULA_PFX):8710::cc:1
+MY_ADDR_ZMAP := $(ULA_PFX):8710::cc:1
+MY_ADDR_YARRP := $(ULA_PFX):8710::cc:2
 
 # bash colors
 BOLD := $$(tput setaf 6; tput bold)
@@ -16,7 +17,8 @@ gns3:
 	sudo systemctl start gns3-server@$(USER)
 	sudo ip link add name $(BRIDGE_IF) type bridge
 	sudo ip link set dev $(BRIDGE_IF) up
-	sudo ip -6 addr add $(MY_ADDR)/64 dev $(BRIDGE_IF)
+	sudo ip -6 addr add $(MY_ADDR_ZMAP)/64 dev $(BRIDGE_IF)
+	sudo ip -6 addr add $(MY_ADDR_YARRP)/64 dev $(BRIDGE_IF)
 	@read -p "#### Open the GNS3 UI and start all devices of the project now (green play button), then press any key."
 	sudo ip -6 route add $(ULA_PFX_CIDR) dev $(BRIDGE_IF) via $(ROUTER) metric 3
 	ip -6 route | grep $(ULA_PFX_CIDR) || echo "route adding failed"

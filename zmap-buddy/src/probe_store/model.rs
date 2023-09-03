@@ -1,4 +1,4 @@
-pub use queue_models::echo_response::{DestUnreachKind, ResponseCount, ResponseKey};
+pub use queue_models::probe_response::{DestUnreachKind, ResponseCount, ResponseKey};
 
 use crate::schedule::ProbeResponse;
 

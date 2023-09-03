@@ -5,7 +5,7 @@ use log::{debug, error, info, trace, warn};
 use tokio::sync::mpsc::{Receiver, UnboundedSender};
 
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
-use queue_models::echo_response::EchoProbeResponse;
+use queue_models::probe_response::EchoProbeResponse;
 
 use crate::analyse::context::{self, ContextFetchError, ContextFetchResult};
 use crate::analyse::persist::UpdateAnalysis;
@@ -147,7 +147,7 @@ mod archive {
     use ipnet::Ipv6Net;
     use log::{trace, warn};
 
-    use queue_models::echo_response::EchoProbeResponse;
+    use queue_models::probe_response::EchoProbeResponse;
 
     use crate::persist::dsl::CidrMethods;
     use crate::schema::response_archive::dsl::*;

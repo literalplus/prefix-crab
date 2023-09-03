@@ -3,7 +3,25 @@ use std::net::Ipv6Addr;
 use ipnet::Ipv6Net;
 use serde::{Deserialize, Serialize};
 
-use crate::{TypeRoutedMessage, probe_request::EchoProbeRequest};
+use crate::{
+    probe_request::{EchoProbeRequest, TraceRequest, TraceRequestId},
+    RoutedMessage, TypeRoutedMessage,
+};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ProbeResponse {
+    Echo(EchoProbeResponse),
+    Trace(TraceResponse),
+}
+
+impl RoutedMessage for ProbeResponse {
+    fn routing_key(&self) -> &'static str {
+        match self {
+            ProbeResponse::Echo(msg) => msg.routing_key(),
+            ProbeResponse::Trace(msg) => msg.routing_key(),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EchoProbeResponse {
@@ -15,7 +33,7 @@ pub struct EchoProbeResponse {
 
 impl TypeRoutedMessage for EchoProbeResponse {
     fn routing_key() -> &'static str {
-        EchoProbeRequest::routing_key()
+        <EchoProbeRequest as TypeRoutedMessage>::routing_key()
     }
 }
 
@@ -98,4 +116,33 @@ impl DestUnreachKind {
             weird => Self::Other(weird),
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TraceResponse {
+    pub id: TraceRequestId,
+    pub results: Vec<TraceResult>,
+}
+
+impl TypeRoutedMessage for TraceResponse {
+    fn routing_key() -> &'static str {
+        <TraceRequest as TypeRoutedMessage>::routing_key()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum TraceResult {
+    LastResponsiveHop(LastHop),
+    NoResponse { target_addr: Ipv6Addr }, // unlikely; usually we'd expect at least some transit router to respond
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LastHop {
+    pub target_addr: Ipv6Addr,
+    pub last_hop_addr: Ipv6Addr,
+    /// Sent TTL that yielded this last hop. Note that we are collecting the last *responsive* hop,
+    /// and if target_ttl is set, this need not be exactly target_ttl - 1.
+    pub last_hop_ttl: u8,
+    /// Sent TTL that yielded the actual target, if a response was received from it.
+    pub target_ttl: Option<u8>,
 }

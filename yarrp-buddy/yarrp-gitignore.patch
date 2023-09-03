@@ -1,0 +1,43 @@
+From 4f50607599045d1c8606ec5e11d98d72bc4a0ddc Mon Sep 17 00:00:00 2001
+From: Markus Maier <mmaier@sba-research.org>
+Date: Tue, 8 Mar 2022 15:53:06 +0100
+Subject: [PATCH] add build files to gitignore
+
+Signed-off-by: Markus Maier <mmaier@sba-research.org>
+---
+ .gitignore | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+ create mode 100644 .gitignore
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..44c6f66
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,17 @@
++/.idea
++/autom4te.cache/
++/build-aux/
++/.deps/
++/libcperm/.deps/
++/libcperm/ciphers/.deps/
++/utils/Makefile
++/utils/Makefile.in
++/configure
++/config.h.in
++/aclocal.m4
++/Makefile.in
++/Makefile
++/config.h
++/config.log
++/config.status
++/stamp-h1
++*.o
++/build
++/libcperm
++*.in~
++/configure~
++/yarrp
+-- 
+GitLab
+

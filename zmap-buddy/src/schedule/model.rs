@@ -1,5 +1,5 @@
 use std::net::Ipv6Addr;
-use queue_models::echo_response::EchoProbeResponse;
+use queue_models::probe_response::EchoProbeResponse;
 use queue_models::probe_request::EchoProbeRequest;
 
 #[derive(Debug, serde::Deserialize)]

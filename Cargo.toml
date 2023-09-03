@@ -1,5 +1,5 @@
 [workspace]
-members = ["zmap-buddy", "queue-models", "aggregator"]
+members = ["zmap-buddy", "yarrp-buddy", "queue-models", "aggregator"]
 
     [workspace.package]
     version      = "0.1.0"
@@ -14,7 +14,7 @@ members = ["zmap-buddy", "queue-models", "aggregator"]
     anyhow              = { version = "1.0.68", features = ["backtrace"] }
     clap                = { version = "4.2", features = ["derive", "unicode", "env"] }
     clap-verbosity-flag = "2.0.0"
-    flexi_logger        = { version = "0.25.0", features = ["specfile", "async"] }
+    flexi_logger        = { version = "0.26.0", features = ["specfile", "async"] }
     human-panic         = "1.1.0"
     serde               = { version = "1.0.159", features = ["derive"] }
     log                 = "0.4.17"
@@ -54,4 +54,3 @@ dotenvy             = { workspace = true }
 rand                = { workspace = true }
 ipnet               = { workspace = true }
 assertor            = { workspace = true }
-readonly            = "0.2"

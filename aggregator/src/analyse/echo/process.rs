@@ -4,7 +4,7 @@ use crate::analyse::WeirdType;
 
 use super::result::*;
 use log::debug;
-use queue_models::echo_response::{
+use queue_models::probe_response::{
     DestUnreachKind::{self, *},
     EchoProbeResponse,
     ResponseKey::{self, *},
