@@ -1225,6 +1225,7 @@ version = "0.1.0"
 dependencies = [
  "ipnet",
  "serde",
+ "type-safe-id",
 ]
 
 [[package]]

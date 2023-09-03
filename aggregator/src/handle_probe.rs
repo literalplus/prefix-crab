@@ -1,31 +1,19 @@
 use anyhow::*;
-use clap::Args;
 use diesel::prelude::*;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use ipnet::Ipv6Net;
 use log::{debug, error, info, trace, warn};
 use tokio::sync::mpsc::{Receiver, UnboundedSender};
 
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
 use queue_models::echo_response::EchoProbeResponse;
 
-use crate::analyse::context::{ContextFetchError, ContextFetchResult};
+use crate::analyse::context::{self, ContextFetchError, ContextFetchResult};
 use crate::analyse::persist::UpdateAnalysis;
-use crate::analyse::CanFollowUp;
+use crate::analyse::{CanFollowUp, EchoFollowUp, EchoResult};
 
 use crate::analyse::split::SplitError;
 use crate::prefix_tree::ContextOps;
 use crate::{analyse, prefix_tree};
-
-#[derive(Args, Debug)]
-#[group(id = "handler")]
-pub struct Params {
-    /// URI for PostgreSQL server to connect to
-    /// Environment variable: DATABASE_URL
-    /// If a password is required, it is recommended to specify the URL over the environment or
-    /// a config file, to avoid exposure in shell history and process list.
-    #[arg(long, env = "DATABASE_URL")]
-    database_url: String,
-}
 
 #[derive(Debug)]
 pub struct TaskRequest {
@@ -39,93 +27,99 @@ impl CanAck for TaskRequest {
     }
 }
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
-
 pub async fn run(
-    mut task_rx: Receiver<TaskRequest>,
+    task_rx: Receiver<TaskRequest>,
     ack_tx: UnboundedSender<TaskRequest>,
-    params: Params,
+    follow_up_tx: UnboundedSender<EchoFollowUp>,
 ) -> Result<()> {
-    let mut connection = connect_and_migrate_schema(&params)?;
-    info!("Probe handler up & running!");
-    loop {
-        if let Some(req) = task_rx.recv().await {
-            trace!("Received something: {:?}", req);
-            handle_recv(&mut connection, &ack_tx, req).context("handling probe responses")?;
-        } else {
-            info!("Probe handler shutting down.");
-            return Ok(());
-        }
-    }
+    let conn = crate::persist::connect()?;
+    let handler = ProbeHandler {
+        conn,
+        ack_tx,
+        follow_up_tx,
+    };
+
+    info!("Probe handler is ready to receive work!");
+    handler.run(task_rx).await
 }
 
-fn connect_and_migrate_schema(params: &Params) -> Result<PgConnection, Error> {
-    let mut connection = PgConnection::establish(&params.database_url)
-        .with_context(|| "While connecting to PostgreSQL")?;
-    debug!("Running any pending migrations now.");
-    match connection.run_pending_migrations(MIGRATIONS) {
-        Result::Ok(migrations_run) => {
-            for migration in migrations_run {
-                info!("Schema migration run: {}", migration);
+struct ProbeHandler {
+    conn: PgConnection,
+    ack_tx: UnboundedSender<TaskRequest>,
+    follow_up_tx: UnboundedSender<EchoFollowUp>,
+}
+
+impl ProbeHandler {
+    async fn run(mut self, mut task_rx: Receiver<TaskRequest>) -> Result<()> {
+        loop {
+            if let Some(req) = task_rx.recv().await {
+                trace!("Received something: {:?}", req);
+                self.handle_recv(req).context("handling probe responses")?;
+            } else {
+                info!("Probe handler shutting down.");
+                return Ok(());
             }
         }
-        Err(e) => Err(anyhow!(e)).with_context(|| "While running migrations")?,
     }
-    Ok(connection)
-}
 
-fn handle_recv(
-    connection: &mut PgConnection,
-    ack_tx: &UnboundedSender<TaskRequest>,
-    req: TaskRequest,
-) -> Result<()> {
-    match handle_one(connection, &req) {
-        Result::Ok(_) => ack_tx.send(req).map_err(Error::msg),
-        Err(e) => {
-            // TODO Could be handled with DLQ
-            error!("Failed to handle request: {:?} - shutting down.", req);
-            Err(e)
+    fn handle_recv(&mut self, req: TaskRequest) -> Result<()> {
+        match self.handle_one(&req) {
+            Result::Ok(_) => self.ack_tx.send(req).map_err(Error::msg),
+            Err(e) => {
+                // TODO Could be handled with DLQ
+                error!("Failed to handle request: {:?} - shutting down.", req);
+                Err(e)
+            }
         }
     }
+
+    fn handle_one(&mut self, req: &TaskRequest) -> Result<(), Error> {
+        let target_net = req.model.target_net;
+        debug!("Resolved path is {}", target_net);
+
+        archive::process(&mut self.conn, &target_net, &req.model);
+
+        let (interpretation, context) = interpret_and_save(&mut self.conn, target_net, &req.model)?;
+
+        if interpretation.needs_follow_up() {
+            for follow_up in interpretation.follow_ups.into_iter() {
+                info!("Follow-up {:?} sent, split analysis delayed.", follow_up.id);
+                self.follow_up_tx
+                    .send(follow_up)
+                    .with_context(|| "sending follow-ups")?;
+            }
+        } else {
+            info!("No further follow-up necessary, scheduling split analysis.");
+            match analyse::split::process(&mut self.conn, context) {
+                Err(SplitError::PrefixNotLeaf { request }) => warn!(
+                    "Handled prefix is (no longer?) a leaf, split not possible: {:?}",
+                    request.node()
+                ),
+                r => r?,
+            }
+        }
+
+        Ok(())
+    }
 }
 
-fn handle_one(conn: &mut PgConnection, req: &TaskRequest) -> Result<(), Error> {
-    let target_net = req.model.target_net;
-    debug!("Resolved path is {}", target_net);
-
-    archive::process(conn, &target_net, &req.model);
-
+fn interpret_and_save(
+    conn: &mut PgConnection,
+    target_net: Ipv6Net,
+    model: &EchoProbeResponse,
+) -> Result<(EchoResult, context::Context)> {
     let tree_context =
         prefix_tree::context::fetch(conn, &target_net).context("fetching tree context")?;
     let mut context = fetch_or_begin_context(conn, tree_context)
         .context("fetch/begin context for probe handling")?;
 
-    let interpretation = analyse::echo::process(&req.model);
-
-    info!("Context for this probe: {:?}", context);
-    info!("Interpretation for this probe: {}", interpretation);
-
-    // TODO schedule follow-ups now & here (still save if f/u fails!)
-    let need_follow_up = interpretation.needs_follow_up() && false;
+    let mut interpretation = analyse::echo::process(model);
 
     interpretation
         .update_analysis(conn, &mut context)
         .context("while saving analysis data")?;
 
-    if !need_follow_up {
-        info!("No further follow-up necessary, scheduling split analysis.");
-        match analyse::split::process(conn, context) {
-            Err(SplitError::PrefixNotLeaf { request }) => warn!(
-                "Handled prefix is (no longer?) a leaf, split not possible: {:?}",
-                request.node()
-            ),
-            r => r?,
-        }
-    } else {
-        debug!("Follow-up needed, split analysis delayed.");
-    }
-
-    Ok(())
+    Ok((interpretation, context))
 }
 
 fn fetch_or_begin_context(

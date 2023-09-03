@@ -1,14 +1,15 @@
+use crate::handle_probe::TaskRequest;
 use anyhow::*;
 use clap::Args;
+use prefix_crab::helpers::rabbit::{ack_sender, ConfigureRabbit, RabbitHandle};
+use queue_models::probe_request::ProbeRequest;
 use tokio::select;
 use tokio::sync::{broadcast, mpsc};
-use prefix_crab::helpers::rabbit::{ack_sender, ConfigureRabbit, RabbitHandle};
-use crate::handle_probe::TaskRequest;
 
 mod receive;
+mod send;
 
-#[derive(Args)]
-#[derive(Debug)]
+#[derive(Args, Debug)]
 #[group(id = "rabbit")]
 pub struct Params {
     /// URI for AMQP (RabbitMQ) server to connect to.
@@ -25,50 +26,69 @@ pub struct Params {
     /// Name of the exchange to bind the queue to.
     #[arg(long, default_value = "prefix-crab.probe-response")]
     in_exchange_name: String,
+
+    /// Name of the exchange to publish to.
+    #[arg(long, default_value = "prefix-crab.probe-request")]
+    out_exchange_name: String,
+
+    /// Whether to pretty print JSON in RabbitMQ responses.
+    #[arg(long, env = "PRETTY_PRINT")]
+    pretty_print: bool,
 }
 
 pub async fn run(
     work_sender: mpsc::Sender<TaskRequest>,
     ack_receiver: mpsc::UnboundedReceiver<TaskRequest>,
+    probe_receiver: mpsc::UnboundedReceiver<ProbeRequest>,
     mut stop_rx: broadcast::Receiver<()>,
     params: Params,
 ) -> Result<()> {
     select! {
         biased; // Needed to handle stops immediately
         _ = stop_rx.recv() => Ok(()),
-        exit_res = run_without_stop(work_sender, ack_receiver, params) => exit_res,
+        exit_res = run_without_stop(work_sender, ack_receiver, probe_receiver, params) => exit_res,
     }
 }
 
 async fn run_without_stop(
     work_sender: mpsc::Sender<TaskRequest>,
     ack_receiver: mpsc::UnboundedReceiver<TaskRequest>,
+    probe_receiver: mpsc::UnboundedReceiver<ProbeRequest>,
     params: Params,
 ) -> Result<()> {
     let handle = prepare(&params).await?;
-    let receiver = receive::run(
-        &handle, params.in_queue_name, work_sender,
-    );
-    let ack_sender = ack_sender::run(
-        &handle, ack_receiver
+    let receiver = receive::run(&handle, params.in_queue_name, work_sender);
+    let ack_sender = ack_sender::run(&handle, ack_receiver);
+    let probe_sender = send::run(
+        &handle,
+        probe_receiver,
+        params.out_exchange_name,
+        params.pretty_print,
     );
     select! {
         exit_res = receiver => exit_res,
         exit_res = ack_sender => exit_res,
+        exit_res = probe_sender => exit_res,
     }
 }
 
 async fn prepare(params: &Params) -> Result<RabbitHandle> {
-    let handle = RabbitHandle::connect(params.amqp_uri.as_str())
-        .await?;
+    let handle = RabbitHandle::connect(params.amqp_uri.as_str()).await?;
 
     let queue_name = params.in_queue_name.as_str();
     let in_exchange_name = params.in_exchange_name.as_str();
+    let out_exchange_name = params.out_exchange_name.as_str();
     let configure = ConfigureRabbit::new(&handle);
 
     configure
-        .declare_queue(queue_name).await?
-        .bind_queue_to(queue_name, in_exchange_name).await?;
+        .declare_queue(queue_name)
+        .await?
+        .bind_queue_to(queue_name, in_exchange_name)
+        .await?;
+
+    configure
+        .declare_exchange(out_exchange_name, "direct")
+        .await?;
 
     Ok(handle)
 }

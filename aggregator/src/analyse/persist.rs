@@ -27,5 +27,5 @@ pub fn begin(conn: &mut PgConnection, parent: prefix_tree::Context) -> ContextFe
 }
 
 pub trait UpdateAnalysis {
-    fn update_analysis(self, conn: &mut PgConnection, context: &mut Context) -> Result<()>;
+    fn update_analysis(&mut self, conn: &mut PgConnection, context: &mut Context) -> Result<()>;
 }

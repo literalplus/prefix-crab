@@ -3,12 +3,20 @@ use std::net::Ipv6Addr;
 use ipnet::Ipv6Net;
 use serde::{Deserialize, Serialize};
 
+use crate::{TypeRoutedMessage, probe_request::EchoProbeRequest};
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EchoProbeResponse {
     pub target_net: Ipv6Net,
     pub subnet_prefix_len: u8,
     pub sent_ttl: u8,
     pub splits: Vec<SplitResult>,
+}
+
+impl TypeRoutedMessage for EchoProbeResponse {
+    fn routing_key() -> &'static str {
+        EchoProbeRequest::routing_key()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

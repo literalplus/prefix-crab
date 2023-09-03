@@ -1,20 +1,22 @@
-pub enum ProbeType {
-    /// Scan a prefix using ICMP Echo Requests by splitting it into sub-prefixes
-    /// and selecting random addresses to probe.
-    EchoScanPrefix,
+pub mod echo_response;
+pub mod probe_request;
 
-    /// Trace a set of addresses in a prefix to determine the Last-Hop-Router.
-    FollowUpTrace,
+/// Types that have a (constant) routing key to be used to indicate messages of this type on an exchange where multiple
+/// types of message are sent.
+///
+/// This takes a self parameter for use in enums (specifically, enums of message type on an exchange).
+pub trait RoutedMessage {
+    fn routing_key(&self) -> &'static str;
 }
 
-pub mod probe_request {
-    use ipnet::Ipv6Net;
-    use serde::{Deserialize, Serialize};
+/// Specialisation of [RoutedMessage] where the routing key resolution doesn't require a self parameter.
+/// This is so that routing keys can be obtained statically without requiring an instance.
+pub trait TypeRoutedMessage {
+    fn routing_key() -> &'static str;
+}
 
-    #[derive(Debug, Serialize, Deserialize)]
-    pub struct EchoProbeRequest {
-        pub target_net: Ipv6Net,
+impl<T: TypeRoutedMessage> RoutedMessage for T {
+    fn routing_key(&self) -> &'static str {
+        Self::routing_key()
     }
 }
-
-pub mod echo_response;

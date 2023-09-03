@@ -37,4 +37,8 @@ impl MessageHandler for TaskHandler {
             .await
             .with_context(|| "while passing received message")
     }
+
+    fn consumer_tag() -> &'static str {
+        "zmap-buddy echo request receiver"
+    }
 }

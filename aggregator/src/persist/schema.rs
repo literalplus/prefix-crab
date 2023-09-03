@@ -53,17 +53,25 @@ diesel::table! {
         tree_net -> Cidr,
         created_at -> Timestamp,
         completed_at -> Nullable<Timestamp>,
-        #[max_length = 30]
-        pending_follow_up -> Nullable<Bpchar>,
         result -> Nullable<Jsonb>,
     }
 }
 
+diesel::table! {
+    split_analysis_follow_up (analysis_id, follow_up_id) {
+        analysis_id -> Int8,
+        #[max_length = 34]
+        follow_up_id -> Bpchar,
+    }
+}
+
 diesel::joinable!(split_analysis -> prefix_tree (tree_net));
+diesel::joinable!(split_analysis_follow_up -> split_analysis (analysis_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     measurement_tree,
     prefix_tree,
     response_archive,
     split_analysis,
+    split_analysis_follow_up,
 );

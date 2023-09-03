@@ -34,6 +34,8 @@ pub trait MessageHandler {
     async fn handle_msg<'concrete_de>(
         &self, model: Self::Model, delivery_tag: u64,
     ) -> Result<()> where Self::Model: Deserialize<'concrete_de>;
+
+    fn consumer_tag() -> &'static str;
 }
 
 impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
@@ -52,7 +54,7 @@ impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
     async fn start_consumer(
         &self, queue_name: &str,
     ) -> Result<mpsc::UnboundedReceiver<ConsumerMessage>> {
-        let consume_args = BasicConsumeArguments::new(queue_name, "zmap-buddy");
+        let consume_args = BasicConsumeArguments::new(queue_name, HandlerType::consumer_tag());
         let (_, rabbit_rx) = self.handle.chan()
             .basic_consume_rx(consume_args)
             .await

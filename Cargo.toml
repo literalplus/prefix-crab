@@ -27,6 +27,7 @@ members = ["zmap-buddy", "queue-models", "aggregator"]
     dotenvy             = { version = "0.15.7" }
     rand                = "0.8.5"
     assertor            = "0.0.2"
+    type-safe-id        = { version = "0.2.1", features = ["serde"] }
 
 [package]
 name                   = "prefix-crab"

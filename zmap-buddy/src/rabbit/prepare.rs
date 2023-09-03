@@ -2,6 +2,7 @@ use anyhow::*;
 
 use prefix_crab::helpers::rabbit::ConfigureRabbit;
 pub use prefix_crab::helpers::rabbit::RabbitHandle;
+use queue_models::{probe_request::EchoProbeRequest, TypeRoutedMessage};
 
 use super::Params;
 
@@ -18,7 +19,7 @@ pub async fn prepare(params: &Params) -> Result<RabbitHandle> {
         .declare_queue(queue_name).await?
         .declare_exchange(out_exchange_name, "fanout").await?
         .declare_exchange(in_exchange_name, "direct").await?
-        .bind_queue_routing(queue_name, in_exchange_name, "echo").await?;
+        .bind_queue_routing(queue_name, in_exchange_name, EchoProbeRequest::routing_key()).await?;
 
     Ok(handle)
 }

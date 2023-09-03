@@ -1,6 +1,8 @@
 use std::net::Ipv6Addr;
 use std::{collections::HashMap, fmt::Display};
 
+use queue_models::probe_request::TraceRequestId;
+
 use crate::analyse::{map64, WeirdType};
 use crate::analyse::{map64::Net64Map, HitCount, LastHopRouter, LhrSource, WeirdNode};
 
@@ -17,13 +19,13 @@ impl EchoResult {
         }
     }
 
-    pub fn register_weirds(
-        &mut self,
-        targets: &[Ipv6Addr],
-        description: WeirdType,
-    ) {
-        if targets.len() == 1 { // no need to clone if there is only one item (the usual case)
-            let only_item = targets.iter().next().expect("one target to be present if length is one");
+    pub fn register_weirds(&mut self, targets: &[Ipv6Addr], description: WeirdType) {
+        if targets.len() == 1 {
+            // no need to clone if there is only one item (the usual case)
+            let only_item = targets
+                .iter()
+                .next()
+                .expect("one target to be present if length is one");
             self.store[only_item].register_weird(description);
             return;
         }
@@ -80,16 +82,14 @@ impl PrefixEntry {
     }
 
     pub fn register_weird(&mut self, description: WeirdType) {
-        self.weird
-            .entry(description)
-            .or_default()
-            .register();
+        self.weird.entry(description).or_default().register();
         self.responsive_count += 1;
     }
 }
 
 #[derive(Debug)]
-pub enum EchoFollowUp {
-    TraceResponsive { targets: Vec<Ipv6Addr> },
-    TraceUnresponsive { targets: Vec<Ipv6Addr> },
+pub struct EchoFollowUp {
+    pub id: TraceRequestId,
+    pub targets: Vec<Ipv6Addr>,
+    pub for_responsive: bool,
 }
