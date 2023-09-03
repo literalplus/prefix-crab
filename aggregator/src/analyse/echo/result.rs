@@ -1,8 +1,6 @@
 use std::net::Ipv6Addr;
 use std::{collections::HashMap, fmt::Display};
 
-use queue_models::probe_request::TraceRequestId;
-
 use crate::analyse::{map64, WeirdType};
 use crate::analyse::{map64::Net64Map, HitCount, LastHopRouter, LhrSource, WeirdNode};
 
@@ -89,7 +87,6 @@ impl PrefixEntry {
 
 #[derive(Debug)]
 pub struct EchoFollowUp {
-    pub id: TraceRequestId,
     pub targets: Vec<Ipv6Addr>,
     pub for_responsive: bool,
 }

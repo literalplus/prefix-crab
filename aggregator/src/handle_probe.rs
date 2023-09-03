@@ -9,10 +9,11 @@ use queue_models::echo_response::EchoProbeResponse;
 
 use crate::analyse::context::{self, ContextFetchError, ContextFetchResult};
 use crate::analyse::persist::UpdateAnalysis;
-use crate::analyse::{CanFollowUp, EchoFollowUp, EchoResult};
+use crate::analyse::{CanFollowUp, EchoResult};
 
 use crate::analyse::split::SplitError;
 use crate::prefix_tree::ContextOps;
+use crate::schedule::FollowUpRequest;
 use crate::{analyse, prefix_tree};
 
 #[derive(Debug)]
@@ -30,7 +31,7 @@ impl CanAck for TaskRequest {
 pub async fn run(
     task_rx: Receiver<TaskRequest>,
     ack_tx: UnboundedSender<TaskRequest>,
-    follow_up_tx: UnboundedSender<EchoFollowUp>,
+    follow_up_tx: UnboundedSender<FollowUpRequest>,
 ) -> Result<()> {
     let conn = crate::persist::connect()?;
     let handler = ProbeHandler {
@@ -46,7 +47,7 @@ pub async fn run(
 struct ProbeHandler {
     conn: PgConnection,
     ack_tx: UnboundedSender<TaskRequest>,
-    follow_up_tx: UnboundedSender<EchoFollowUp>,
+    follow_up_tx: UnboundedSender<FollowUpRequest>,
 }
 
 impl ProbeHandler {
@@ -82,11 +83,16 @@ impl ProbeHandler {
         let (interpretation, context) = interpret_and_save(&mut self.conn, target_net, &req.model)?;
 
         if interpretation.needs_follow_up() {
-            for follow_up in interpretation.follow_ups.into_iter() {
-                info!("Follow-up {:?} sent, split analysis delayed.", follow_up.id);
-                self.follow_up_tx
-                    .send(follow_up)
-                    .with_context(|| "sending follow-ups")?;
+            if let Some(id) = &context.analysis.pending_follow_up {
+                let model = FollowUpRequest {
+                    id: id.parse().context("Invalid TypeID stored in node")?,
+                    prefix_tree: context.node().clone(),
+                    follow_ups: interpretation.follow_ups,
+                };
+                info!("Sending follow-up {}, split analysis delayed.", model.id);
+                self.follow_up_tx.send(model).context("sending follow-up")?;
+            } else {
+                warn!("Interpretation needs follow-up but it wasn't registered in the node");
             }
         } else {
             info!("No further follow-up necessary, scheduling split analysis.");

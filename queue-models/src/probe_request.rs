@@ -39,9 +39,6 @@ impl TypeRoutedMessage for EchoProbeRequest {
 pub struct TraceRequest {
     pub id: TraceRequestId,
     pub targets: Vec<Ipv6Addr>,
-    /// Whether the requested targets were responsive or not. This may be used to prioritise requests or otherwise
-    /// optimise the implementation of the probe sender.
-    pub were_responsive: bool,
 }
 
 impl TypeRoutedMessage for TraceRequest {

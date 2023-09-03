@@ -76,11 +76,11 @@ in-tmux:
 	@tmux bind-key t "display-popup -T 'Custom Scan' -EE './scan-oneoff.sh && sleep 3';"
 	@tmux set status-bg lightblue
 	@tmux set -g window-status-current-style bg=green
-	@if ! [[ -f .env ]]; then make configure-env; fi
-	@make -s infra
-	@if ! ip link show brgns3 >/dev/null 2>&1; then make gns3; fi
-	@tmux new-window -n zmap -d make run-zmap || echo "zmap-buddy already running."
-	@tmux new-window -n agg -d make run-aggregator || echo "aggregator already running."
+	@if ! [[ -f .env ]]; then make --no-print-directory configure-env; fi
+	@make --no-print-directory infra
+	@if ! ip link show brgns3 >/dev/null 2>&1; then make --no-print-directory gns3; fi
+	@tmux new-window -n zmap -d make --no-print-directory run-zmap || echo "zmap-buddy already running."
+	@tmux new-window -n agg -d make --no-print-directory run-aggregator || echo "aggregator already running."
 	@clear
 	@make -s banner
 	@echo "    $(BOLD)Trigger an example scan:$(UNBOLD)    Ctrl-B, then E"

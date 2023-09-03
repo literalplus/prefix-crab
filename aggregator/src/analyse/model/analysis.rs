@@ -1,7 +1,6 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use ipnet::Ipv6Net;
-use queue_models::probe_request::TraceRequestId;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -23,6 +22,7 @@ pub struct SplitAnalysis {
     pub tree_net: Ipv6Net,
     pub created_at: NaiveDateTime,
     pub completed_at: Option<NaiveDateTime>,
+    pub pending_follow_up: Option<String>, // Actually TraceRequestId
     pub result: Option<SplitAnalysisResult>,
 }
 
@@ -36,21 +36,3 @@ pub struct SplitAnalysisResult {
 }
 
 configure_jsonb_serde!(SplitAnalysisResult);
-
-#[derive(Queryable, Identifiable, Insertable, PartialEq, Debug, Clone)]
-#[diesel(table_name = crate::schema::split_analysis_follow_up)]
-#[diesel(primary_key(analysis_id, follow_up_id))]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct SplitAnalysisFollowUp {
-    pub analysis_id: i64,
-    pub follow_up_id: String, // actually TraceRequestId
-}
-
-impl SplitAnalysisFollowUp {
-    pub fn new(analysis: &SplitAnalysis, id: &TraceRequestId) -> Self {
-        Self {
-            analysis_id: analysis.id,
-            follow_up_id: id.to_string(),
-        }
-    }
-}

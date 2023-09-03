@@ -6,10 +6,11 @@ use ipnet::Ipv6Net;
 use itertools::Itertools;
 use log::trace;
 use log::warn;
+use queue_models::probe_request::TraceRequestId;
 
+use crate::analyse::CanFollowUp;
 use crate::analyse::context::Context;
 use crate::analyse::persist::UpdateAnalysis;
-use crate::analyse::EchoFollowUp;
 use crate::analyse::EchoResult;
 use crate::analyse::LastHopRouter;
 use crate::analyse::MeasurementForest;
@@ -18,7 +19,6 @@ use crate::analyse::ModifiableTree;
 use crate::analyse::ModificationType;
 use crate::analyse::PrefixEntry;
 use crate::analyse::SplitAnalysis;
-use crate::analyse::SplitAnalysisFollowUp;
 
 use crate::persist::dsl::CidrMethods;
 use crate::persist::DieselErrorFixCause;
@@ -30,47 +30,42 @@ impl UpdateAnalysis for EchoResult {
     fn update_analysis(&mut self, conn: &mut PgConnection, context: &mut Context) -> Result<()> {
         //              ^   `drain()` called in `save()`
         let forest = self.drain_to_measurement_forest()?;
-        Self::save(conn, &context.analysis, &self.follow_ups, forest)
+        let update = self.determine_parent_update(&mut context.analysis);
+        Self::save(conn, &context.analysis, update, forest)
     }
 }
 
 impl EchoResult {
-    // fn determine_parent_update(
-    //     &self,
-    //     parent: &mut SplitAnalysis,
-    //     log_id: String,
-    // ) -> RegisterFollowUpChangeset {
-    //     if self.needs_follow_up() {
-    //         let id = TraceRequestId::new();
-    //         parent.pending_follow_up = Some(id.to_string());
-    //         info!("Follow-up traces necessary for {}", log_id);
-    //         RegisterFollowUpChangeset {
-    //             pending_follow_up: Some(id.to_string()),
-    //         }
-    //     } else {
-    //         info!(
-    //             "Data collection is complete for {}, not follow-up necessary.",
-    //             log_id
-    //         );
-    //         // Removal of an existing follow-up should be done by the code handling follow-up responses
-    //         RegisterFollowUpChangeset {
-    //             pending_follow_up: None,
-    //         }
-    //     }
-    // }
+    fn determine_parent_update(
+        &self,
+        parent: &mut SplitAnalysis,
+    ) -> RegisterFollowUpChangeset {
+        if self.needs_follow_up() {
+            let id = TraceRequestId::new();
+            parent.pending_follow_up = Some(id.to_string());
+            RegisterFollowUpChangeset {
+                pending_follow_up: Some(id.to_string()),
+            }
+        } else {
+            // Removal of an existing follow-up should be done by the code handling follow-up responses
+            RegisterFollowUpChangeset {
+                pending_follow_up: None,
+            }
+        }
+    }
 
     fn save(
         conn: &mut PgConnection,
         analysis: &SplitAnalysis,
-        follow_ups: &[EchoFollowUp],
+        update: RegisterFollowUpChangeset,
         forest: MeasurementForest,
     ) -> Result<()> {
         conn.transaction(|conn| {
             let relevant_measurements = load_relevant_measurements(conn, analysis, &forest)?;
             save_merging_into_existing(conn, relevant_measurements, forest)?;
 
-            if !follow_ups.is_empty() {
-                save_follow_ups(conn, analysis, follow_ups)?;
+            if update.has_changes() {
+                diesel::update(analysis).set(update).execute(conn)?;
             }
 
             Ok(())
@@ -155,27 +150,6 @@ fn save_merging_into_existing(
     Ok(())
 }
 
-fn save_follow_ups(
-    conn: &mut PgConnection,
-    analysis: &SplitAnalysis,
-    follow_ups: &[EchoFollowUp],
-) -> Result<()> {
-    use crate::schema::split_analysis_follow_up::dsl::*;
-
-    let inserts: Vec<SplitAnalysisFollowUp> = follow_ups
-        .iter()
-        .map(|it| SplitAnalysisFollowUp::new(analysis, &it.id))
-        .collect();
-
-    diesel::insert_into(split_analysis_follow_up)
-        .values(inserts)
-        .on_conflict_do_nothing()
-        .execute(conn)
-        .fix_cause()?;
-
-    Ok(())
-}
-
 fn make_tree(net: Ipv6Net, entry: PrefixEntry) -> MeasurementTree {
     let mut tree = MeasurementTree::empty(net);
     for (addr, LastHopRouter { sources, hit_count }) in entry.last_hop_routers.into_iter() {
@@ -187,4 +161,16 @@ fn make_tree(net: Ipv6Net, entry: PrefixEntry) -> MeasurementTree {
     tree.responsive_count = entry.responsive_count;
     tree.unresponsive_count = entry.unresponsive_count;
     tree
+}
+
+#[derive(AsChangeset)]
+#[diesel(table_name = crate::schema::split_analysis)]
+struct RegisterFollowUpChangeset {
+    pending_follow_up: Option<String>,
+}
+
+impl RegisterFollowUpChangeset {
+    fn has_changes(&self) -> bool {
+        self.pending_follow_up.is_some()
+    }
 }

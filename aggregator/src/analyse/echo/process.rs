@@ -4,14 +4,11 @@ use crate::analyse::WeirdType;
 
 use super::result::*;
 use log::debug;
-use queue_models::{
-    echo_response::{
-        DestUnreachKind::{self, *},
-        EchoProbeResponse,
-        ResponseKey::{self, *},
-        Responses, SplitResult,
-    },
-    probe_request::TraceRequestId,
+use queue_models::echo_response::{
+    DestUnreachKind::{self, *},
+    EchoProbeResponse,
+    ResponseKey::{self, *},
+    Responses, SplitResult,
 };
 
 use super::super::LhrSource::{self, *};
@@ -118,7 +115,6 @@ impl From<FollowUpCollector> for Option<EchoFollowUp> {
             None
         } else {
             Some(EchoFollowUp {
-                id: TraceRequestId::new(),
                 targets: value.targets,
                 for_responsive: value.has_responsive,
             })
