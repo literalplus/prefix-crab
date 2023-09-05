@@ -64,7 +64,7 @@ impl Params {
 
     fn _make_caller(&self) -> Result<Caller> {
         let mut caller = Caller::new(self.sudo_path.to_string(), self.bin_path.to_string());
-        caller.setup(&self);
+        caller.setup(self);
         debug!("Using zmap caller: {:?}", caller);
         Ok(caller)
     }

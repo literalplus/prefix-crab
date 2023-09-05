@@ -39,15 +39,6 @@ impl TargetCollector {
         Ok(BufWriter::new(file))
     }
 
-    /// Utility function that pre-fills a [TargetCollector] with a vector. This is most useful
-    /// when the set of addresses is already known and the flexibility provided by
-    /// [TargetCollector] is not needed.
-    pub fn from_vec(addrs: Vec<Ipv6Addr>) -> Result<Self> {
-        let mut collector = Self::new_default()?;
-        collector.push_slice(addrs.as_slice())?;
-        Ok(collector)
-    }
-
     /// Pushes a single address to this collector.
     ///
     /// Note that, if a push() fails, the collector enters an undefined state and it should

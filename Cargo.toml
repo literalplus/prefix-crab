@@ -28,6 +28,7 @@ members = ["zmap-buddy", "yarrp-buddy", "queue-models", "aggregator"]
     rand                = "0.8.5"
     assertor            = "0.0.2"
     type-safe-id        = { version = "0.2.1", features = ["serde"] }
+    #type-safe-id        = { path = "type-safe-id", features = ["serde"] }
 
 [package]
 name                   = "prefix-crab"

@@ -5,7 +5,7 @@ use log::{info, warn};
 use queue_models::RoutedMessage;
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use queue_models::probe_response::EchoProbeResponse;
+use queue_models::probe_response::TraceResponse;
 
 use crate::schedule::TaskResponse;
 
@@ -51,7 +51,7 @@ impl RabbitSender<'_> {
         Ok(())
     }
 
-    async fn publish(&self, msg: EchoProbeResponse) -> Result<()> {
+    async fn publish(&self, msg: TraceResponse) -> Result<()> {
         let args = BasicPublishArguments::new(&self.exchange_name, msg.routing_key());
         let bin = if self.pretty_print {
             serde_json::to_vec_pretty(&msg)

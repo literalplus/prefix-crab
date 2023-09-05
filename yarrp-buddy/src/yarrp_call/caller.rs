@@ -8,7 +8,6 @@ use anyhow::{bail, Context, Result};
 use csv::StringRecord;
 use log::Level::Debug;
 use log::{debug, error, log_enabled, trace, warn};
-use regex::Regex;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
@@ -76,10 +75,10 @@ impl Caller {
     }
 
     pub fn setup(&mut self, params: &Params) {
-        if let Some(interface_name) = params.interface {
+        if let Some(interface_name) = &params.interface {
             self.cmd.arg(format!("--interface={}", interface_name));
         }
-        if let Some(gateway_mac) = params.gateway_mac {
+        if let Some(gateway_mac) = &params.gateway_mac {
             self.cmd.arg(format!("--dstmac={}", gateway_mac));
         }
         params
