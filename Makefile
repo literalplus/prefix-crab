@@ -19,7 +19,8 @@ gns3:
 	sudo ip link set dev $(BRIDGE_IF) up
 	sudo ip -6 addr add $(MY_ADDR_ZMAP)/64 dev $(BRIDGE_IF)
 	sudo ip -6 addr add $(MY_ADDR_YARRP)/64 dev $(BRIDGE_IF)
-	@read -p "#### Open the GNS3 UI and start all devices of the project now (green play button), then press any key."
+# Project starts automatically with the server if you set it up as such in File -> Edit project
+#@read -p "#### Open the GNS3 UI and start all devices of the project now (green play button), then press any key."
 	sudo ip -6 route add $(ULA_PFX_CIDR) dev $(BRIDGE_IF) via $(ROUTER) metric 3
 	ip -6 route | grep $(ULA_PFX_CIDR) || echo "route adding failed"
 
@@ -36,6 +37,9 @@ build:
 .PHONY: build-release
 build-release:
 	cargo build --release
+	cd zmap-buddy && cargo build --release
+	cd yarrp-buddy && cargo build --release
+	cd aggregator && cargo build --release
 
 .PHONY: clippy
 clippy:
@@ -48,6 +52,10 @@ run-zmap:
 .PHONY: run-aggregator
 run-aggregator:
 	cd aggregator && cargo run
+
+.PHONY: run-yarrp
+run-yarrp:
+	cd yarrp-buddy && cargo run
 
 .PHONY: example-scan
 example-scan:
@@ -82,6 +90,7 @@ in-tmux:
 	@make --no-print-directory infra
 	@if ! ip link show brgns3 >/dev/null 2>&1; then make --no-print-directory gns3; fi
 	@tmux new-window -n zmap -d make --no-print-directory run-zmap || echo "zmap-buddy already running."
+	@tmux new-window -n yrp -d make --no-print-directory run-yarrp || echo "yarrp-buddy already running."
 	@tmux new-window -n agg -d make --no-print-directory run-aggregator || echo "aggregator already running."
 	@clear
 	@make -s banner

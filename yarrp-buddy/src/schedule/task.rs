@@ -84,6 +84,7 @@ impl From<Target> for TraceResult {
                 last_hop_addr: hop.addr,
                 last_hop_ttl: hop.sent_ttl,
                 target_ttl: value.target_own_ttl,
+                response_type: hop.response_type,
             }),
             None => TraceResult::NoResponse {
                 target_addr: value.addr,

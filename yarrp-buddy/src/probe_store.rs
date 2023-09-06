@@ -1,8 +1,12 @@
 use std::{collections::HashMap, net::Ipv6Addr};
 
+use anyhow::bail;
 use itertools::Itertools;
 use log::warn;
-use queue_models::probe_request::TraceRequestId;
+use queue_models::{
+    probe_request::TraceRequestId,
+    probe_response::{DestUnreachKind, TraceResponseType},
+};
 
 use crate::schedule::{ProbeResponse, TaskRequest};
 
@@ -67,23 +71,30 @@ impl Target {
     fn register_response(&mut self, response: ProbeResponse) {
         if response.actual_from == self.addr {
             if let Some(old_ttl) = self.target_own_ttl {
-                warn!("Target was hit twice, old TTL is {} and new response {:?}", old_ttl, response);
+                warn!(
+                    "Target was hit twice, old TTL is {} and new response {:?}",
+                    old_ttl, response
+                );
             }
             self.target_own_ttl = Some(response.sent_ttl);
-        } else if self.is_better_last_hop(&response) {
-            self.last_hop = Some(Hop { addr: response.actual_from, sent_ttl: response.sent_ttl });
+        } 
+        let hop = match Hop:: try_from(&response) {
+            Ok(hop) => hop,
+            Err(e) => {
+                warn!("Failed to construct hop: {:?}", e);
+                return;
+            },
+        };
+        if self.is_better_last_hop(&hop) {
+            self.last_hop = Some(hop);
         }
     }
 
-    fn is_better_last_hop(&self, response: &ProbeResponse) -> bool {
-        // assume that it's not for the target itself, that is checked in register_response()
-        if response.icmp_type != 3 /* time exceeded */ {
-            warn!("Got a traceroute response other than time exceeded: {:?}", response);
-            return false
-        }
+
+    fn is_better_last_hop(&self, hop: &Hop) -> bool {
         match &self.last_hop {
             None => true,
-            Some(existing) => response.sent_ttl > existing.sent_ttl,
+            Some(existing) => hop.sent_ttl > existing.sent_ttl,
         }
     }
 }
@@ -92,6 +103,32 @@ impl Target {
 pub struct Hop {
     pub addr: Ipv6Addr,
     pub sent_ttl: u8,
+    pub response_type: TraceResponseType,
+}
+
+impl TryFrom<&ProbeResponse> for Hop {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &ProbeResponse) -> Result<Self, Self::Error> {
+        use TraceResponseType as T;
+
+        let response_type = match value.icmp_type {
+            1 => T::DestinationUnreachable {
+                kind: DestUnreachKind::parse(value.icmp_code),
+            },
+            3 => T::TimeExceeded,
+            129 => T::EchoReply,
+            _ => bail!(
+                "Received unexpected ICMP type {} from yarrp",
+                value.icmp_type
+            ),
+        };
+        Ok(Hop {
+            addr: value.actual_from,
+            sent_ttl: value.sent_ttl,
+            response_type,
+        })
+    }
 }
 
 #[derive(Debug)]

@@ -140,9 +140,19 @@ pub enum TraceResult {
 pub struct LastHop {
     pub target_addr: Ipv6Addr,
     pub last_hop_addr: Ipv6Addr,
+    pub response_type: TraceResponseType,
     /// Sent TTL that yielded this last hop. Note that we are collecting the last *responsive* hop,
     /// and if target_ttl is set, this need not be exactly target_ttl - 1.
     pub last_hop_ttl: u8,
     /// Sent TTL that yielded the actual target, if a response was received from it.
     pub target_ttl: Option<u8>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum TraceResponseType {
+    // yarrp ignores all other types of response
+
+    DestinationUnreachable { kind: DestUnreachKind },
+    TimeExceeded,
+    EchoReply,
 }

@@ -5,7 +5,6 @@ use std::process::{ChildStdout, Command, Stdio};
 
 use crate::schedule::ProbeResponse;
 use anyhow::{bail, Context, Result};
-use csv::StringRecord;
 use log::Level::Debug;
 use log::{debug, error, log_enabled, trace, warn};
 use tokio::sync::mpsc;
@@ -170,8 +169,9 @@ impl Caller {
                 .comment(Some(b'#'))
                 .delimiter(b' ')
                 .has_headers(false)
+                .flexible(true) // needed because non-csv data is written to stdout
                 .from_reader(taken_fd);
-            let fake_header = csv::StringRecord::from(vec![
+            let fake_header = csv::ByteRecord::from(vec![
                 "intended_target",
                 "ts_sec",
                 "ts_usec",
@@ -183,38 +183,40 @@ impl Caller {
                 "ipid_v4_only",
                 "sent_packet_size",
                 "recv_packet_size",
-                "response_size",
                 "received_ttl",
                 "rtos_idk",
                 "mpls_label",
                 "mystery_counter",
             ]);
-            for record_res in reader.records() {
-                match Self::parse_yarrp_record(&fake_header, record_res) {
-                    Ok(record) => {
-                        if let Err(e) = tx.send(record) {
-                            warn!(
-                                "Unable to send response over channel; maybe the receiver disconnected? {}",
-                                e
-                            );
-                            break;
-                        }
-                    }
-                    Err(e) => warn!("Failed to parse space-separated record from yarrp: {}", e),
+            let mut work_record = csv::ByteRecord::new();
+            loop {
+                let res = reader.read_byte_record(&mut work_record);
+                if let Err(e) = res {
+                    warn!("Failed to read record from yarrp: {}", e);
+                    continue;
+                } else if !res.unwrap() {
+                    break; // EOF
+                }
+                trace!("[[yarrp record]] {:?}", work_record);
+                if work_record.get(0).map(|it| it == b">>").unwrap_or(false) {
+                    continue;
+                }
+                let model_res = work_record.deserialize(Some(&fake_header));
+                if let Err(e) = model_res {
+                    warn!("Failed to deserialise record: {:?} - from: {:?}", e, work_record);
+                    continue;
+                }
+                if let Err(e) = tx.send(model_res.unwrap()) {
+                    warn!(
+                        "Unable to send response over channel; maybe the receiver disconnected? {}",
+                        e
+                    );
+                    break;
                 }
             }
             trace!("Done reading from yarrp stdout");
             drop(tx);
         });
-    }
-
-    fn parse_yarrp_record(
-        header: &StringRecord,
-        record: Result<StringRecord, csv::Error>,
-    ) -> Result<ProbeResponse> {
-        let record = record?;
-        trace!("[[yarrp record]] {:?}", record);
-        Ok(record.deserialize(Some(header))?)
     }
 
     fn set_base(&mut self) {

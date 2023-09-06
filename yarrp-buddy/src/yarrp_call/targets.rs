@@ -20,7 +20,7 @@ pub struct TargetCollector {
 /// NOT thread-safe. thansk
 impl TargetCollector {
     pub fn new_default() -> Result<Self> {
-        let path = PathBuf::from("out/zmap-addr-list.txt");
+        let path = PathBuf::from("out/yarrp-addr-list.txt");
         TargetCollector::new(path)
     }
 

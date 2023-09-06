@@ -64,13 +64,13 @@ impl Scheduler {
         .await
         .with_context(|| "pre-flight sudo access check failed")??;
         tokio::pin!(work_stream);
-        info!("scheduler up & running!");
+        info!("Scheduler up & running!");
         loop {
             if let Some(batch) = work_stream.next().await {
                 trace!("Received something: {:?}", batch);
                 self.handle_scan_batch(batch).await
             } else {
-                info!("scheduler shutting down.");
+                info!("Scheduler shutting down.");
                 return Ok(());
             }
         }
@@ -78,9 +78,9 @@ impl Scheduler {
 
     async fn handle_scan_batch(&self, batch: Vec<TaskRequest>) {
         match self.do_scan_batch(batch).await {
-            Ok(_) => info!("call was successful."),
+            Ok(_) => info!("Call was successful."),
             Err(e) => {
-                error!("call failed: {}", e);
+                error!("Call failed: {}", e);
                 // TODO signal this somehow
             }
         }
