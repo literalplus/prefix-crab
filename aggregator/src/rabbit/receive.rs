@@ -1,40 +1,76 @@
+use std::marker::PhantomData;
+
 use anyhow::*;
 use async_trait::async_trait;
+use queue_models::TypeRoutedMessage;
 use serde::Deserialize;
+use tokio::select;
 use tokio::sync::mpsc;
 
-use prefix_crab::helpers::rabbit::RabbitHandle;
 use prefix_crab::helpers::rabbit::receive::{self as helpers_receive, MessageHandler};
-use queue_models::probe_response::EchoProbeResponse;
+use prefix_crab::helpers::rabbit::RabbitHandle;
+use queue_models::probe_response::{EchoProbeResponse, ProbeResponse, TraceResponse};
 
 use crate::handle_probe::TaskRequest;
 
+use super::Params;
+
 pub async fn run(
     handle: &RabbitHandle,
-    queue_name: String,
+    params: &Params,
     work_sender: mpsc::Sender<TaskRequest>,
 ) -> Result<()> {
-    helpers_receive::run(handle, queue_name, TaskHandler { work_sender }).await
+    let echo = run_receiver::<EchoProbeResponse>(handle, params, work_sender.clone());
+    let trace = run_receiver::<TraceResponse>(handle, params, work_sender);
+    select! {
+        res = echo => res,
+        res = trace => res,
+    }
 }
 
-struct TaskHandler {
+async fn run_receiver<T>(
+    handle: &RabbitHandle,
+    params: &Params,
     work_sender: mpsc::Sender<TaskRequest>,
+) -> Result<()>
+where
+    T: TypeRoutedMessage + Into<ProbeResponse> + for<'a> Deserialize<'a> + Send + Sync,
+{
+    helpers_receive::run(
+        handle,
+        params.in_queue_name(T::routing_key()),
+        ResponseHandler {
+            work_sender,
+            marker: PhantomData::<T>,
+        },
+    )
+    .await
+}
+
+struct ResponseHandler<T: Into<ProbeResponse>> {
+    work_sender: mpsc::Sender<TaskRequest>,
+    marker: PhantomData<T>,
 }
 
 #[async_trait]
-impl MessageHandler for TaskHandler {
-    type Model = EchoProbeResponse;
+impl<T> MessageHandler for ResponseHandler<T>
+where
+    T: Into<ProbeResponse> + for<'a> Deserialize<'a> + Send + Sync,
+{
+    type Model = T;
 
-    async fn handle_msg<'de>(
-        &self, model: Self::Model, delivery_tag: u64,
-    ) -> Result<()> where Self::Model: Deserialize<'de> {
-        let request = TaskRequest { model, delivery_tag };
-        self.work_sender.send(request)
+    async fn handle_msg<'de>(&self, model: Self::Model, delivery_tag: u64) -> Result<()> {
+        let request = TaskRequest {
+            model: model.into(),
+            delivery_tag,
+        };
+        self.work_sender
+            .send(request)
             .await
             .with_context(|| "while passing received message")
     }
 
     fn consumer_tag() -> &'static str {
-        "aggregator combined probe response receiver"
+        "aggregator probe response receiver"
     }
 }

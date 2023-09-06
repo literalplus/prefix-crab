@@ -8,6 +8,7 @@ use anyhow::{bail, Result};
 use chrono::{NaiveDateTime, Utc};
 use diesel::{prelude::*, sql_types::Jsonb, AsExpression, FromSqlRow};
 use ipnet::{IpNet, Ipv6Net};
+use queue_models::probe_response::DestUnreachKind;
 use serde::{Deserialize, Serialize};
 
 use crate::analyse::map64::Net64Map;
@@ -128,12 +129,28 @@ impl LhrData {
 pub enum LhrSource {
     // IMPORTANT: Type must stay backwards-compatible with previously-written JSON,
     // i.e. add only optional fields or provide defaults!
-    TraceUnresponsive,
-    TraceResponsive,
+    Trace,
     UnreachAdmin, // admin-prohibit, failed-egress
     UnreachPort, // port unreach
     UnreachAddr, // addr unreach
     UnreachRoute,   // no route
+}
+
+impl TryFrom<&DestUnreachKind> for LhrSource {
+    type Error = u8;
+
+    fn try_from(value: &DestUnreachKind) -> Result<Self, Self::Error> {
+        use LhrSource as S;
+        use DestUnreachKind as K;
+
+        Ok(match value {
+            K::NoRoute => S::UnreachRoute,
+            K::AdminProhibited => S::UnreachAdmin,
+            K::AddressUnreachable => S::UnreachAddr,
+            K::PortUnreachable => S::UnreachPort,
+            K::Other(kind) => return Err(*kind),
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -165,6 +182,7 @@ pub struct WeirdData {
 pub enum WeirdType {
     DestUnreachableUnexpectedKind { kind: u8 },
     DifferentEchoReplySource,
+    EchoReplyInTrace,
     UnexpectedIcmpType { description: String },
     TtlExceededForEcho,
 }
@@ -245,14 +263,14 @@ mod tests {
             given_some_addr(),
             gen_lhr(
                 6,
-                &[LhrSource::TraceResponsive, LhrSource::UnreachAddr],
+                &[LhrSource::Trace, LhrSource::UnreachAddr],
             ),
         );
         sub_tree.last_hop_routers.items.insert(
             given_some_addr(),
             gen_lhr(
                 2,
-                &[LhrSource::TraceResponsive, LhrSource::TraceUnresponsive],
+                &[LhrSource::Trace, LhrSource::UnreachPort],
             ),
         );
 
@@ -263,9 +281,9 @@ mod tests {
         let expected_item = gen_lhr(
             8,
             &[
-                LhrSource::TraceResponsive,
+                LhrSource::Trace,
                 LhrSource::UnreachAddr,
-                LhrSource::TraceUnresponsive,
+                LhrSource::UnreachPort,
             ],
         );
         assert_that!(parent_tree.last_hop_routers.items)

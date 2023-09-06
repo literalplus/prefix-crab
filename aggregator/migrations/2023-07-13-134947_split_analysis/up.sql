@@ -11,3 +11,4 @@ CREATE TABLE split_analysis(
 );
 
 CREATE INDEX split_analysis_tree_id_idx ON split_analysis(tree_net);
+CREATE INDEX split_analysis_pending_follow_up_idx ON split_analysis(pending_follow_up);

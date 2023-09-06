@@ -5,13 +5,10 @@ use crate::analyse::WeirdType;
 use super::result::*;
 use log::debug;
 use queue_models::probe_response::{
-    DestUnreachKind::{self, *},
     EchoProbeResponse,
     ResponseKey::{self, *},
     Responses, SplitResult,
 };
-
-use super::super::LhrSource::{self, *};
 
 pub fn process(model: &EchoProbeResponse) -> EchoResult {
     let mut result = EchoResult::default();
@@ -38,7 +35,7 @@ fn process_responses(
 ) {
     let targets = &responses.intended_targets;
     match &responses.key {
-        DestinationUnreachable { kind, from } => match kind_to_source(kind) {
+        DestinationUnreachable { kind, from } => match kind.try_into() {
             Ok(source) => result.register_lhrs(targets, *from, source),
             Err(id) => {
                 result.register_weirds(
@@ -120,14 +117,4 @@ impl From<FollowUpCollector> for Option<EchoFollowUp> {
             })
         }
     }
-}
-
-fn kind_to_source(value: &DestUnreachKind) -> Result<LhrSource, u8> {
-    Ok(match value {
-        NoRoute => UnreachRoute,
-        AdminProhibited => UnreachAdmin,
-        AddressUnreachable => UnreachAddr,
-        PortUnreachable => UnreachPort,
-        DestUnreachKind::Other(kind) => return Err(*kind),
-    })
 }

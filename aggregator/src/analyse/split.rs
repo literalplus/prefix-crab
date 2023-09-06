@@ -1,6 +1,6 @@
 use diesel::{prelude::*, PgConnection, QueryDsl, SelectableHelper};
 use ipnet::Ipv6Net;
-use log::{debug, info};
+use log::{debug, info, warn};
 use thiserror::Error;
 
 use crate::{
@@ -22,8 +22,6 @@ mod subnet;
 
 #[derive(Error, Debug)]
 pub enum SplitError {
-    #[error("prefix is not a leaf and thus cannot be split:  {:?}", .request.node())]
-    PrefixNotLeaf { request: context::Context },
     #[error("database error loading relevant measurements fpr {base_net} from the database")]
     LoadMeasurementsFromDb { source: anyhow::Error, base_net: Ipv6Net },
     #[error("unable to split prefix into subnets")]
@@ -38,7 +36,11 @@ pub type SplitResult<T> = std::result::Result<T, SplitError>;
 
 pub fn process(conn: &mut PgConnection, request: context::Context) -> SplitResult<()> {
     if request.node().merge_status != MergeStatus::Leaf {
-        return Err(SplitError::PrefixNotLeaf { request });
+        warn!(
+            "Handled prefix is (no longer?) a leaf, split not possible: {:?}",
+            request.node().net,
+        );
+        return Ok(());
     }
     let relevant_measurements = load_relevant_measurements(conn, &request.node().net)?;
     let subnets = Subnets::new(request.node().net, relevant_measurements)

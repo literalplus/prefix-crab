@@ -32,10 +32,7 @@ impl<'a> SplitRecommendation {
     }
 
     pub fn should_split(&self) -> bool {
-        match self {
-            SplitRecommendation::YesSplit { priority: _ } => true,
-            _ => false,
-        }
+        matches!(self, Self::YesSplit { priority: _ })
     }
 }
 

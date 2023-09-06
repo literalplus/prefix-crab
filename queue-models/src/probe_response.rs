@@ -23,6 +23,18 @@ impl RoutedMessage for ProbeResponse {
     }
 }
 
+impl From<EchoProbeResponse> for ProbeResponse {
+    fn from(value: EchoProbeResponse) -> Self {
+        ProbeResponse::Echo(value)
+    }
+}
+
+impl From<TraceResponse> for ProbeResponse {
+    fn from(value: TraceResponse) -> Self {
+        ProbeResponse::Trace(value)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EchoProbeResponse {
     pub target_net: Ipv6Net,

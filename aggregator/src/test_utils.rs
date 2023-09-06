@@ -32,7 +32,7 @@ pub const TREE_LHR_BEEF: &str = "2001:db8:beef::20";
 
 pub fn gen_tree_with_lhr_101(net_str: &str, hits: HitCount) -> MeasurementTree {
     let mut tree = MeasurementTree::empty(net(net_str));
-    let sources: HashSet<LhrSource> = vec![LhrSource::TraceResponsive].into_iter().collect();
+    let sources: HashSet<LhrSource> = vec![LhrSource::UnreachAddr].into_iter().collect();
     tree.add_lhr_no_sum(addr(TREE_LHR_101), sources, hits);
     tree
 }
@@ -44,7 +44,7 @@ pub fn gen_tree_with_lhr_beef(net_str: &str, hits: HitCount) -> MeasurementTree 
 }
 
 pub fn gen_add_lhr_beef(tree: &mut MeasurementTree, hits: HitCount) {
-    let sources: HashSet<LhrSource> = vec![LhrSource::TraceUnresponsive].into_iter().collect();
+    let sources: HashSet<LhrSource> = vec![LhrSource::Trace].into_iter().collect();
     tree.add_lhr_no_sum(addr(TREE_LHR_BEEF), sources, hits);
 }
 

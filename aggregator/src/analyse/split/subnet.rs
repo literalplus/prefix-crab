@@ -230,7 +230,7 @@ mod tests {
             addr(TREE_LHR_101),
             LhrItem {
                 hit_count,
-                sources: vec![LhrSource::TraceResponsive].into_iter().collect(),
+                sources: vec![LhrSource::Trace].into_iter().collect(),
             },
         );
     }
@@ -240,7 +240,7 @@ mod tests {
             addr(TREE_LHR_BEEF),
             LhrItem {
                 hit_count,
-                sources: vec![LhrSource::TraceUnresponsive].into_iter().collect(),
+                sources: vec![LhrSource::UnreachAddr].into_iter().collect(),
             },
         );
     }

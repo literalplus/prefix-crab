@@ -2,7 +2,9 @@ use crate::handle_probe::TaskRequest;
 use anyhow::*;
 use clap::Args;
 use prefix_crab::helpers::rabbit::{ack_sender, ConfigureRabbit, RabbitHandle};
+use queue_models::TypeRoutedMessage;
 use queue_models::probe_request::ProbeRequest;
+use queue_models::probe_response::{EchoProbeResponse, TraceResponse};
 use tokio::select;
 use tokio::sync::{broadcast, mpsc};
 
@@ -21,7 +23,7 @@ pub struct Params {
 
     /// Name of the queue to set up & listen to.
     #[arg(long, default_value = "prefix-crab.probe-response.aggregate")]
-    in_queue_name: String,
+    in_queue_prefix: String,
 
     /// Name of the exchange to bind the queue to.
     #[arg(long, default_value = "prefix-crab.probe-response")]
@@ -34,6 +36,12 @@ pub struct Params {
     /// Whether to pretty print JSON in RabbitMQ responses.
     #[arg(long, env = "PRETTY_PRINT")]
     pretty_print: bool,
+}
+
+impl Params {
+    fn in_queue_name(&self, routing_key: &str) -> String {
+        format!("{}-{}", self.in_queue_prefix, routing_key)
+    }
 }
 
 pub async fn run(
@@ -57,12 +65,12 @@ async fn run_without_stop(
     params: Params,
 ) -> Result<()> {
     let handle = prepare(&params).await?;
-    let receiver = receive::run(&handle, params.in_queue_name, work_sender);
+    let receiver = receive::run(&handle, &params, work_sender);
     let ack_sender = ack_sender::run(&handle, ack_receiver);
     let probe_sender = send::run(
         &handle,
         probe_receiver,
-        params.out_exchange_name,
+        params.out_exchange_name.clone(),
         params.pretty_print,
     );
     select! {
@@ -74,21 +82,28 @@ async fn run_without_stop(
 
 async fn prepare(params: &Params) -> Result<RabbitHandle> {
     let handle = RabbitHandle::connect(params.amqp_uri.as_str()).await?;
-
-    let queue_name = params.in_queue_name.as_str();
-    let in_exchange_name = params.in_exchange_name.as_str();
-    let out_exchange_name = params.out_exchange_name.as_str();
     let configure = ConfigureRabbit::new(&handle);
 
-    configure
-        .declare_queue(queue_name)
-        .await?
-        .bind_queue_to(queue_name, in_exchange_name)
-        .await?;
+    prepare_queue(&configure, params, TraceResponse::routing_key()).await?;
+    prepare_queue(&configure, params, EchoProbeResponse::routing_key()).await?;
 
     configure
-        .declare_exchange(out_exchange_name, "direct")
+        .declare_exchange(&params.out_exchange_name, "direct")
         .await?;
 
     Ok(handle)
+}
+
+async fn prepare_queue(
+    configure: &ConfigureRabbit<'_>,
+    params: &Params,
+    routing_key: &str,
+) -> Result<()> {
+    let queue_name = params.in_queue_name(routing_key);
+    configure
+        .declare_queue(&queue_name)
+        .await?
+        .bind_queue_routing(&queue_name, &params.in_exchange_name, routing_key)
+        .await?;
+    Ok(())
 }

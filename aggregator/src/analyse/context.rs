@@ -1,5 +1,7 @@
 use diesel::prelude::*;
+use ipnet::{Ipv6Net, IpNet};
 use log::warn;
+use queue_models::probe_request::TraceRequestId;
 use thiserror::Error;
 
 use crate::persist::DieselErrorFixCause;
@@ -29,6 +31,10 @@ impl ContextOps for Context {
 pub enum ContextFetchError {
     #[error("no analysis is active for {parent:?}")]
     NoActiveAnalysis { parent: prefix_tree::Context },
+
+    #[error("no analysis is waiting for follow-up trace {id}")]
+    NoMatchingAnalysis { id: TraceRequestId },
+
     #[error("problem talking to the database")]
     DbError(#[from] anyhow::Error),
 }
@@ -62,4 +68,41 @@ fn fetch_active(
         .load(conn)
         .fix_cause()
         .map_err(ContextFetchError::DbError)
+}
+
+pub fn fetch_by_follow_up(conn: &mut PgConnection, request_id: &TraceRequestId) -> ContextFetchResult {
+    let target_net = find_follow_up_prefix(conn, request_id)?;
+    let parent = prefix_tree::context::fetch(conn, &target_net)
+        .map_err(ContextFetchError::DbError)?;
+    fetch(conn, parent)
+}
+
+fn find_follow_up_prefix(
+    conn: &mut PgConnection,
+    id: &TraceRequestId,
+) -> Result<Ipv6Net, ContextFetchError> {
+    use crate::schema::split_analysis::dsl as analysis_dsl;
+    use crate::schema::prefix_tree::dsl::*;
+    let nets: Vec<IpNet> = prefix_tree.inner_join(analysis_dsl::split_analysis)
+        .filter(analysis_dsl::pending_follow_up.eq(id.to_string()))
+        .filter(net.eq(analysis_dsl::tree_net))
+        .select(net)
+        .load(conn)
+        .fix_cause()
+        .map_err(ContextFetchError::DbError)?;
+    match *nets.as_slice() {
+        [only] => Ok(must_v6(only)),
+        [] => Err(ContextFetchError::NoMatchingAnalysis { id: *id }),
+        [first, ..] => {
+            warn!("Multiple analyses are waiting for follow-up {}", id);
+            Ok(must_v6(first))
+        }
+    }
+}
+
+fn must_v6(net: IpNet) -> Ipv6Net {
+    match net {
+        IpNet::V4(net) => panic!("Unexpected IPv4 net {}", net),
+        IpNet::V6(net) => net,
+    }
 }
