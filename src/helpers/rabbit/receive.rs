@@ -1,4 +1,6 @@
-use amqprs::channel::{BasicConsumeArguments, BasicRejectArguments, ConsumerMessage};
+use amqprs::channel::{
+    BasicConsumeArguments, BasicRejectArguments, ConsumerMessage,
+};
 use amqprs::Deliver;
 // Cannot * due to Ok()
 use anyhow::{Context, Result};
@@ -16,8 +18,8 @@ use super::RabbitHandle;
 /// Runs a new JSON receiver. Note that this takes an owned handle because handles should not be
 /// shared across threads/tasks. Use [RabbitHandle.clone] if you're on a shared reference, which
 /// will open a fresh channel on the same connection.
-pub async fn run<'de, HandlerType>(
-    handle: RabbitHandle,
+pub async fn run<HandlerType>(
+    handle: &RabbitHandle,
     queue_name: String,
     msg_handler: HandlerType,
     stop_rx: CancellationToken,
@@ -27,16 +29,18 @@ where
 {
     JsonReceiver {
         handle,
+        queue_name,
         msg_handler,
     }
-    .run(queue_name, stop_rx)
+    .run(stop_rx)
     .await
     .with_context(|| "while listening for RabbitMQ messages")
 }
 
-struct JsonReceiver<HandlerType> {
-    handle: RabbitHandle,
-    msg_handler: HandlerType,
+pub struct JsonReceiver<'han, HandlerType> {
+    pub handle: &'han RabbitHandle,
+    pub queue_name: String,
+    pub msg_handler: HandlerType,
 }
 
 // Using trait because cannot store fn returning `impl Future` in struct
@@ -51,22 +55,22 @@ pub trait MessageHandler {
     fn consumer_tag() -> String;
 }
 
-impl<HandlerType: MessageHandler> JsonReceiver<HandlerType> {
-    async fn run(mut self, queue_name: String, stop_rx: CancellationToken) -> Result<()> {
-        let mut rabbit_rx = self.start_consumer(&queue_name).await?;
+impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
+    pub async fn run(mut self, stop_rx: CancellationToken) -> Result<()> {
+        let mut rabbit_rx = self.start_consumer().await?;
 
         // TODO implement recovery for channel closure (in macro probably)
         loop_recv_with_stop!(
-            format!("receiver for {}", queue_name), stop_rx,
+            format!("receiver for {}", self.queue_name), stop_rx,
             rabbit_rx => self.handle_msg(it)
         );
     }
 
     async fn start_consumer(
         &self,
-        queue_name: &str,
     ) -> Result<mpsc::UnboundedReceiver<ConsumerMessage>> {
-        let consume_args = BasicConsumeArguments::new(queue_name, &HandlerType::consumer_tag());
+        let consume_args =
+            BasicConsumeArguments::new(&self.queue_name, &HandlerType::consumer_tag());
         let (_, rabbit_rx) = self
             .handle
             .chan()

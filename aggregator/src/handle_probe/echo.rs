@@ -31,7 +31,7 @@ impl ProbeHandler {
                     prefix_tree: *context.node(),
                     follow_ups: interpretation.follow_ups,
                 };
-                info!("Sending follow-up {}, split analysis delayed.", model.id);
+                info!("Requesting follow-up {}, split analysis delayed.", model.id);
                 self.follow_up_tx.send(model).context("sending follow-up")?;
             } else {
                 warn!("Interpretation needs follow-up but it wasn't registered in the node");

@@ -1,19 +1,19 @@
-use anyhow::{Result, Context};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 
-use prefix_crab::helpers::{bootstrap, logging, signal_handler};
-use tokio::sync::mpsc;
-use tokio::select;
 use futures::executor;
+use prefix_crab::helpers::{bootstrap, logging, signal_handler};
+use tokio::try_join;
+use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
-mod yarrp_call;
 /// Stores probe results in memory for the duration of the scan.
 mod probe_store;
 /// Handles reception, sending, & translation of messages from/to RabbitMQ.
 mod rabbit;
 /// Handles batching of probe requests into yarrp calls.
 mod schedule;
+mod yarrp_call;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -29,11 +29,7 @@ struct Cli {
 }
 
 fn main() -> Result<()> {
-    bootstrap::run(
-        Cli::parse,
-        |cli: &Cli| &cli.logging,
-        do_run,
-    )
+    bootstrap::run(Cli::parse, |cli: &Cli| &cli.logging, do_run)
 }
 
 fn do_run(cli: Cli) -> Result<()> {
@@ -43,27 +39,24 @@ fn do_run(cli: Cli) -> Result<()> {
     let (res_tx, res_rx) = mpsc::unbounded_channel();
 
     // This task if shut down by the RabbitMQ receiver closing the channel
-    let scheduler_handle = tokio::spawn(schedule::run(
-        task_rx, res_tx, cli.scheduler,
-    ));
+    let scheduler_handle = tokio::spawn(schedule::run(task_rx, res_tx, cli.scheduler));
 
     let sig_handler = signal_handler::new();
     let stop_rx = sig_handler.subscribe_stop();
     tokio::spawn(sig_handler.wait_for_signal());
 
-    let rabbit_handle = tokio::spawn(rabbit::run(
-        task_tx, res_rx, stop_rx, cli.rabbit,
-    ));
+    let rabbit_handle = tokio::spawn(rabbit::run(task_tx, res_rx, stop_rx, cli.rabbit));
 
-    executor::block_on(wait_for_exit(scheduler_handle, rabbit_handle))
+    executor::block_on(async {
+        try_join!(flatten(scheduler_handle), flatten(rabbit_handle))?;
+        Ok(())
+    })
 }
 
-async fn wait_for_exit(
-    scheduler_handle: JoinHandle<Result<()>>, rabbit_handle: JoinHandle<Result<()>>,
-) -> Result<()> {
-    let inner_res = select! {
-        res = scheduler_handle => res.with_context(|| "failed to join scheduler"),
-        res = rabbit_handle => res.with_context(|| "failed to join rabbit"),
-    }?;
-    inner_res.with_context(|| "a task exited unexpectedly")
+async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
+    match handle.await {
+        Ok(Ok(_)) => Ok(()),
+        Ok(Err(err)) => Err(err),
+        Err(err) => Err(anyhow!(err)),
+    }
 }

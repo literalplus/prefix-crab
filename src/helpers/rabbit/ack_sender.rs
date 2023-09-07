@@ -25,29 +25,34 @@ pub async fn run<'de, WorkType>(
 where
     WorkType: CanAck,
 {
+    // NOTE: This MUST run on the same channel as the receiver, otherwise Rabbit won't accept it
     AckSender { handle }
         .run(work_receiver, stop_rx)
         .await
-        .with_context(|| "while listening for RabbitMQ messages")
+        .context("sending acks")
 }
 
-struct AckSender<'han> {
+pub struct AckSender<'han> {
     handle: &'han RabbitHandle,
 }
 
-impl AckSender<'_> {
+impl<'han> AckSender<'han> {
+    pub fn new(handle: &'han RabbitHandle) -> Self {
+        Self { handle }
+    }
+
     async fn run(
         mut self,
         mut work_recv: UnboundedReceiver<impl CanAck>,
         stop_rx: CancellationToken,
     ) -> Result<()> {
         loop_recv_with_stop!(
-            "ack sender", stop_rx, 
+            "ack sender", stop_rx,
             work_recv => self.do_ack(it)
         );
     }
 
-    async fn do_ack(&mut self, work: impl CanAck) -> Result<()> {
+    pub async fn do_ack(&mut self, work: impl CanAck) -> Result<()> {
         // TODO support for rejects (after n retries maybe)?
         self.handle
             .chan()

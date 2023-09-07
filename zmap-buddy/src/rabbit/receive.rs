@@ -19,7 +19,7 @@ pub async fn run(
     stop_rx: CancellationToken,
 ) -> Result<()> {
     helpers_receive::run(
-        handle.fork().await?,
+        &handle, // not using a separate handle because the sender handles acks
         queue_name,
         TaskHandler { work_sender },
         stop_rx,

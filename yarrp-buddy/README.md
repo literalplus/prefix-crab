@@ -15,3 +15,4 @@ A useful patch from AIM yarrp is included at `yarrp-gitignore.patch`.
 Installation instructions can be found in upstream's `README.md`, with the exception of the obvious
 `sudo make install`.
 
+The yarrp instance lock is at `/root/.yarrp/lock.0` if you need it.

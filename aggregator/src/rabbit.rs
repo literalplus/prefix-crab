@@ -1,7 +1,7 @@
 use crate::handle_probe::TaskRequest;
 use anyhow::*;
 use clap::Args;
-use prefix_crab::helpers::rabbit::{ack_sender, ConfigureRabbit, RabbitHandle};
+use prefix_crab::helpers::rabbit::{ConfigureRabbit, RabbitHandle};
 use queue_models::probe_request::ProbeRequest;
 use queue_models::probe_response::{EchoProbeResponse, TraceResponse};
 use queue_models::TypeRoutedMessage;
@@ -46,25 +46,23 @@ impl Params {
 }
 
 pub async fn run(
-    work_sender: mpsc::Sender<TaskRequest>,
-    ack_receiver: mpsc::UnboundedReceiver<TaskRequest>,
-    probe_receiver: mpsc::UnboundedReceiver<ProbeRequest>,
+    work_tx: mpsc::Sender<TaskRequest>,
+    ack_rx: mpsc::UnboundedReceiver<TaskRequest>,
+    probe_rx: mpsc::UnboundedReceiver<ProbeRequest>,
     stop_rx: CancellationToken,
     params: Params,
 ) -> Result<()> {
     let handle = prepare(&params).await?;
-    let receiver = receive::run(&handle, &params, work_sender, stop_rx.clone());
-    let ack_sender = ack_sender::run(&handle, ack_receiver, stop_rx.clone());
+    let receiver = receive::run(&handle, &params, work_tx, stop_rx.clone(), ack_rx);
     let probe_sender = send::run(
         &handle,
-        probe_receiver,
+        probe_rx,
         params.out_exchange_name.clone(),
         params.pretty_print,
         stop_rx,
     );
     select! {
         exit_res = receiver => exit_res,
-        exit_res = ack_sender => exit_res,
         exit_res = probe_sender => exit_res,
     }
 }

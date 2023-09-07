@@ -6,7 +6,6 @@ use tokio::sync::mpsc::{Receiver, UnboundedSender};
 use prefix_crab::helpers::rabbit::ack_sender::CanAck;
 use queue_models::probe_response::ProbeResponse;
 
-
 use crate::schedule::FollowUpRequest;
 mod archive;
 mod echo;
@@ -61,7 +60,7 @@ impl ProbeHandler {
 
     fn handle_recv(&mut self, req: TaskRequest) -> Result<()> {
         match self.handle_one(&req) {
-            Result::Ok(_) => self.ack_tx.send(req).map_err(Error::msg),
+            Result::Ok(_) => self.ack_tx.send(req).context("sending ack"),
             Err(e) => {
                 // TODO Could be handled with DLQ
                 error!("Failed to handle request: {:?} - shutting down.", req);

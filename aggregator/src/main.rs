@@ -1,11 +1,11 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Result};
 use clap::Parser;
 
 use prefix_crab::helpers::{bootstrap, logging};
 
 use futures::executor;
 use prefix_crab::helpers::signal_handler;
-use tokio::select;
+use tokio::try_join;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
@@ -64,18 +64,16 @@ fn do_run(cli: Cli) -> Result<()> {
 
     let rabbit_handle = tokio::spawn(rabbit::run(task_tx, ack_rx, probe_rx, stop_rx, cli.rabbit));
 
-    executor::block_on(wait_for_exit(probe_handle, rabbit_handle, schedule_handle))
+    executor::block_on(async {
+        try_join!(flatten(schedule_handle), flatten(rabbit_handle), flatten(probe_handle))?;
+        Ok(())
+    })
 }
 
-async fn wait_for_exit(
-    probe_handle: JoinHandle<Result<()>>,
-    rabbit_handle: JoinHandle<Result<()>>,
-    schedule_handle: JoinHandle<Result<()>>,
-) -> Result<()> {
-    let inner_res = select! {
-        res = probe_handle => res.with_context(|| "failed to join probe handler"),
-        res = rabbit_handle => res.with_context(|| "failed to join rabbit"),
-        res = schedule_handle => res.with_context(|| "failed to join scheduler"),
-    }?;
-    inner_res.with_context(|| "a task exited unexpectedly")
+async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
+    match handle.await {
+        Ok(Ok(_)) => Ok(()),
+        Ok(Err(err)) => Err(err),
+        Err(err) => Err(anyhow!(err)),
+    }
 }

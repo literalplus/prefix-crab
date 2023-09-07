@@ -3,12 +3,16 @@ use std::marker::PhantomData;
 use amqprs::Deliver;
 use anyhow::*;
 use async_trait::async_trait;
+use prefix_crab::helpers::rabbit::ack_sender::AckSender;
+use prefix_crab::loop_recv_with_stop;
 use queue_models::TypeRoutedMessage;
 use serde::Deserialize;
 use tokio::select;
 use tokio::sync::mpsc;
 
-use prefix_crab::helpers::rabbit::receive::{self as helpers_receive, MessageHandler};
+use prefix_crab::helpers::rabbit::receive::{
+    JsonReceiver, MessageHandler,
+};
 use prefix_crab::helpers::rabbit::RabbitHandle;
 use queue_models::probe_response::{EchoProbeResponse, ProbeResponse, TraceResponse};
 use tokio_util::sync::CancellationToken;
@@ -20,40 +24,42 @@ use super::Params;
 pub async fn run(
     handle: &RabbitHandle,
     params: &Params,
-    work_sender: mpsc::Sender<TaskRequest>,
+    work_tx: mpsc::Sender<TaskRequest>,
     stop_rx: CancellationToken,
+    ack_rx: mpsc::UnboundedReceiver<TaskRequest>,
 ) -> Result<()> {
-    let echo = run_receiver::<EchoProbeResponse>(
-        handle, params, work_sender.clone(), stop_rx.clone(),
-    );
-    let trace = run_receiver::<TraceResponse>(
-        handle, params, work_sender, stop_rx,
-    );
+    let echo_handle = handle.fork().await?;
+    let echo_recv = make_receiver::<EchoProbeResponse>(&echo_handle, work_tx.clone(), params);
+    let trace_handle = handle.fork().await?;
+    let trace_recv = make_receiver::<TraceResponse>(&trace_handle, work_tx, params);
+
+    let ack = run_ack_router(&echo_handle, &trace_handle, ack_rx, stop_rx.clone());
+    let trace = trace_recv.run(stop_rx.clone());
+    let echo = echo_recv.run(stop_rx);
+
     select! {
         res = echo => res.context("in echo listener"),
         res = trace => res.context("in trace listener"),
+        res = ack => res.context("in ack sender"),
     }
 }
 
-async fn run_receiver<T>(
-    handle: &RabbitHandle,
-    params: &Params,
+fn make_receiver<'han, T>(
+    handle: &'han RabbitHandle,
     work_sender: mpsc::Sender<TaskRequest>,
-    stop_rx: CancellationToken,
-) -> Result<()>
+    params: &Params,
+) -> JsonReceiver<'han, ResponseHandler<T>>
 where
     T: TypeRoutedMessage + Into<ProbeResponse> + for<'a> Deserialize<'a> + Send + Sync,
 {
-    helpers_receive::run(
-        handle.fork().await?,
-        params.in_queue_name(T::routing_key()),
-        ResponseHandler {
+    JsonReceiver {
+        handle,
+        msg_handler: ResponseHandler {
             work_sender,
             marker: PhantomData::<T>,
         },
-        stop_rx,
-    )
-    .await
+        queue_name: params.in_queue_name(T::routing_key()),
+    }
 }
 
 struct ResponseHandler<T: Into<ProbeResponse>> {
@@ -81,5 +87,43 @@ where
 
     fn consumer_tag() -> String {
         format!("aggregator {} response receiver", T::routing_key())
+    }
+}
+
+async fn run_ack_router(
+    echo_handle: &RabbitHandle, trace_handle: &RabbitHandle,
+    ack_rx: mpsc::UnboundedReceiver<TaskRequest>, stop_rx: CancellationToken
+) -> Result<()> {
+    AckRouter {
+        echo_ack: AckSender::new(echo_handle),
+        trace_ack: AckSender::new(trace_handle),
+    }
+    .run(ack_rx, stop_rx.clone()).await
+}
+
+struct AckRouter<'a, 'b> {
+    echo_ack: AckSender<'a>,
+    trace_ack: AckSender<'b>,
+}
+
+impl AckRouter<'_, '_> {
+    async fn run(
+        mut self,
+        mut ack_rx: mpsc::UnboundedReceiver<TaskRequest>,
+        stop_rx: CancellationToken,
+    ) -> Result<()> {
+        loop_recv_with_stop!(
+            "ack router", stop_rx,
+            ack_rx => self.route_ack(it)
+        )
+    }
+
+    async fn route_ack(&mut self, work: TaskRequest) -> Result<()> {
+        use ProbeResponse as R;
+
+        match work.model {
+            R::Echo(_) => self.echo_ack.do_ack(work).await,
+            R::Trace(_) => self.trace_ack.do_ack(work).await,
+        }
     }
 }
