@@ -1,8 +1,8 @@
 use anyhow::*;
 use clap::Args;
 use tokio::select;
-use tokio::sync::{broadcast, mpsc};
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::{self, UnboundedReceiver};
+use tokio_util::sync::CancellationToken;
 
 use crate::schedule::{TaskRequest, TaskResponse};
 
@@ -41,28 +41,16 @@ pub struct Params {
 pub async fn run(
     work_sender: mpsc::Sender<TaskRequest>,
     result_receiver: UnboundedReceiver<TaskResponse>,
-    mut stop_rx: broadcast::Receiver<()>,
-    params: Params,
-) -> Result<()> {
-    select! {
-        biased; // Needed to handle stops immediately
-        _ = stop_rx.recv() => Ok(()),
-        exit_res = run_without_stop(work_sender, result_receiver, params) => exit_res,
-    }
-}
-
-async fn run_without_stop(
-    work_sender: mpsc::Sender<TaskRequest>,
-    result_receiver: UnboundedReceiver<TaskResponse>,
+    stop_rx: CancellationToken,
     params: Params,
 ) -> Result<()> {
     let handle = prepare::prepare(&params)
         .await?;
     let sender = send::run(
-        &handle, result_receiver, params.out_exchange_name, params.pretty_print,
+        &handle, result_receiver, params.out_exchange_name, params.pretty_print, stop_rx.clone(),
     );
     let receiver = receive::run(
-        &handle, params.in_queue_name, work_sender,
+        &handle, params.in_queue_name, work_sender, stop_rx,
     );
     select! {
         exit_res = sender => exit_res,

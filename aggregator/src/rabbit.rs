@@ -2,11 +2,12 @@ use crate::handle_probe::TaskRequest;
 use anyhow::*;
 use clap::Args;
 use prefix_crab::helpers::rabbit::{ack_sender, ConfigureRabbit, RabbitHandle};
-use queue_models::TypeRoutedMessage;
 use queue_models::probe_request::ProbeRequest;
 use queue_models::probe_response::{EchoProbeResponse, TraceResponse};
+use queue_models::TypeRoutedMessage;
 use tokio::select;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 mod receive;
 mod send;
@@ -48,30 +49,18 @@ pub async fn run(
     work_sender: mpsc::Sender<TaskRequest>,
     ack_receiver: mpsc::UnboundedReceiver<TaskRequest>,
     probe_receiver: mpsc::UnboundedReceiver<ProbeRequest>,
-    mut stop_rx: broadcast::Receiver<()>,
-    params: Params,
-) -> Result<()> {
-    select! {
-        biased; // Needed to handle stops immediately
-        _ = stop_rx.recv() => Ok(()),
-        exit_res = run_without_stop(work_sender, ack_receiver, probe_receiver, params) => exit_res,
-    }
-}
-
-async fn run_without_stop(
-    work_sender: mpsc::Sender<TaskRequest>,
-    ack_receiver: mpsc::UnboundedReceiver<TaskRequest>,
-    probe_receiver: mpsc::UnboundedReceiver<ProbeRequest>,
+    stop_rx: CancellationToken,
     params: Params,
 ) -> Result<()> {
     let handle = prepare(&params).await?;
-    let receiver = receive::run(&handle, &params, work_sender);
-    let ack_sender = ack_sender::run(&handle, ack_receiver);
+    let receiver = receive::run(&handle, &params, work_sender, stop_rx.clone());
+    let ack_sender = ack_sender::run(&handle, ack_receiver, stop_rx.clone());
     let probe_sender = send::run(
         &handle,
         probe_receiver,
         params.out_exchange_name.clone(),
         params.pretty_print,
+        stop_rx,
     );
     select! {
         exit_res = receiver => exit_res,
@@ -81,8 +70,12 @@ async fn run_without_stop(
 }
 
 async fn prepare(params: &Params) -> Result<RabbitHandle> {
-    let handle = RabbitHandle::connect(params.amqp_uri.as_str()).await?;
+    let handle = RabbitHandle::connect(params.amqp_uri.as_str(), "aggregator").await?;
     let configure = ConfigureRabbit::new(&handle);
+
+    configure
+        .declare_exchange(&params.in_exchange_name, "direct")
+        .await?;
 
     prepare_queue(&configure, params, TraceResponse::routing_key()).await?;
     prepare_queue(&configure, params, EchoProbeResponse::routing_key()).await?;

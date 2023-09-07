@@ -1,14 +1,14 @@
 [package]
-name = "aggregator"
-description = "Aggregates prefix information from various sources into a persistent tree"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
+name                   = "aggregator"
+description            = "Aggregates prefix information from various sources into a persistent tree"
+version.workspace      = true
+edition.workspace      = true
+authors.workspace      = true
+license.workspace      = true
 rust-version.workspace = true
 
 [dependencies]
-amqprs = { version = "1.2.0", features = ["traces", "urispec" ] }
+amqprs = { version = "1.2.0", features = ["traces", "urispec"] }
 anyhow = { workspace = true }
 assertor = "0.0.2"
 clap = { workspace = true }
@@ -23,10 +23,16 @@ prefix-crab = { path = ".." }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 queue-models = { path = "../queue-models" }
 async-trait = { workspace = true }
 type-safe-id = { workspace = true }
-diesel = { version = "2.1.0", features = ["postgres", "serde_json", "chrono", "ipnet-address"] }
+diesel = { version = "2.1.0", features = [
+    "postgres",
+    "serde_json",
+    "chrono",
+    "ipnet-address",
+] }
 diesel_migrations = { version = "2.1.0", features = ["postgres"] }
 bitvec = "1.0.1"
 chrono = "0.4.26"

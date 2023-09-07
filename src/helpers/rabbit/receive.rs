@@ -1,28 +1,41 @@
 use amqprs::channel::{BasicConsumeArguments, BasicRejectArguments, ConsumerMessage};
 use amqprs::Deliver;
 // Cannot * due to Ok()
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
-use log::{Level, log_enabled, trace, warn};
+use log::{log_enabled, trace, warn, Level};
 use serde::Deserialize;
 use serde_json;
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
+
+use crate::loop_recv_with_stop;
 
 use super::RabbitHandle;
 
+/// Runs a new JSON receiver. Note that this takes an owned handle because handles should not be
+/// shared across threads/tasks. Use [RabbitHandle.clone] if you're on a shared reference, which
+/// will open a fresh channel on the same connection.
 pub async fn run<'de, HandlerType>(
-    handle: &RabbitHandle,
+    handle: RabbitHandle,
     queue_name: String,
     msg_handler: HandlerType,
-) -> Result<()> where HandlerType: MessageHandler {
-    JsonReceiver { handle, msg_handler }
-        .run(queue_name)
-        .await
-        .with_context(|| "while listening for RabbitMQ messages")
+    stop_rx: CancellationToken,
+) -> Result<()>
+where
+    HandlerType: MessageHandler,
+{
+    JsonReceiver {
+        handle,
+        msg_handler,
+    }
+    .run(queue_name, stop_rx)
+    .await
+    .with_context(|| "while listening for RabbitMQ messages")
 }
 
-struct JsonReceiver<'han, HandlerType> {
-    handle: &'han RabbitHandle,
+struct JsonReceiver<HandlerType> {
+    handle: RabbitHandle,
     msg_handler: HandlerType,
 }
 
@@ -31,66 +44,66 @@ struct JsonReceiver<'han, HandlerType> {
 pub trait MessageHandler {
     type Model: for<'any_de> Deserialize<'any_de>;
 
-    async fn handle_msg<'concrete_de>(
-        &self, model: Self::Model, delivery_tag: u64,
-    ) -> Result<()> where Self::Model: Deserialize<'concrete_de>;
+    async fn handle_msg<'concrete_de>(&self, model: Self::Model, deliver: Deliver) -> Result<()>
+    where
+        Self::Model: Deserialize<'concrete_de>;
 
-    fn consumer_tag() -> &'static str;
+    fn consumer_tag() -> String;
 }
 
-impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
-    async fn run(mut self, queue_name: String) -> Result<()> {
-        let mut rabbit_rx = self.start_consumer(&queue_name)
-            .await?;
-        loop {
-            let opt_msg = rabbit_rx.recv().await;
-            match self.handle_msg(opt_msg).await {
-                Ok(()) => {}
-                Err(e) => break Err(e),
-            }
-        }
+impl<HandlerType: MessageHandler> JsonReceiver<HandlerType> {
+    async fn run(mut self, queue_name: String, stop_rx: CancellationToken) -> Result<()> {
+        let mut rabbit_rx = self.start_consumer(&queue_name).await?;
+
+        // TODO implement recovery for channel closure (in macro probably)
+        loop_recv_with_stop!(
+            format!("receiver for {}", queue_name), stop_rx,
+            rabbit_rx => self.handle_msg(it)
+        );
     }
 
     async fn start_consumer(
-        &self, queue_name: &str,
+        &self,
+        queue_name: &str,
     ) -> Result<mpsc::UnboundedReceiver<ConsumerMessage>> {
-        let consume_args = BasicConsumeArguments::new(queue_name, HandlerType::consumer_tag());
-        let (_, rabbit_rx) = self.handle.chan()
+        let consume_args = BasicConsumeArguments::new(queue_name, &HandlerType::consumer_tag());
+        let (_, rabbit_rx) = self
+            .handle
+            .chan()
             .basic_consume_rx(consume_args)
             .await
             .with_context(|| "while starting consumer")?;
         Ok(rabbit_rx)
     }
 
-    async fn handle_msg(&mut self, opt_msg: Option<ConsumerMessage>) -> Result<()> {
+    async fn handle_msg(&mut self, msg: ConsumerMessage) -> Result<()> {
         // NOTE: By default, if a msg is un-ack'd for 30min, the consumer
         // is assumed faulty and the connection is closed with an error.
         // https://www.rabbitmq.com/consumers.html#acknowledgement-timeout
-        if let Some(msg) = opt_msg {
-            let content = msg.content
-                .expect("amqprs guarantees that received ConsumerMessage has content");
-            let deliver = msg.deliver
-                .expect("amqprs guarantees that received ConsumerMessage has deliver");
-            self.parse_and_pass(content, deliver).await?;
-        } else {
-            // TODO implement recovery from this (reconnect)
-            bail!("RabbitMQ channel was closed");
-        }
-        Ok(())
+        let content = msg
+            .content
+            .expect("amqprs guarantees that received ConsumerMessage has content");
+        let deliver = msg
+            .deliver
+            .expect("amqprs guarantees that received ConsumerMessage has deliver");
+        self.parse_and_pass(content, deliver).await
     }
 
     async fn parse_and_pass(&mut self, content: Vec<u8>, deliver: Deliver) -> Result<()> {
         let content_slice = content.as_slice();
         if log_enabled!(Level::Trace) {
-            trace!("Got from RabbitMQ: {:?}", self.try_parse_utf8(content_slice));
+            trace!(
+                "Got from RabbitMQ: {:?}",
+                self.try_parse_utf8(content_slice)
+            );
         }
         let parsed = serde_json::from_slice(content_slice);
         match parsed {
-            Ok(model) => {
-                self.msg_handler.handle_msg(model, deliver.delivery_tag())
-                    .await
-                    .with_context(|| "while handling message")
-            }
+            Ok(model) => self
+                .msg_handler
+                .handle_msg(model, deliver)
+                .await
+                .with_context(|| "while handling message"),
             Err(e) => {
                 warn!(
                     "Unable to parse RabbitMQ message: {:?} - {:?} (ack to drop)",
@@ -99,8 +112,7 @@ impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
                 );
                 // We explicitly reject on a parsing error, everything else is not recoverable and
                 // the messages will be anyways rejected due to channel disconnect
-                self.reject_msg(deliver.delivery_tag())
-                    .await
+                self.reject_msg(deliver.delivery_tag()).await
             }
         }
     }
@@ -113,9 +125,14 @@ impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
     }
 
     async fn reject_msg(&self, delivery_tag: u64) -> Result<()> {
-        self.handle.chan().basic_reject(BasicRejectArguments::new(
-            delivery_tag, /* requeue = */ false,
-        )).await.with_context(|| "during immediate reject")?;
+        self.handle
+            .chan()
+            .basic_reject(BasicRejectArguments::new(
+                delivery_tag,
+                /* requeue = */ false,
+            ))
+            .await
+            .with_context(|| "during immediate reject")?;
         Ok(())
     }
 }

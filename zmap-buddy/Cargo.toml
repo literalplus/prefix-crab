@@ -26,6 +26,7 @@ serde               = { workspace = true }
 serde_json          = { workspace = true }
 tempfile            = "3.5.0"
 tokio               = { workspace = true }
+tokio-util          = { workspace = true }
 tokio-stream        = "0.1.12"
 queue-models        = { path = "../queue-models" }
 derive-where        = "1.2.1"

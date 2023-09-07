@@ -3,9 +3,11 @@ use amqprs::channel::{BasicAckArguments, BasicPublishArguments};
 use anyhow::{Context, Result};
 use log::{info, warn};
 use queue_models::RoutedMessage;
+use tokio::select;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use queue_models::probe_response::EchoProbeResponse;
+use tokio_util::sync::CancellationToken;
 
 use crate::schedule::TaskResponse;
 
@@ -23,25 +25,36 @@ pub async fn run(
     work_receiver: UnboundedReceiver<TaskResponse>,
     exchange_name: String,
     pretty_print: bool,
+    stop_rx: CancellationToken,
 ) -> Result<()> {
     RabbitSender { work_receiver, exchange_name, handle, pretty_print }
-        .run()
+        .run(stop_rx)
         .await
         .with_context(|| "while sending RabbitMQ messages")
 }
 
 impl RabbitSender<'_> {
-    async fn run(mut self) -> Result<()> {
+    async fn run(mut self, stop_rx: CancellationToken) -> Result<()> {
         loop {
-            if let Some(msg) = self.work_receiver.recv().await {
-                match self.do_send(msg).await {
-                    Ok(_) => {}
-                    Err(e) => warn!("Failed to publish/ack message: {:?}", e),
+            let work_fut = self.work_receiver.recv();
+            let stop_fut = stop_rx.cancelled();
+
+            select! {
+                biased; // Stop immediately
+                _ = stop_fut => break Ok(()),
+                msg_opt = work_fut => {
+                    if let Some(msg) = msg_opt {
+                        match self.do_send(msg).await {
+                            Ok(_) => {}
+                            Err(e) => warn!("Failed to publish/ack message: {:?}", e),
+                        }
+                    } else {
+                        info!("Rabbit sender work channel was closed");
+                        break Ok(());
+                    }
                 }
-            } else {
-                info!("Rabbit sender work channel was closed");
-                break Ok(());
             }
+
         }
     }
 

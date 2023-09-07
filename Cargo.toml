@@ -21,6 +21,7 @@ members = ["zmap-buddy", "yarrp-buddy", "queue-models", "aggregator"]
     ipnet               = { version = "2.7.1", features = ["serde"] }
     serde_json          = "1.0.96"
     tokio               = { version = "1.27.0", features = ["full"] }
+    tokio-util          = { version = "0.7.8" }
     futures             = "0.3.28"
     futures-util        = "0.3.28"
     async-trait         = "0.1.68"                                                     # https://github.com/rust-lang/rust/issues/91611
@@ -28,7 +29,7 @@ members = ["zmap-buddy", "yarrp-buddy", "queue-models", "aggregator"]
     rand                = "0.8.5"
     assertor            = "0.0.2"
     type-safe-id        = { version = "0.2.1", features = ["serde"] }
-    #type-safe-id        = { path = "type-safe-id", features = ["serde"] }
+    chrono              = { version = "0.4.29" }
 
 [package]
 name                   = "prefix-crab"
@@ -55,3 +56,5 @@ dotenvy             = { workspace = true }
 rand                = { workspace = true }
 ipnet               = { workspace = true }
 assertor            = { workspace = true }
+chrono              = { workspace = true }
+tokio-util          = { workspace = true }
