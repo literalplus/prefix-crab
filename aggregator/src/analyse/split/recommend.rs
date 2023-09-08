@@ -1,6 +1,3 @@
-use std::cmp::Reverse;
-
-use itertools::Itertools;
 use log::trace;
 
 use crate::{
@@ -48,6 +45,8 @@ pub fn recommend(subnets: &Subnets) -> SplitRecommendation {
     use super::subnet::Diff::*;
     use PriorityClass::*;
     use SplitRecommendation::*;
+
+    // TODO incorporate non-hits 
 
     let diff = subnets.lhr_diff();
     trace!("LHR diff: {:?}", diff);
@@ -193,7 +192,7 @@ mod tests {
         assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
                 class: MediumSameMulti,
-                supporting_observations: 8,
+                supporting_observations: 9, // (2*4)/2 + (3+2)
             },
         })
     }
@@ -214,7 +213,7 @@ mod tests {
         assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
                 class: HighOverlapping,
-                supporting_observations: 12,
+                supporting_observations: 14, // 5/2 + 12
             },
         })
     }
