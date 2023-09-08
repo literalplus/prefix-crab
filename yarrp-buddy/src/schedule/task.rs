@@ -1,10 +1,7 @@
 use anyhow::{Context, Result};
 use itertools::Itertools;
-use log::trace;
-use queue_models::{
-    probe_request::TraceRequestId,
-    probe_response::{LastHop, TraceResponse, TraceResult},
-};
+use log::{trace, debug};
+use queue_models::probe_response::{LastHop, TraceResponse, TraceResult};
 
 use crate::{
     probe_store::{ProbeStore, RequestGroup, Target},
@@ -53,6 +50,8 @@ impl SchedulerTask {
             yarrp_task
                 .await
                 .with_context(|| "during blocking yarrp call (await)")??;
+        } else {
+            debug!("Skipping call, all requestes of this chunk are empty.");
         }
         Ok(map_into_responses(self.store))
     }

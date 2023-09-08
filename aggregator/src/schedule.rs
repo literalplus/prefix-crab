@@ -1,6 +1,9 @@
+use std::net::Ipv6Addr;
+
 use anyhow::*;
-use log::info;
+use log::{info, debug};
 use queue_models::probe_request::{ProbeRequest, TraceRequest, TraceRequestId};
+use rand::prelude::*;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::{analyse::EchoFollowUp, prefix_tree::PrefixTree};
@@ -28,19 +31,25 @@ pub async fn run(
 }
 
 fn flatten_request(req: FollowUpRequest) -> ProbeRequest {
-    // TODO skip less-useful requests with a probability (e.g. if prefix is already 100% analysed;
-    // but then we also need to clear the DB flag that we are waiting for a response)
-
-    // TODO reduce number of targets if many are requested, we already know enough, or sth like that
-    let targets = req
-        .follow_ups
-        .into_iter()
-        .flat_map(|it| it.targets)
-        .collect();
-
-    let msg = TraceRequest {
-        id: req.id,
-        targets,
+    let id = req.id;
+    let targets = if req.prefix_tree.confidence > 100 && thread_rng().gen_ratio(2, 3) {
+        vec![] // if we have full confidence already, skip follow-ups in 2/3 of cases
+    } else if req.prefix_tree.confidence > 60 && thread_rng().gen_ratio(1, 5) {
+        vec![] // if we have more than 60% confidence, skip 20% of follow-ups
+    } else {
+        make_actual_targets(req) // actually push targets to the request
     };
-    ProbeRequest::Trace(msg)
+    debug!("Scheduling follow-up with {} remaining targets", targets.len());
+
+    ProbeRequest::Trace(TraceRequest { id, targets })
+}
+
+fn make_actual_targets(req: FollowUpRequest) -> Vec<Ipv6Addr> {
+    let mut rng = thread_rng();
+    req.follow_ups
+        .into_iter()
+        // drop 75% of requests to reduce load
+        .filter(|_| rng.gen_ratio(1, 4))
+        .flat_map(|it| it.targets)
+        .collect()
 }

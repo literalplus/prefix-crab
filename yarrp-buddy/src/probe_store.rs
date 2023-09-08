@@ -48,7 +48,7 @@ impl ProbeStore {
         };
         let entry = self.store.get_mut(&key);
         if entry.is_none() {
-            warn!("Received response for an unknown target {}, ignoring.", key);
+            warn!("Received response for an unknown target {} - directed at {} and coming from {}, ignoring.", key, response.intended_target, response.actual_from);
             return;
         }
         entry.unwrap().register_response(response);
