@@ -1,7 +1,10 @@
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use log::trace;
-use queue_models::probe_response::{LastHop, TraceResponse, TraceResult};
+use queue_models::{
+    probe_request::TraceRequestId,
+    probe_response::{LastHop, TraceResponse, TraceResult},
+};
 
 use crate::{
     probe_store::{ProbeStore, RequestGroup, Target},
@@ -37,17 +40,20 @@ impl SchedulerTask {
     }
 
     pub async fn run(mut self) -> Result<Vec<TaskResponse>> {
-        let mut response_rx = self.caller.request_responses();
-        self.targets.flush()?;
-        let yarrp_task = tokio::task::spawn_blocking(move || self.caller.consume_run(self.targets));
-        while let Some(response) = response_rx.recv().await {
-            trace!("response from yarrp: {:?}", response);
-            self.store.register_response(response);
+        if !self.targets.is_empty() {
+            let mut response_rx = self.caller.request_responses();
+            self.targets.flush()?;
+            let yarrp_task =
+                tokio::task::spawn_blocking(move || self.caller.consume_run(self.targets));
+            while let Some(response) = response_rx.recv().await {
+                trace!("response from yarrp: {:?}", response);
+                self.store.register_response(response);
+            }
+            response_rx.close(); // ensure nothing else is sent
+            yarrp_task
+                .await
+                .with_context(|| "during blocking yarrp call (await)")??;
         }
-        response_rx.close(); // ensure nothing else is sent
-        yarrp_task
-            .await
-            .with_context(|| "during blocking yarrp call (await)")??;
         Ok(map_into_responses(self.store))
     }
 }

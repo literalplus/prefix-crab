@@ -75,6 +75,10 @@ impl TargetCollector {
             .with_context(|| format!("while flushing targets to {:?}", self.path))?;
         Ok(())
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
+    }
 }
 
 #[cfg(test)]

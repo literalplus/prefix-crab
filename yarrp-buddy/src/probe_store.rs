@@ -13,6 +13,7 @@ use crate::schedule::{ProbeResponse, TaskRequest};
 #[derive(Debug, Default)]
 pub struct ProbeStore {
     store: HashMap<Ipv6Addr, Target>,
+    empty_requests: Vec<TraceRequestId>,
     acks_per_request: HashMap<u128, u64>,
 }
 
@@ -20,6 +21,10 @@ impl ProbeStore {
     pub fn request_all(&mut self, req: &TaskRequest) {
         self.acks_per_request
             .insert(req.model.id.uuid().as_u128(), req.delivery_tag_to_ack);
+        if req.model.targets.is_empty() {
+            self.empty_requests.push(req.model.id);
+            return;
+        }
         for target_addr in req.model.targets.iter() {
             if self
                 .store
@@ -77,19 +82,18 @@ impl Target {
                 );
             }
             self.target_own_ttl = Some(response.sent_ttl);
-        } 
-        let hop = match Hop:: try_from(&response) {
+        }
+        let hop = match Hop::try_from(&response) {
             Ok(hop) => hop,
             Err(e) => {
                 warn!("Failed to construct hop: {:?}", e);
                 return;
-            },
+            }
         };
         if self.is_better_last_hop(&hop) {
             self.last_hop = Some(hop);
         }
     }
-
 
     fn is_better_last_hop(&self, hop: &Hop) -> bool {
         match &self.last_hop {
@@ -162,16 +166,23 @@ impl ProbeStore {
 
         let mut results = vec![];
         for (id, entries) in group_by.into_iter() {
-            let delivery_tag = self
-                .acks_per_request
-                .get(&id.uuid().as_u128())
-                .expect("request to be in ack store");
-            let mut group = RequestGroup::new(id, *delivery_tag);
+            let mut group = Self::make_group(&self.acks_per_request, id);
             for entry in entries {
                 group.add(entry)
             }
             results.push(group)
         }
+        for id in self.empty_requests {
+            // Upstream clears some less-promising requests to reduce overall load
+            results.push(Self::make_group(&self.acks_per_request, id));
+        }
         results
+    }
+
+    fn make_group(acks_per_request: &HashMap<u128, u64>, id: TraceRequestId) -> RequestGroup {
+        let delivery_tag = acks_per_request
+            .get(&id.uuid().as_u128())
+            .expect("request to be in ack store");
+        RequestGroup::new(id, *delivery_tag)
     }
 }
