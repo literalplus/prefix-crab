@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 use itertools::Itertools;
 use log::trace;
 
@@ -60,7 +62,7 @@ pub fn recommend(subnets: &Subnets) -> SplitRecommendation {
         BothSameMultiple { shared } => YesSplit {
             priority: ReProbePriority {
                 class: MediumSameMulti,
-                supporting_observations: sum_except_most_popular(shared), // supporting the observation that there is more than one LHR
+                supporting_observations: sum_deranking_most_popular(shared), // supporting the observation that there is more than one LHR
             },
         },
         OverlappingOrDisjoint { shared, distinct } => YesSplit {
@@ -70,17 +72,24 @@ pub fn recommend(subnets: &Subnets) -> SplitRecommendation {
                 } else {
                     HighOverlapping
                 },
-                supporting_observations: sum_except_most_popular(shared) + sum_lhr_hits(distinct), // supporting the observation that there is more than one LHR a) where the overall set is the same and b) the sets are distinct
+                supporting_observations: sum_deranking_most_popular(shared) + sum_lhr_hits(distinct), // supporting the observation that there is more than one LHR a) where the overall set is the same and b) the sets are distinct
             },
         },
     }
 }
 
-fn sum_except_most_popular(lhrs: Vec<LhrItem>) -> HitCount {
+fn sum_deranking_most_popular(lhrs: Vec<LhrItem>) -> HitCount {
+    let most_popular_hits = lhrs.iter().map(|it| it.hit_count).max().unwrap_or(0);
     lhrs.into_iter()
-        .map(|it| it.hit_count)
-        .sorted_unstable()
-        .skip(1)
+        .map(|lhr| {
+            if lhr.hit_count == most_popular_hits {
+                // The most popular router counts less because if there were only hits to it, the
+                // conclusion would be that there should be no split
+                lhr.hit_count.div_euclid(2)
+            } else {
+                lhr.hit_count
+            }
+        })
         .sum()
 }
 
