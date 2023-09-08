@@ -9,7 +9,7 @@ use super::subnet::Subnets;
 
 /// Changes in the split algorithm are versioned to allow us to invalidate results of an older version
 /// if we find out that it is flawed.
-pub const ALGO_VERSION: i32 = 100;
+pub const ALGO_VERSION: i32 = 101;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum SplitRecommendation {
