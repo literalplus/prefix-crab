@@ -76,6 +76,7 @@ rmq-ui: infra
 
 .PHONY: tmux
 tmux:
+	@if which resize >/dev/null 2>&1; then resize -s 30 129; fi
 	tmux new -A -s pfx-crab make --no-print-directory in-tmux
 
 .PHONY: in-tmux
@@ -102,7 +103,8 @@ in-tmux:
 	@echo "    When finished, press $(BOLD)Ctrl-D$(UNBOLD) in this window."
 	@echo ""
 	@if which zsh >/dev/null; then zsh; else bash; fi || true
-	@tmux kill-session -t pfx-crab
+	@tmux set -g remain-on-exit off
+	@for _pane in $$(tmux list-panes -s -F '#I.#P'); do tmux send-keys -t $${_pane} C-c; done
 
 .PHONY: configure-env
 configure-env:
