@@ -11,7 +11,7 @@ use serde_json;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use crate::loop_recv_with_stop;
+use crate::loop_with_stop;
 
 use super::RabbitHandle;
 
@@ -60,9 +60,9 @@ impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
         let mut rabbit_rx = self.start_consumer().await?;
 
         // TODO implement recovery for channel closure (in macro probably)
-        loop_recv_with_stop!(
-            format!("receiver for {}", self.queue_name), stop_rx,
-            rabbit_rx => self.handle_msg(it)
+        loop_with_stop!(
+            recv format!("receiver for {}", self.queue_name), stop_rx,
+            rabbit_rx => handle_msg(it) on self
         );
     }
 

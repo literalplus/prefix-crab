@@ -5,7 +5,7 @@ use amqprs::BasicProperties;
 use anyhow::{Context, Result};
 use log::warn;
 use prefix_crab::helpers::rabbit::RabbitHandle;
-use prefix_crab::loop_recv_with_stop;
+use prefix_crab::loop_with_stop;
 use queue_models::probe_request::ProbeRequest;
 use queue_models::RoutedMessage;
 use serde::Serialize;
@@ -41,9 +41,9 @@ impl RabbitSender<'_> {
         mut work_rx: UnboundedReceiver<ProbeRequest>,
         stop_rx: CancellationToken,
     ) -> Result<()> {
-        loop_recv_with_stop!(
-            "probe sender", stop_rx,
-            work_rx => self.do_send(it)
+        loop_with_stop!(
+            recv "probe sender", stop_rx,
+            work_rx => do_send(it) on self
         )
     }
 

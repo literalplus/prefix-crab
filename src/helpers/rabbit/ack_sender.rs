@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio_util::sync::CancellationToken;
 
-use crate::loop_recv_with_stop;
+use crate::loop_with_stop;
 
 use super::RabbitHandle;
 
@@ -46,10 +46,10 @@ impl<'han> AckSender<'han> {
         mut work_recv: UnboundedReceiver<impl CanAck>,
         stop_rx: CancellationToken,
     ) -> Result<()> {
-        loop_recv_with_stop!(
-            "ack sender", stop_rx,
-            work_recv => self.do_ack(it)
-        );
+        loop_with_stop!(
+            recv "ack sender", stop_rx,
+            work_recv => do_ack(it) on self
+        )
     }
 
     pub async fn do_ack(&mut self, work: impl CanAck) -> Result<()> {

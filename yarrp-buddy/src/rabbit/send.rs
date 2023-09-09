@@ -2,7 +2,7 @@ use amqprs::channel::{BasicAckArguments, BasicPublishArguments};
 use amqprs::BasicProperties;
 use anyhow::{Context, Result};
 use log::warn;
-use prefix_crab::loop_recv_with_stop;
+use prefix_crab::loop_with_stop;
 use queue_models::RoutedMessage;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -42,9 +42,9 @@ impl RabbitSender<'_> {
         mut work_rx: UnboundedReceiver<TaskResponse>,
         stop_rx: CancellationToken,
     ) -> Result<()> {
-        loop_recv_with_stop! (
-            "response sender", stop_rx,
-            work_rx => self.do_send(it)
+        loop_with_stop! (
+            recv "response sender", stop_rx,
+            work_rx => do_send(it) on self
         )
     }
 

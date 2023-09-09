@@ -4,7 +4,7 @@ use amqprs::Deliver;
 use anyhow::*;
 use async_trait::async_trait;
 use prefix_crab::helpers::rabbit::ack_sender::AckSender;
-use prefix_crab::loop_recv_with_stop;
+use prefix_crab::loop_with_stop;
 use queue_models::TypeRoutedMessage;
 use serde::Deserialize;
 use tokio::select;
@@ -101,6 +101,7 @@ async fn run_ack_router(
     .run(ack_rx, stop_rx.clone()).await
 }
 
+// Struct needed to pass the two senders to the handler function (macro doesn't support that)
 struct AckRouter<'a, 'b> {
     echo_ack: AckSender<'a>,
     trace_ack: AckSender<'b>,
@@ -112,9 +113,9 @@ impl AckRouter<'_, '_> {
         mut ack_rx: mpsc::UnboundedReceiver<TaskRequest>,
         stop_rx: CancellationToken,
     ) -> Result<()> {
-        loop_recv_with_stop!(
-            "ack router", stop_rx,
-            ack_rx => self.route_ack(it)
+        loop_with_stop!(
+            recv "ack router", stop_rx,
+            ack_rx => route_ack(it) on self
         )
     }
 

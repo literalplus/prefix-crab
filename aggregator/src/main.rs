@@ -70,7 +70,7 @@ fn do_run(cli: Cli) -> Result<()> {
     })
 }
 
-async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
+pub async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
     match handle.await {
         Ok(Ok(_)) => Ok(()),
         Ok(Err(err)) => Err(err),
