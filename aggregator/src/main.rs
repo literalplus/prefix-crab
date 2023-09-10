@@ -5,9 +5,9 @@ use prefix_crab::helpers::{bootstrap, logging};
 
 use futures::executor;
 use prefix_crab::helpers::signal_handler;
-use tokio::try_join;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+use tokio::try_join;
 
 // FQNs are needed in some Diesel macros, make them easier to read
 pub use persist::schema::{self, sql_types};
@@ -38,6 +38,9 @@ struct Cli {
 
     #[clap(flatten)]
     persist: persist::Params,
+
+    #[clap(flatten)]
+    schedule: schedule::Params,
 }
 
 fn main() -> Result<()> {
@@ -56,16 +59,26 @@ fn do_run(cli: Cli) -> Result<()> {
 
     // This task is shut down by the RabbitMQ receiver closing the channel
     let probe_handle = tokio::spawn(handle_probe::run(task_rx, ack_tx, follow_up_tx));
-    let schedule_handle = tokio::spawn(schedule::run(probe_tx, follow_up_rx));
 
     let sig_handler = signal_handler::new();
     let stop_rx = sig_handler.subscribe_stop();
     tokio::spawn(sig_handler.wait_for_signal());
 
+    let schedule_handle = tokio::spawn(schedule::run(
+        probe_tx,
+        follow_up_rx,
+        stop_rx.clone(),
+        cli.schedule,
+    ));
+
     let rabbit_handle = tokio::spawn(rabbit::run(task_tx, ack_rx, probe_rx, stop_rx, cli.rabbit));
 
     executor::block_on(async {
-        try_join!(flatten(schedule_handle), flatten(rabbit_handle), flatten(probe_handle))?;
+        try_join!(
+            flatten(schedule_handle),
+            flatten(rabbit_handle),
+            flatten(probe_handle)
+        )?;
         Ok(())
     })
 }

@@ -16,18 +16,18 @@ pub enum MergeStatus {
     MergedUp,
 }
 
-#[derive(diesel_derive_enum::DbEnum, Debug, Eq, PartialEq, Serialize, Deserialize, Copy, Clone)]
+#[derive(diesel_derive_enum::DbEnum, Debug, Eq, PartialEq, Serialize, Deserialize, Copy, Clone, Hash, Ord, PartialOrd)]
 #[ExistingTypePath = "crate::sql_types::PrefixPriorityClass"]
 pub enum PriorityClass {
     // Important: Used in the database, do not change incompatibly!
-    LowUnknown,
-    LowWeird,
-    MediumMultiWeird,
-    MediumSameSingle,
-    MediumSameMulti,
-    HighDisjoint,
-    HighOverlapping,
     HighFresh,
+    HighOverlapping,
+    HighDisjoint,
+    MediumSameMulti,
+    MediumSameSingle,
+    MediumMultiWeird,
+    LowWeird,
+    LowUnknown,
 }
 
 impl Default for PriorityClass {
