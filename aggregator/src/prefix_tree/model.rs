@@ -1,12 +1,13 @@
 use chrono::NaiveDateTime;
-use diesel::{prelude::*, associations::HasTable};
 use diesel;
+use diesel::pg::Pg;
+use diesel::sql_types::*;
+use diesel::{associations::HasTable, prelude::*};
 
-use ipnet::{Ipv6Net, IpNet};
+use ipnet::{IpNet, Ipv6Net};
 use serde::{Deserialize, Serialize};
 
 use crate::analyse::split::Confidence;
-
 
 #[derive(diesel_derive_enum::DbEnum, Debug, Copy, Clone, PartialEq, Eq)]
 #[ExistingTypePath = "crate::sql_types::PrefixMergeStatus"]
@@ -16,7 +17,19 @@ pub enum MergeStatus {
     MergedUp,
 }
 
-#[derive(diesel_derive_enum::DbEnum, Debug, Eq, PartialEq, Serialize, Deserialize, Copy, Clone, Hash, Ord, PartialOrd)]
+#[derive(
+    diesel_derive_enum::DbEnum,
+    Debug,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Copy,
+    Clone,
+    Hash,
+    Ord,
+    PartialOrd,
+)]
 #[ExistingTypePath = "crate::sql_types::PrefixPriorityClass"]
 pub enum PriorityClass {
     // Important: Used in the database, do not change incompatibly!
@@ -65,5 +78,31 @@ impl<'a> Identifiable for &'a PrefixTree {
 
     fn id(self) -> Self::Id {
         IpNet::V6(self.net)
+    }
+}
+
+use crate::schema::prefix_tree::dsl;
+impl Selectable<Pg> for PrefixTree {
+    type SelectExpression = (
+        dsl::net,
+        dsl::created_at,
+        dsl::updated_at,
+        dsl::is_routed,
+        dsl::merge_status,
+        dsl::priority_class,
+        dsl::confidence,
+    );
+
+    fn construct_selection() -> Self::SelectExpression {
+        use dsl::*;
+        (
+            net,
+            created_at,
+            updated_at,
+            is_routed,
+            merge_status,
+            priority_class,
+            confidence,
+        )
     }
 }

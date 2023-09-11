@@ -1,6 +1,9 @@
 use anyhow::*;
-use diesel::dsl::count;
+use diesel::dsl::{count, exists, not, now, IntervalDsl};
+use diesel::sql_types::Integer;
+use ipnet::{IpNet, Ipv6Net};
 use log::debug;
+use prefix_crab::helpers::ip::ExpectAllV6;
 use rand::Rng;
 use std::collections::{btree_map, BTreeMap};
 
@@ -8,7 +11,7 @@ use diesel::prelude::*;
 use diesel::{PgConnection, QueryDsl};
 
 use crate::persist::DieselErrorFixCause;
-use crate::prefix_tree::{MergeStatus, PriorityClass};
+use crate::prefix_tree::{MergeStatus, PriorityClass}; 
 
 #[derive(Default)]
 pub struct ClassBudgets {
@@ -46,11 +49,26 @@ pub fn allocate(conn: &mut PgConnection, total_prefixes: u32) -> Result<ClassBud
     Ok(budgets)
 }
 
-fn count_available_per_class(conn: &mut PgConnection) -> Result<BTreeMap<PriorityClass, u64>> {
-    use crate::schema::prefix_tree::dsl::*;
+macro_rules! leaf_where_no_analysis {
+    (let $var_name:ident = it) => {
+        use crate::schema::prefix_tree::dsl::*;
+        use crate::schema::split_analysis::dsl as ana;
 
-    let tuples = prefix_tree
-        .filter(merge_status.eq(MergeStatus::Leaf))
+        let a_pending_analysis = ana::split_analysis
+            .select(0.into_sql::<Integer>())
+            .filter(ana::tree_net.eq(net))
+            .filter(ana::completed_at.is_null())
+            .filter(not(ana::created_at.lt(now - 2.days()))); // retry unfinished analyses
+
+        let $var_name = prefix_tree
+            .filter(not(exists(a_pending_analysis)))
+            .filter(merge_status.eq(MergeStatus::Leaf));
+    };
+}
+
+fn count_available_per_class(conn: &mut PgConnection) -> Result<BTreeMap<PriorityClass, u64>> {
+    leaf_where_no_analysis!(let base = it);
+    let tuples = base
         .group_by(priority_class)
         .select((priority_class, count(priority_class)))
         .load::<(PriorityClass, i64)>(conn)
@@ -124,7 +142,7 @@ fn allocation_ratio(class: &PriorityClass) -> u16 {
     }
 }
 
-struct BudgetsIntoIter {
+pub struct BudgetsIntoIter {
     delegate: btree_map::IntoIter<PriorityClass, u32>,
     available_reduced_by_allocations: BTreeMap<PriorityClass, u64>,
 }
@@ -161,24 +179,23 @@ impl Iterator for BudgetsIntoIter {
 }
 
 pub struct ClassBudget {
-    class: PriorityClass,
+    pub class: PriorityClass,
     allocated: u32,
-    available: u64,
+    available: u64, // TODO use for tablesample
 }
 
 impl ClassBudget {
-    fn select_prefixes(&self, conn: &mut PgConnection) -> Result<Vec<Ipv6Net>> {
-        use crate::schema::prefix_tree::dsl::*;
-        use crate::schema::split_analysis::dsl as ana;
+    pub fn select_prefixes(&self, conn: &mut PgConnection) -> Result<Vec<Ipv6Net>> {
+        leaf_where_no_analysis!(let base = it);
 
-        prefix_tree
-            .left_join(ana::split_analysis)
-            .filter(ana::id.is_null())
-            .filter(merge_status.eq(MergeStatus::Leaf))
+        let raw_nets: Vec<IpNet> = base
             .filter(priority_class.eq(self.class))
-            .limit(self.allocated)
+            .limit(self.allocated as i64)
+            .select(net)
             .load(conn)
-            .fix_cause()
+            .fix_cause()?;
+
+        Ok(raw_nets.expect_all_v6())
     }
 }
 

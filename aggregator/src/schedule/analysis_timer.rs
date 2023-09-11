@@ -1,21 +1,14 @@
 use std::time::Duration;
 
 use anyhow::*;
-use diesel::prelude::*;
-use diesel::PgConnection;
-use ipnet::Ipv6Net;
-use log::{error, info, warn};
+use log::{error, info, warn, trace};
 use prefix_crab::loop_with_stop;
-use queue_models::probe_request::ProbeRequest;
+use queue_models::probe_request::{ProbeRequest, EchoProbeRequest};
 use tokio::{
     sync::mpsc::UnboundedSender,
     time::{interval, Instant},
 };
 use tokio_util::sync::CancellationToken;
-
-use crate::prefix_tree::MergeStatus;
-use crate::prefix_tree::PriorityClass;
-
 use super::Params;
 
 mod class_budget;
@@ -64,10 +57,27 @@ impl Timer {
             return Ok(());
         }
 
+        let start = Instant::now();
+        let mut prefix_count = 0;
         for budget in budgets {
-            todo!()
+            let prio = budget.class;
+            let prefixes = budget.select_prefixes(&mut conn)?;
+            trace!("Requesting probes for {} prefixes of prio {:?}", prefixes.len(), prio);
+            prefix_count += prefixes.len();
+
+            // TODO space out a bit maybe? or anyways doesn't matter due to downstream batching?
+            for target_net in prefixes {
+                let req = EchoProbeRequest {
+                    target_net,
+                };
+                if let Err(_) = self.probe_tx.send(ProbeRequest::Echo(req)) {
+                    info!("Receiver closed probe channel, assume shutdown.");
+                    return Ok(());
+                }
+            }
         }
 
+        info!("{} prefix analyses scheduled by timer in {}ms.", prefix_count, start.elapsed().as_millis());
         Ok(())
     }
 }
