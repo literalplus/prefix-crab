@@ -197,7 +197,7 @@ impl Caller {
 
     fn set_base(&mut self) {
         self.cmd
-            .arg("--bandwidth=10K")
+            .arg("--bandwidth=10K") // TODO use "rate" in pps instead for consistency with yarrp?
             .arg("--verbosity=5")
             .arg("--cooldown-time=4") // wait for responses for n secs after sending
             // TODO: Permute addresses manually, as --seed is not supported for v6
