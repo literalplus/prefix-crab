@@ -6,8 +6,8 @@ use log::warn;
 
 use crate::analyse::SplitAnalysis;
 use crate::persist::dsl::CidrMethods;
-use crate::prefix_tree::{MergeStatus, PrefixTree, PriorityClass};
-use crate::{persist::DieselErrorFixCause, prefix_tree::ContextOps};
+use db_model::prefix_tree::{MergeStatus, PrefixTree, PriorityClass, ContextOps};
+use crate::persist::DieselErrorFixCause;
 
 use super::recommend::{self, ReProbePriority, SplitRecommendation};
 

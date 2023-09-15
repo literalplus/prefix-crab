@@ -10,22 +10,20 @@ use tokio::task::JoinHandle;
 use tokio::try_join;
 
 // FQNs are needed in some Diesel macros, make them easier to read
-pub use persist::schema::{self, sql_types};
+pub use db_model::{schema, sql_types};
+pub use db_model::persist;
 
 /// Analysis of incoming data in combination with existing knowledge
 mod analyse;
 /// Business logic for handling incoming probes
 mod handle_probe;
-/// Persistence-specific conversions & DSL
-mod persist;
-/// Keeping track of prefix information in a tree structure
-mod prefix_tree;
 /// RabbitMQ-specific logic (producers, consumers), encapsulated using in-memory senders/receivers
 mod rabbit;
 /// Scheduling new analyses based on priority and capacity
 mod schedule;
 #[cfg(test)]
 mod test_utils;
+mod measurement_tree;
 
 #[derive(Parser)]
 #[command(author, version, about)]

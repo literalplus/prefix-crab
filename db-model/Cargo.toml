@@ -1,0 +1,24 @@
+[package]
+name                   = "db-model"
+version.workspace      = true
+edition.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow             = { workspace = true }
+flexi_logger       = { workspace = true }
+ipnet              = { workspace = true }
+log                = { workspace = true }
+prefix-crab        = { path = ".." }
+serde              = { workspace = true }
+serde_json         = { workspace = true }
+type-safe-id       = { workspace = true }
+diesel             = { workspace = true }
+diesel_migrations  = { workspace = true }
+diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
+chrono             = "0.4.26"
+clap               = { workspace = true }
+queue-models       = { path = "../queue-models" }
+assertor           = { version = "0.0.2" }

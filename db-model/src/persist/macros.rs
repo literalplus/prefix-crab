@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! configure_jsonb_serde {
     ($type:ty) => {
         impl diesel::deserialize::FromSql<diesel::sql_types::Jsonb, diesel::pg::Pg> for $type {
@@ -33,4 +34,4 @@ macro_rules! configure_jsonb_serde {
     };
 }
 
-pub(crate) use configure_jsonb_serde;
+pub use configure_jsonb_serde;

@@ -6,8 +6,7 @@ use thiserror::Error;
 
 use crate::persist::DieselErrorFixCause;
 use crate::persist::dsl::CidrMethods;
-use crate::prefix_tree::context::ContextOps;
-use crate::prefix_tree::{self, PrefixTree};
+use db_model::prefix_tree::{self, PrefixTree, context::ContextOps};
 
 use super::SplitAnalysis;
 

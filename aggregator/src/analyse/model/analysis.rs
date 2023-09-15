@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use ipnet::Ipv6Net;
 use serde::{Deserialize, Serialize};
 
-use crate::{
+use db_model::{
     persist::configure_jsonb_serde,
     prefix_tree::{PrefixTree, PriorityClass},
 };

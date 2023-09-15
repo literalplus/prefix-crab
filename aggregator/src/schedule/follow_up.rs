@@ -1,12 +1,13 @@
 use std::net::Ipv6Addr;
 
 use anyhow::*;
+use db_model::prefix_tree::PrefixTree;
 use log::{debug, info};
 use queue_models::probe_request::{ProbeRequest, TraceRequest, TraceRequestId};
 use rand::prelude::*;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-use crate::{analyse::EchoFollowUp, prefix_tree::PrefixTree};
+use crate::analyse::EchoFollowUp;
 
 #[derive(Debug)]
 pub struct FollowUpRequest {

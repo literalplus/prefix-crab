@@ -23,8 +23,7 @@ use crate::persist::DieselErrorFixCause;
 use crate::schema::measurement_tree::dsl::measurement_tree;
 use crate::schema::measurement_tree::target_net;
 
-use crate::prefix_tree;
-use crate::prefix_tree::ContextOps;
+use db_model::prefix_tree::{self, ContextOps};
 use diesel::dsl::*;
 
 use crate::schema::split_analysis::dsl as analysis_dsl;

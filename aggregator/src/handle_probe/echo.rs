@@ -1,4 +1,5 @@
 use anyhow::*;
+use db_model::prefix_tree::{self, ContextOps};
 use diesel::PgConnection;
 use ipnet::Ipv6Net;
 use log::{info, warn};
@@ -12,7 +13,6 @@ use crate::{
         split,
         EchoResult,
     },
-    prefix_tree::{self, ContextOps},
     schedule::FollowUpRequest,
 };
 

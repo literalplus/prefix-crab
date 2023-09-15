@@ -7,7 +7,7 @@ use diesel::{associations::HasTable, prelude::*};
 use ipnet::{IpNet, Ipv6Net};
 use serde::{Deserialize, Serialize};
 
-use crate::analyse::split::Confidence;
+use crate::analyse::Confidence;
 
 #[derive(diesel_derive_enum::DbEnum, Debug, Copy, Clone, PartialEq, Eq)]
 #[ExistingTypePath = "crate::sql_types::PrefixMergeStatus"]

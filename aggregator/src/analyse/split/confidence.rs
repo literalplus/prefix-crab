@@ -2,11 +2,7 @@ use ipnet::Ipv6Net;
 use prefix_crab::prefix_split;
 
 use super::recommend::{ReProbePriority, SplitRecommendation};
-
-/// percent rating, i.e. between 0 and 100
-pub type Confidence = u8;
-
-pub const MAX_CONFIDENCE: Confidence = 100;
+use db_model::analyse::*;
 
 pub fn rate(net: Ipv6Net, rec: &SplitRecommendation) -> Confidence {
     use SplitRecommendation as R;
@@ -58,7 +54,8 @@ fn min_equivalent_responses_thresh(net: &Ipv6Net) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{prefix_tree::PriorityClass::MediumSameMulti, test_utils::*};
+    use db_model::prefix_tree::PriorityClass::MediumSameMulti;
+    use crate::test_utils::*;
     use anyhow::*;
 
     // "Google Sheet cases" are based on https://docs.google.com/spreadsheets/d/1rOlf3MNCSIj58b9yB1Ni-Dnr2sWrostZoqOcSjIm_To/edit#gid=164692237

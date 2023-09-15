@@ -11,7 +11,7 @@ use diesel::prelude::*;
 use diesel::{PgConnection, QueryDsl};
 
 use crate::persist::DieselErrorFixCause;
-use crate::prefix_tree::{MergeStatus, PriorityClass}; 
+use db_model::prefix_tree::{MergeStatus, PriorityClass}; 
 
 #[derive(Default)]
 pub struct ClassBudgets {
@@ -165,15 +165,14 @@ impl Iterator for BudgetsIntoIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         let (class, allocated) = self.delegate.next()?;
-        let available = *self
+        let _available = *self
             .available_reduced_by_allocations
             .entry(class)
             .or_default()
-            + (allocated as u64);
+            + (allocated as u64); // TODO use for tablesample
         Some(ClassBudget {
             class,
             allocated,
-            available,
         })
     }
 }
@@ -181,7 +180,6 @@ impl Iterator for BudgetsIntoIter {
 pub struct ClassBudget {
     pub class: PriorityClass,
     allocated: u32,
-    available: u64, // TODO use for tablesample
 }
 
 impl ClassBudget {

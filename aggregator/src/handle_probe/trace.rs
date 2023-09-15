@@ -6,7 +6,7 @@ use crate::analyse::context::ContextFetchError;
 use crate::analyse::persist::UpdateAnalysis;
 
 use crate::analyse;
-use crate::prefix_tree::ContextOps;
+use db_model::prefix_tree::ContextOps;
 
 use super::{archive, ProbeHandler};
 

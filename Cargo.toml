@@ -1,5 +1,12 @@
 [workspace]
-members = ["zmap-buddy", "yarrp-buddy", "queue-models", "aggregator"]
+members = [
+    "zmap-buddy",
+    "yarrp-buddy",
+    "queue-models",
+    "aggregator",
+    "seed-guard",
+    "db-model",
+]
 
     [workspace.package]
     version      = "0.1.0"
@@ -11,25 +18,33 @@ members = ["zmap-buddy", "yarrp-buddy", "queue-models", "aggregator"]
     [workspace.dependencies]
     amqprs = { version = "1.2.0", features = ["traces", "urispec"] }
     # To enable backtrace printing, set RUST_BACKTRACE=1 (see anyhow docs)
-    anyhow              = { version = "1.0.68", features = ["backtrace"] }
-    clap                = { version = "4.2", features = ["derive", "unicode", "env"] }
+    anyhow = { version = "1.0.68", features = ["backtrace"] }
+    clap = { version = "4.2", features = ["derive", "unicode", "env"] }
     clap-verbosity-flag = "2.0.0"
-    flexi_logger        = { version = "0.26.0", features = ["specfile", "async"] }
-    human-panic         = "1.1.0"
-    serde               = { version = "1.0.159", features = ["derive"] }
-    log                 = "0.4.17"
-    ipnet               = { version = "2.7.1", features = ["serde"] }
-    serde_json          = "1.0.96"
-    tokio               = { version = "1.27.0", features = ["full"] }
-    tokio-util          = { version = "0.7.8" }
-    futures             = "0.3.28"
-    futures-util        = "0.3.28"
-    async-trait         = "0.1.68"                                                     # https://github.com/rust-lang/rust/issues/91611
-    dotenvy             = { version = "0.15.7" }
-    rand                = "0.8.5"
-    assertor            = "0.0.2"
-    type-safe-id        = { version = "0.2.1", features = ["serde"] }
-    chrono              = { version = "0.4.29" }
+    flexi_logger = { version = "0.26.0", features = ["specfile", "async"] }
+    human-panic = "1.1.0"
+    serde = { version = "1.0.159", features = ["derive"] }
+    log = "0.4.17"
+    ipnet = { version = "2.7.1", features = ["serde"] }
+    serde_json = "1.0.96"
+    tokio = { version = "1.27.0", features = ["full"] }
+    tokio-util = { version = "0.7.8" }
+    futures = "0.3.28"
+    futures-util = "0.3.28"
+    async-trait = "0.1.68" # https://github.com/rust-lang/rust/issues/91611
+    dotenvy = { version = "0.15.7" }
+    rand = "0.8.5"
+    assertor = "0.0.2"
+    type-safe-id = { version = "0.2.1", features = ["serde"] }
+    chrono = { version = "0.4.29" }
+    diesel = { version = "2.1.0", features = [
+        "postgres",
+        "serde_json",
+        "chrono",
+        "ipnet-address",
+    ] }
+    diesel_migrations = { version = "2.1.0", features = ["postgres"] }
+    diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
 
 [package]
 name                   = "prefix-crab"

@@ -18,11 +18,11 @@ pub use follow_up::FollowUpRequest;
 #[group(id = "schedule")]
 pub struct Params {
     /// How often to trigger a new analysis batch, in seconds
-    #[arg(long, env = "ANALYSIS_TIMER_INTERVAL_SECS", default_value = "60")]
+    #[arg(long, env = "ANALYSIS_TIMER_INTERVAL_SECS", default_value = "30")]
     analysis_timer_interval_secs: u64,
 
     /// How many prefixes to scan per timer interval
-    #[arg(long, env = "ANALYSIS_TIMER_PREFIX_BUDGET", default_value = "10")]
+    #[arg(long, env = "ANALYSIS_TIMER_PREFIX_BUDGET", default_value = "20")]
     analysis_timer_prefix_budget: u32,
 }
 

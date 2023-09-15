@@ -21,7 +21,9 @@ pub struct Net64Map<V> {
 // derive macro falsely results in requiring that V: Default
 impl<V> Default for Net64Map<V> {
     fn default() -> Self {
-        Self { per_net: Default::default() }
+        Self {
+            per_net: Default::default(),
+        }
     }
 }
 
@@ -133,7 +135,6 @@ impl<'a, V> Iterator for Drain<'a, V> {
 
 impl<'a, V> FusedIterator for Drain<'a, V> {}
 
-
 impl<V> Index<&Ipv6Net> for Net64Map<V> {
     type Output = V;
 
@@ -156,8 +157,7 @@ impl<V> Net64Map<V> {
     }
 
     pub fn entry_by_net_or(&mut self, net: &Ipv6Net, new_fn: fn(Ipv6Net) -> V) -> &mut V {
-        self.entry_by_net(net)
-            .or_insert_with(|| new_fn(*net))
+        self.entry_by_net(net).or_insert_with(|| new_fn(*net))
     }
 
     fn entry_by_addr(&mut self, addr: &Ipv6Addr) -> hash_map::Entry<'_, u64, V> {

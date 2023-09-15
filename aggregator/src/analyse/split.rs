@@ -6,14 +6,14 @@ use thiserror::Error;
 use crate::{
     persist::dsl::CidrMethods,
     persist::DieselErrorFixCause,
-    prefix_tree::{ContextOps, MergeStatus},
 };
+use db_model::prefix_tree::{ContextOps, MergeStatus};
 
 use self::subnet::Subnets;
 
 use super::{context, MeasurementTree, SplitAnalysisResult};
 
-pub use confidence::{Confidence, MAX_CONFIDENCE};
+pub use db_model::analyse::{Confidence, MAX_CONFIDENCE};
 
 mod confidence;
 mod persist;

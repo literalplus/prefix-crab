@@ -8,36 +8,32 @@ license.workspace      = true
 rust-version.workspace = true
 
 [dependencies]
-amqprs = { version = "1.2.0", features = ["traces", "urispec"] }
-anyhow = { workspace = true }
-assertor = "0.0.2"
-clap = { workspace = true }
+amqprs              = { version = "1.2.0", features = ["traces", "urispec"] }
+anyhow              = { workspace = true }
+assertor            = "0.0.2"
+clap                = { workspace = true }
 clap-verbosity-flag = { workspace = true }
-flexi_logger = { workspace = true }
-futures = { workspace = true }
-futures-util = { workspace = true }
-human-panic = { workspace = true }
-ipnet = { workspace = true }
-log = { workspace = true }
-prefix-crab = { path = ".." }
-serde = { workspace = true }
-serde_json = { workspace = true }
-tokio = { workspace = true }
-tokio-util = { workspace = true }
-queue-models = { path = "../queue-models" }
-async-trait = { workspace = true }
-type-safe-id = { workspace = true }
-diesel = { version = "2.1.0", features = [
-    "postgres",
-    "serde_json",
-    "chrono",
-    "ipnet-address",
-] }
-diesel_migrations = { version = "2.1.0", features = ["postgres"] }
-bitvec = "1.0.1"
-chrono = "0.4.26"
-diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
-itertools = "0.11.0"
-nohash-hasher = "0.2.0"
-thiserror = "1.0.44"
-rand = "0.8.5"
+flexi_logger        = { workspace = true }
+futures             = { workspace = true }
+futures-util        = { workspace = true }
+human-panic         = { workspace = true }
+ipnet               = { workspace = true }
+log                 = { workspace = true }
+prefix-crab         = { path = ".." }
+serde               = { workspace = true }
+serde_json          = { workspace = true }
+tokio               = { workspace = true }
+tokio-util          = { workspace = true }
+queue-models        = { path = "../queue-models" }
+db-model            = { path = "../db-model" }
+async-trait         = { workspace = true }
+type-safe-id        = { workspace = true }
+diesel              = { workspace = true }
+diesel_migrations   = { workspace = true }
+diesel-derive-enum  = { workspace = true }
+bitvec              = "1.0.1"
+chrono              = "0.4.26"
+itertools           = "0.11.0"
+nohash-hasher       = "0.2.0"
+thiserror           = "1.0.44"
+rand                = "0.8.5"

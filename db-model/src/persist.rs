@@ -1,11 +1,10 @@
 use clap::Args;
 pub use error::*;
 pub use loader::*;
-pub(crate) use macros::configure_jsonb_serde;
+pub use macros::configure_jsonb_serde;
 pub use connect::*;
 
 pub mod dsl;
-pub mod schema;
 
 mod error;
 mod loader;

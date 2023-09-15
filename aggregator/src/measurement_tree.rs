@@ -1,7 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    net::Ipv6Addr,
-    ops::IndexMut,
+    net::Ipv6Addr, ops::IndexMut,
 };
 
 use anyhow::{bail, Result};
@@ -13,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analyse::map64::Net64Map;
 
-use super::HitCount;
+pub type HitCount = i32;
 
 #[derive(Queryable, Selectable, Identifiable, Insertable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = crate::schema::measurement_tree)]
@@ -63,7 +62,12 @@ impl MeasurementTree {
         Ok(())
     }
 
-    pub fn add_lhr_no_sum(&mut self, addr: Ipv6Addr, sources: HashSet<LhrSource>, hits: HitCount) {
+    pub fn add_lhr_no_sum(
+        &mut self,
+        addr: Ipv6Addr,
+        sources: HashSet<LhrSource>,
+        hits: HitCount,
+    ) {
         self.last_hop_routers.items.insert(
             addr,
             LhrItem {
@@ -84,18 +88,6 @@ impl MeasurementTree {
             IpNet::V4(net) => bail!("i am the lorax. i speak for the trees. they do not want an IPv4 in their forest: {} thansk", net),
             IpNet::V6(net) => Ok(*net),
         }
-    }
-}
-
-impl IndexMut<&Ipv6Net> for Net64Map<MeasurementTree> {
-    fn index_mut(&mut self, idx: &Ipv6Net) -> &mut Self::Output {
-        self.entry_by_net_or(idx, MeasurementTree::empty)
-    }
-}
-
-impl IndexMut<&Ipv6Addr> for Net64Map<MeasurementTree> {
-    fn index_mut(&mut self, idx: &Ipv6Addr) -> &mut Self::Output {
-        self.entry_by_addr_or(idx, MeasurementTree::empty)
     }
 }
 
@@ -131,17 +123,17 @@ pub enum LhrSource {
     // i.e. add only optional fields or provide defaults!
     Trace,
     UnreachAdmin, // admin-prohibit, failed-egress
-    UnreachPort, // port unreach
-    UnreachAddr, // addr unreach
-    UnreachRoute,   // no route
+    UnreachPort,  // port unreach
+    UnreachAddr,  // addr unreach
+    UnreachRoute, // no route
 }
 
 impl TryFrom<&DestUnreachKind> for LhrSource {
     type Error = u8;
 
     fn try_from(value: &DestUnreachKind) -> Result<Self, Self::Error> {
-        use LhrSource as S;
         use DestUnreachKind as K;
+        use LhrSource as S;
 
         Ok(match value {
             K::NoRoute => S::UnreachRoute,
@@ -211,15 +203,25 @@ impl WeirdItem {
 
 crate::persist::configure_jsonb_serde!(WeirdData);
 
+impl IndexMut<&Ipv6Net> for Net64Map<MeasurementTree> {
+    fn index_mut(&mut self, idx: &Ipv6Net) -> &mut Self::Output {
+        self.entry_by_net_or(idx, MeasurementTree::empty)
+    }
+}
+
+impl IndexMut<&Ipv6Addr> for Net64Map<MeasurementTree> {
+    fn index_mut(&mut self, idx: &Ipv6Addr) -> &mut Self::Output {
+        self.entry_by_addr_or(idx, MeasurementTree::empty)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use assertor::{assert_that, EqualityAssertion, MapAssertion, ResultAssertion};
     use ipnet::Ipv6Net;
     use std::{net::Ipv6Addr, str::FromStr};
 
-    use crate::analyse::HitCount;
-
-    use super::{LhrItem, LhrSource, MeasurementTree, WeirdItem, WeirdType};
+    use super::*;
 
     fn given_trees() -> (MeasurementTree, MeasurementTree) {
         let parent_tree = MeasurementTree::empty(Ipv6Net::from_str("2001:db8::/62").unwrap());
@@ -261,17 +263,11 @@ mod tests {
 
         parent_tree.last_hop_routers.items.insert(
             given_some_addr(),
-            gen_lhr(
-                6,
-                &[LhrSource::Trace, LhrSource::UnreachAddr],
-            ),
+            gen_lhr(6, &[LhrSource::Trace, LhrSource::UnreachAddr]),
         );
         sub_tree.last_hop_routers.items.insert(
             given_some_addr(),
-            gen_lhr(
-                2,
-                &[LhrSource::Trace, LhrSource::UnreachPort],
-            ),
+            gen_lhr(2, &[LhrSource::Trace, LhrSource::UnreachPort]),
         );
 
         // when

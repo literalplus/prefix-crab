@@ -1,0 +1,34 @@
+[package]
+name = "seed-guard"
+version.workspace      = true
+edition.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+
+
+[dependencies]
+anyhow = { workspace = true }
+assertor = "0.0.2"
+clap = { workspace = true }
+clap-verbosity-flag = { workspace = true }
+flexi_logger = { workspace = true }
+futures = { workspace = true }
+futures-util = { workspace = true }
+human-panic = { workspace = true }
+ipnet = { workspace = true }
+log = { workspace = true }
+prefix-crab = { path = ".." }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+type-safe-id = { workspace = true }
+diesel = { version = "2.1.0", features = [
+    "postgres",
+    "serde_json",
+    "chrono",
+    "ipnet-address",
+] }
+diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
+itertools = "0.11.0"

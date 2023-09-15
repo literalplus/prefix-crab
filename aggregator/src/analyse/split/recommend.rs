@@ -1,9 +1,7 @@
 use log::trace;
 
-use crate::{
-    analyse::{HitCount, LhrItem, WeirdItem},
-    prefix_tree::PriorityClass,
-};
+use crate::analyse::{HitCount, LhrItem, WeirdItem};
+use db_model::prefix_tree::PriorityClass;
 
 use super::subnet::Subnets;
 
