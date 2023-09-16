@@ -106,3 +106,14 @@ impl Selectable<Pg> for PrefixTree {
         )
     }
 }
+
+#[derive(Queryable, Debug, Copy, Clone)]
+#[diesel(table_name = crate::schema::as_prefix)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(primary_key(net))]
+pub struct AsPrefix {
+    #[diesel(deserialize_as = crate::persist::Ipv6NetLoader)]
+    pub net: Ipv6Net,
+    pub deleted: bool,
+    pub asn: i64,
+}

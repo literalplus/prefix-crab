@@ -11,6 +11,14 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    as_prefix (net) {
+        net -> Cidr,
+        deleted -> Bool,
+        asn -> Int8,
+    }
+}
+
+diesel::table! {
     measurement_tree (target_net) {
         target_net -> Cidr,
         created_at -> Timestamp,
@@ -62,6 +70,7 @@ diesel::table! {
 diesel::joinable!(split_analysis -> prefix_tree (tree_net));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    as_prefix,
     measurement_tree,
     prefix_tree,
     response_archive,
