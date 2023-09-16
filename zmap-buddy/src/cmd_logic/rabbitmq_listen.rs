@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 use clap::Args;
 use futures::executor;
-use tokio::select;
+use tokio::{select, try_join};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-use prefix_crab::helpers::signal_handler;
+use prefix_crab::helpers::stop::{self, flatten};
 
 use crate::{rabbit, schedule};
 
@@ -29,7 +29,7 @@ pub fn handle(params: Params) -> Result<()> {
         task_rx, res_tx, params.scheduler,
     ));
 
-    let sig_handler = signal_handler::new();
+    let sig_handler = stop::new();
     let stop_rx = sig_handler.subscribe_stop();
     tokio::spawn(sig_handler.wait_for_signal());
 
@@ -37,15 +37,8 @@ pub fn handle(params: Params) -> Result<()> {
         task_tx, res_rx, stop_rx, params.rabbit,
     ));
 
-    executor::block_on(wait_for_exit(scheduler_handle, rabbit_handle))
-}
-
-async fn wait_for_exit(
-    scheduler_handle: JoinHandle<Result<()>>, rabbit_handle: JoinHandle<Result<()>>,
-) -> Result<()> {
-    let inner_res = select! {
-        res = scheduler_handle => res.with_context(|| "failed to join scheduler"),
-        res = rabbit_handle => res.with_context(|| "failed to join rabbit"),
-    }?;
-    inner_res.with_context(|| "a task exited unexpectedly")
+    executor::block_on(async {
+        try_join!(flatten(scheduler_handle), flatten(rabbit_handle))?;
+        Ok(())
+    })
 }

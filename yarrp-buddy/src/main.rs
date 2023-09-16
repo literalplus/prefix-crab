@@ -2,7 +2,8 @@ use anyhow::{Result, anyhow};
 use clap::Parser;
 
 use futures::executor;
-use prefix_crab::helpers::{bootstrap, logging, signal_handler};
+use prefix_crab::helpers::stop::flatten;
+use prefix_crab::helpers::{bootstrap, logging, stop};
 use tokio::try_join;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -41,7 +42,7 @@ fn do_run(cli: Cli) -> Result<()> {
     // This task if shut down by the RabbitMQ receiver closing the channel
     let scheduler_handle = tokio::spawn(schedule::run(task_rx, res_tx, cli.scheduler));
 
-    let sig_handler = signal_handler::new();
+    let sig_handler = stop::new();
     let stop_rx = sig_handler.subscribe_stop();
     tokio::spawn(sig_handler.wait_for_signal());
 
@@ -51,12 +52,4 @@ fn do_run(cli: Cli) -> Result<()> {
         try_join!(flatten(scheduler_handle), flatten(rabbit_handle))?;
         Ok(())
     })
-}
-
-async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
-    match handle.await {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(err)) => Err(err),
-        Err(err) => Err(anyhow!(err)),
-    }
 }

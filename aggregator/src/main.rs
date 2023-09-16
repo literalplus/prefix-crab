@@ -1,12 +1,11 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 
 use prefix_crab::helpers::{bootstrap, logging};
 
 use futures::executor;
-use prefix_crab::helpers::signal_handler;
+use prefix_crab::helpers::stop::{self, flatten};
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
 use tokio::try_join;
 
 // FQNs are needed in some Diesel macros, make them easier to read
@@ -58,7 +57,7 @@ fn do_run(cli: Cli) -> Result<()> {
     // This task is shut down by the RabbitMQ receiver closing the channel
     let probe_handle = tokio::spawn(handle_probe::run(task_rx, ack_tx, follow_up_tx));
 
-    let sig_handler = signal_handler::new();
+    let sig_handler = stop::new();
     let stop_rx = sig_handler.subscribe_stop();
     tokio::spawn(sig_handler.wait_for_signal());
 
@@ -79,12 +78,4 @@ fn do_run(cli: Cli) -> Result<()> {
         )?;
         Ok(())
     })
-}
-
-pub async fn flatten(handle: JoinHandle<Result<()>>) -> Result<()> {
-    match handle.await {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(err)) => Err(err),
-        Err(err) => Err(anyhow!(err)),
-    }
 }

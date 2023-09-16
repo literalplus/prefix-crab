@@ -1362,6 +1362,7 @@ dependencies = [
  "assertor",
  "clap",
  "clap-verbosity-flag",
+ "db-model",
  "diesel",
  "diesel-derive-enum",
  "flexi_logger",
