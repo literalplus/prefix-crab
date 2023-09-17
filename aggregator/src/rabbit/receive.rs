@@ -115,7 +115,7 @@ impl AckRouter<'_, '_> {
     ) -> Result<()> {
         loop_with_stop!(
             recv "ack router", stop_rx,
-            ack_rx => route_ack(it) on self
+            ack_rx => self.route_ack(it)
         )
     }
 

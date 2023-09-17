@@ -48,7 +48,7 @@ impl<'han> AckSender<'han> {
     ) -> Result<()> {
         loop_with_stop!(
             recv "ack sender", stop_rx,
-            work_recv => do_ack(it) on self
+            work_recv => self.do_ack(it)
         )
     }
 

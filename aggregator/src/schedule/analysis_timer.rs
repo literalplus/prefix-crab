@@ -1,15 +1,15 @@
 use std::time::Duration;
 
+use super::Params;
 use anyhow::*;
-use log::{error, info, warn, trace};
+use log::{error, info, trace, warn};
 use prefix_crab::loop_with_stop;
-use queue_models::probe_request::{ProbeRequest, EchoProbeRequest};
+use queue_models::probe_request::{EchoProbeRequest, ProbeRequest};
 use tokio::{
     sync::mpsc::UnboundedSender,
     time::{interval, Instant},
 };
 use tokio_util::sync::CancellationToken;
-use super::Params;
 
 mod class_budget;
 
@@ -34,21 +34,17 @@ impl Timer {
         ));
         loop_with_stop!(
             "analysis timer", stop_rx,
-            trigger.tick() => tick(it) on self as simple
+            trigger.tick() => self.tick() as simple
         )
     }
 
-    async fn tick(&mut self, _it: Instant) -> Result<()> {
-        match self.do_tick().await {
-            Err(e) => {
-                error!("Failed to schedule timed analysis due to {:?}", e);
-                Ok(())
-            }
-            ok => ok,
+    fn tick(&mut self) {
+        if let Err(e) = self.do_tick() {
+            error!("Failed to schedule timed analysis due to {:?}", e);
         }
     }
 
-    async fn do_tick(&mut self) -> Result<()> {
+    fn do_tick(&mut self) -> Result<()> {
         let mut conn = crate::persist::connect()?;
         let budgets = class_budget::allocate(&mut conn, self.params.analysis_timer_prefix_budget)?;
 
@@ -62,14 +58,16 @@ impl Timer {
         for budget in budgets {
             let prio = budget.class;
             let prefixes = budget.select_prefixes(&mut conn)?;
-            trace!("Requesting probes for {} prefixes of prio {:?}", prefixes.len(), prio);
+            trace!(
+                "Requesting probes for {} prefixes of prio {:?}",
+                prefixes.len(),
+                prio
+            );
             prefix_count += prefixes.len();
 
             // TODO space out a bit maybe? or anyways doesn't matter due to downstream batching?
             for target_net in prefixes {
-                let req = EchoProbeRequest {
-                    target_net,
-                };
+                let req = EchoProbeRequest { target_net };
                 if let Err(_) = self.probe_tx.send(ProbeRequest::Echo(req)) {
                     info!("Receiver closed probe channel, assume shutdown.");
                     return Ok(());
@@ -77,7 +75,11 @@ impl Timer {
             }
         }
 
-        info!("{} prefix analyses scheduled by timer in {}ms.", prefix_count, start.elapsed().as_millis());
+        info!(
+            "{} prefix analyses scheduled by timer in {}ms.",
+            prefix_count,
+            start.elapsed().as_millis()
+        );
         Ok(())
     }
 }

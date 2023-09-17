@@ -51,7 +51,7 @@ impl SchedulerTask {
                 .await
                 .with_context(|| "during blocking yarrp call (await)")??;
         } else {
-            debug!("Skipping call, all requestes of this chunk are empty.");
+            debug!("Skipping call, all requests of this chunk are empty.");
         }
         Ok(map_into_responses(self.store))
     }

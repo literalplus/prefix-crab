@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use clap::Parser;
 
 use futures::executor;
@@ -6,7 +6,6 @@ use prefix_crab::helpers::stop::flatten;
 use prefix_crab::helpers::{bootstrap, logging, stop};
 use tokio::try_join;
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
 
 /// Stores probe results in memory for the duration of the scan.
 mod probe_store;

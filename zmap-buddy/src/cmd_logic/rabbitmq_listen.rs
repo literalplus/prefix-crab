@@ -1,9 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Args;
 use futures::executor;
-use tokio::{select, try_join};
+use tokio::try_join;
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
 use prefix_crab::helpers::stop::{self, flatten};
 
 use crate::{rabbit, schedule};

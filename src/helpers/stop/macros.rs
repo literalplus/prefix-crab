@@ -1,10 +1,25 @@
 #[macro_export]
 macro_rules! loop_with_stop {
-(recv $task_name:expr, $stop_rx:ident, $work_rx:ident => $work:ident(it)$( on $self:ident)?) => {
-    loop_with_stop!($task_name, $stop_rx, $work_rx.recv() => $work(it)$( on $self)? as result)
+
+(fn_param $work_ident:ident on it) => {
+    $work_ident
+};
+(fn_param $_:ident on $work_arg:ident) => {
+    $work_arg
+};
+(fn_param $_:ident on (&$work_arg:ident)) => {
+    &$work_arg
 };
 
-($task_name:expr, $stop_rx:ident, $work_rx:ident.$op:ident() => $work:ident(it$(, $work_arg:ident)*)$( on $self:ident)? as $result_type:ident) => {
+(fn_call $($calls:ident).+($($params:tt),*) with $work_arg:ident) => {
+    $($calls).+($(loop_with_stop!(fn_param $work_arg on $params)),*)
+};
+
+(recv $task_name:expr, $stop_rx:ident, $work_rx:ident => $($calls:ident).+($($params:tt),*)) => {
+    loop_with_stop!($task_name, $stop_rx, $work_rx.recv() => $($calls).+($($params),*) as result_async)
+};
+
+($task_name:expr, $stop_rx:ident, $work_rx:ident.$op:ident() => $($calls:ident).+($($params:tt),*) as $result_type:ident) => {
     loop {
         let work_fut = $work_rx.$op();
         let stop_fut = $stop_rx.cancelled();
@@ -16,22 +31,26 @@ macro_rules! loop_with_stop {
                 return anyhow::Result::Ok(());
             }
             work_opt = work_fut => {
-                loop_with_stop!($result_type work_opt for $task_name, $work(it$(, $work_arg)*)$( on $self)?)
+                loop_with_stop!($result_type work_opt for $task_name, $($calls).+($($params),*))
             }
         }
     }
 };
 
-(result $result_opt:ident for $task_name:expr, $work:ident(it$(, $work_arg:ident)*)$( on $self:ident)?) => {
+(result_async $result_opt:ident for $task_name:expr, $($calls:ident).+($($params:tt),*)) => {
     if let Some(work) = $result_opt {
-        $($self.)?$work(work$(, $work_arg)*).await?;
+        loop_with_stop!(fn_call $($calls).+($($params),*) with work).await?;
     } else {
         log::debug!("Sender closed channel for {}", $task_name);
         return anyhow::Result::Ok(());
     }
 };
 
-(simple $result_simple:ident for $task_name:expr, $work:ident(it$(, $work_arg:ident)*)$( on $self:ident)?) => {
-    $($self.)?$work($result_simple$(, $work_arg)*).await?;
+(simple $result_simple:ident for $task_name:expr, $($calls:ident).+($($params:tt),*)) => {
+    loop_with_stop!(fn_call $($calls).+($($params),*) with $result_simple)
+};
+
+(simple_async $result_simple:ident for $task_name:expr, $($calls:ident).+(it$(, $work_arg:ident)*)) => {
+    loop_with_stop!(fn_call $($calls).+($($params),*) with $result_simple).await?;
 }
 }

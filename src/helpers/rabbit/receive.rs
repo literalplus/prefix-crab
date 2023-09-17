@@ -62,7 +62,7 @@ impl<HandlerType: MessageHandler> JsonReceiver<'_, HandlerType> {
         // TODO implement recovery for channel closure (in macro probably)
         loop_with_stop!(
             recv format!("receiver for {}", self.queue_name), stop_rx,
-            rabbit_rx => handle_msg(it) on self
+            rabbit_rx => self.handle_msg(it)
         );
     }
 

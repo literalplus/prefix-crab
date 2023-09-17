@@ -109,7 +109,7 @@ impl MeasurementForest {
             Greater => bail!("trees with prefixes longer than /64 may not be planted here: {}. best regards, the lorax.", net),
             Equal => {
                 let was_there_before = self.trees64.contains_net(&net);
-                let mut entry = self.trees64.entry_by_net_or(
+                let entry = self.trees64.entry_by_net_or(
                     &net, ModifiableTree::empty
                 );
                 entry.touched = if was_there_before {

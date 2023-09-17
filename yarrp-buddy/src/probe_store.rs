@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::Ipv6Addr};
 
 use anyhow::bail;
 use itertools::Itertools;
-use log::warn;
+use log::{warn, info};
 use queue_models::{
     probe_request::TraceRequestId,
     probe_response::{DestUnreachKind, TraceResponseType},
@@ -48,7 +48,10 @@ impl ProbeStore {
         };
         let entry = self.store.get_mut(&key);
         if entry.is_none() {
-            warn!("Received response for an unknown target {} - directed at {} and coming from {}, ignoring.", key, response.intended_target, response.actual_from);
+            // most likely this is an echo reply coming from the router directly, and it wasn't caught in the
+            // ZMAP stage due to ICMP rate limiting or similar. Echo replies don't quote the incoming packet header,
+            // so the intended target cannot be determined (?).
+            info!("Received response for an unknown target {} - directed at {} and coming from {}, ignoring.", key, response.intended_target, response.actual_from);
             return;
         }
         entry.unwrap().register_response(response);

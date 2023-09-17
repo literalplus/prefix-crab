@@ -44,7 +44,7 @@ impl RabbitSender<'_> {
     ) -> Result<()> {
         loop_with_stop!(
             recv "rabbit sender", stop_rx,
-            work_rx => do_send(it) on self
+            work_rx => self.do_send(it)
         )
     }
 
