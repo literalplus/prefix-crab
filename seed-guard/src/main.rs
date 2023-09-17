@@ -12,7 +12,7 @@ pub use db_model::persist;
 pub use db_model::{schema, sql_types};
 
 pub mod schedule;
-pub mod as_list;
+pub mod as_set;
 pub mod prefix_changeset;
 pub mod tree_update;
 
