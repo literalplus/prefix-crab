@@ -7,7 +7,7 @@ use prefix_crab::loop_with_stop;
 use tokio::time::{interval, Instant};
 use tokio_util::sync::CancellationToken;
 
-use crate::as_set;
+use crate::as_changeset;
 
 #[derive(Args, Debug, Clone)]
 #[group(id = "schedule")]
@@ -17,7 +17,7 @@ pub struct Params {
     #[arg(long, env = "RESEED_INTERVAL_SECS", default_value = "21600")]
     reseed_interval_secs: u64,
 
-    #[arg(long, env = "AS_REPO_BASE_DIR", default_value = "./asn-ip")]
+    #[arg(long, env = "AS_REPO_BASE_DIR", default_value = "./asn-ip/as")]
     as_repo_base_dir: PathBuf,
 }
 
@@ -54,8 +54,10 @@ fn do_tick(params: &Params) -> Result<()> {
     let mut conn = crate::persist::connect()?;
     let start = Instant::now();
 
-    let as_set = as_set::determine(&mut conn, &params.as_repo_base_dir)
+    let changes = as_changeset::determine(&mut conn, &params.as_repo_base_dir)
         .context("determining AS set")?;
+
+    info!("AS Changeset: {:?}", changes);
 
     info!("Re-seed completed in {}ms.", start.elapsed().as_millis());
     Ok(())

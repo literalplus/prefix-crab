@@ -1,22 +1,28 @@
 use std::{
     fs::{DirEntry, File, Metadata},
     io::{BufRead, BufReader},
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, collections::HashSet,
 };
 
 use anyhow::{bail, Context, Result};
 use db_model::persist::DieselErrorFixCause;
 use diesel::{pg::PgRowByRowLoadingMode, prelude::*, PgConnection, QueryDsl};
 use ipnet::{IpNet, Ipv6Net};
-use log::warn;
+use log::{warn, trace, debug};
 use nohash_hasher::IntMap;
 use prefix_crab::helpers::ip::ExpectV6;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct AsSetEntry {
     pub asn: u32,
-    pub present: Vec<Ipv6Net>,
+    pub added: HashSet<Ipv6Net>,
     pub removed: Vec<Ipv6Net>,
+}
+
+impl AsSetEntry {
+    fn has_changes(&self) -> bool {
+        return !self.added.is_empty() || !self.removed.is_empty();
+    }
 }
 
 pub fn determine(conn: &mut PgConnection, base_dir: &Path) -> Result<IntMap<u32, AsSetEntry>> {
@@ -26,6 +32,8 @@ pub fn determine(conn: &mut PgConnection, base_dir: &Path) -> Result<IntMap<u32,
 
     let mut indexed = read_ases_from_dir(base_dir).context("determining present ASNs")?;
     extend_with_db_asns(conn, &mut indexed).context("loading removed ASNs")?;
+
+    indexed.retain(|_, v| v.has_changes());
 
     Ok(indexed)
 }
@@ -38,8 +46,11 @@ fn read_ases_from_dir(base_dir: &Path) -> Result<IntMap<u32, AsSetEntry>> {
         let meta = entry
             .metadata()
             .context("reading directory entry metadata")?;
+        let file_name = entry.file_name().clone();
         if let Some(model) = to_model(entry, meta) {
             result.insert(model.asn, model);
+        } else {
+            debug!("Invalid AS dir {:?}", file_name);
         }
     }
     Ok(result)
@@ -54,7 +65,8 @@ fn to_model(entry: DirEntry, meta: Metadata) -> Option<AsSetEntry> {
     match read_prefixes(entry.path()) {
         Ok(prefixes) => {
             let mut entry = AsSetEntry::default();
-            entry.present.extend_from_slice(&prefixes);
+            entry.asn = asn;
+            entry.added.extend(&prefixes);
             Some(entry)
         }
         Err(e) => {
@@ -99,7 +111,10 @@ fn extend_with_db_asns(
         let net = net.expect_v6();
 
         let entry = indexed.entry(asn).or_default();
-        if !entry.present.contains(&net) {
+        if entry.added.contains(&net) {
+            // if it is in the "current prefixes", then it was not added, it is unchanged
+            entry.added.remove(&net);
+        } else {
             entry.removed.push(net);
         }
     }
