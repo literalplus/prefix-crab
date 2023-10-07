@@ -9,3 +9,13 @@ CREATE TABLE public.as_prefix
 );
 
 CREATE INDEX prefix_bgp_status_asn ON public.as_prefix (asn);
+
+CREATE TABLE public.as_filter_list
+(
+    asn bigint primary key not null,
+    comment varchar(255) not null default ''
+);
+
+COMMENT ON TABLE public.as_filter_list IS 'semantic (allow/deny/ignore) depends on settings in seed-guard';
+
+INSERT INTO public.as_filter_list (asn, comment) VALUES (64511, 'Local GNS3 testing, reserved ASN');

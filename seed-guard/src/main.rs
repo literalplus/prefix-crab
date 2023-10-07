@@ -11,8 +11,9 @@ use tokio::try_join;
 pub use db_model::persist;
 pub use db_model::{schema, sql_types};
 
-pub mod schedule;
 pub mod as_changeset;
+pub mod schedule;
+pub mod as_filter_list;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -38,15 +39,10 @@ fn do_run(cli: Cli) -> Result<()> {
     let stop_rx = sig_handler.subscribe_stop();
     tokio::spawn(sig_handler.wait_for_signal());
 
-    let schedule_handle = tokio::spawn(schedule::run(
-        stop_rx,
-        cli.schedule,
-    ));
+    let schedule_handle = tokio::spawn(schedule::run(stop_rx, cli.schedule));
 
     executor::block_on(async {
-        try_join!(
-            flatten(schedule_handle),
-        )?;
+        try_join!(flatten(schedule_handle),)?;
         Ok(())
     })
 }

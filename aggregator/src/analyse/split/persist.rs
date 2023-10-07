@@ -6,8 +6,8 @@ use log::warn;
 
 use crate::analyse::SplitAnalysis;
 use crate::persist::dsl::CidrMethods;
-use db_model::prefix_tree::{MergeStatus, PrefixTree, PriorityClass, ContextOps};
 use crate::persist::DieselErrorFixCause;
+use db_model::prefix_tree::{ContextOps, MergeStatus, PrefixTree, PriorityClass};
 
 use super::recommend::{self, ReProbePriority, SplitRecommendation};
 
@@ -162,8 +162,8 @@ fn mark_parent_obsolete(conn: &mut PgConnection, parent: &PrefixTree) -> Result<
     use crate::schema::prefix_tree::dsl::*;
 
     diesel::update(parent)
-    .set(merge_status.eq(MergeStatus::SplitDown))
-    .execute(conn)
-    .fix_cause()
-    .context("updating parent with new merge status")
+        .set(merge_status.eq(parent.merge_status.split()))
+        .execute(conn)
+        .fix_cause()
+        .context("updating parent with new merge status")
 }

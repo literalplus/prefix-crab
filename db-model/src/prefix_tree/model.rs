@@ -23,6 +23,14 @@ impl MergeStatus {
     pub fn is_leaf(&self) -> bool {
         matches!(self, MergeStatus::Leaf | MergeStatus::UnsplitRoot)
     }
+
+    pub fn split(&self) -> MergeStatus {
+        if matches!(self, MergeStatus::UnsplitRoot | MergeStatus::SplitRoot) {
+            MergeStatus::SplitRoot
+        } else {
+            MergeStatus::SplitDown
+        }
+    }
 }
 
 #[derive(

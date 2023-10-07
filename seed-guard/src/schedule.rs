@@ -2,12 +2,22 @@ use std::{path::PathBuf, time::Duration};
 
 use anyhow::*;
 use clap::Args;
-use log::{error, info};
+use db_model::{
+    persist::{dsl::CidrMethods, DieselErrorFixCause},
+    prefix_tree::MergeStatus,
+    schema::{as_prefix, prefix_tree},
+};
+use diesel::{delete, Connection, ExpressionMethods, PgConnection, RunQueryDsl};
+use itertools::Itertools;
+use log::{error, info, warn};
 use prefix_crab::loop_with_stop;
 use tokio::time::{interval, Instant};
 use tokio_util::sync::CancellationToken;
 
-use crate::as_changeset::{self, AsChangeset};
+use crate::{
+    as_changeset::{self, AsChangeset, AsSetEntry},
+    as_filter_list,
+};
 
 #[derive(Args, Debug, Clone)]
 #[group(id = "schedule")]
@@ -20,12 +30,13 @@ pub struct Params {
     #[arg(long, env = "AS_REPO_BASE_DIR", default_value = "./asn-ip/as")]
     as_repo_base_dir: PathBuf,
 
-    /// Whether to insert freshly seeded prefixes into the tree for analysis.
-    /// Note that the default value of 'false' means that NO internet-wide scan
-    /// is performed, and only prefixes that are manually added to the tree are
-    /// processed.
-    #[arg(long, env = "PUSH_FRESH_PREFIXES_TO_TREE", default_value = "false")]
-    push_fresh_prefixes_to_tree: bool,
+    /// Controls how the `as_filter_list` table is handled. The default is
+    /// to treat it as an allow list, and only insert prefixes from these
+    /// ASNs into the prefix tree (still maintining `as_prefix`). Setting
+    /// this to `true` causes the system to perform a scan of the entire
+    /// IPv6 internet.
+    #[arg(long, env = "ASN_FILTER_IS_DENY_LIST", default_value = "false")]
+    asn_filter_is_deny_list: bool,
 }
 
 pub async fn run(stop_rx: CancellationToken, params: Params) -> Result<()> {
@@ -63,15 +74,105 @@ fn do_tick(params: &Params) -> Result<()> {
 
     let changes = as_changeset::determine(&mut conn, &params.as_repo_base_dir)
         .context("determining AS set")?;
+    let filter = as_filter_list::fetch_for(&mut conn, &changes, params.asn_filter_is_deny_list);
 
-    info!("AS Changeset: {:?}", changes);
+    try_save_changes(&mut conn, changes, params);
 
     info!("Re-seed completed in {}ms.", start.elapsed().as_millis());
     Ok(())
 }
 
-fn save_changes(changes: AsChangeset) -> Result<()> {
+fn try_save_changes(conn: &mut PgConnection, changes: AsChangeset, params: &Params) {
+    for change in changes.values() {
+        let res = conn.transaction(|conn| save_change(conn, change, params));
+        if let Err(e) = res {
+            error!("Unable to save changes to AS {:?} due to: {:?}", change, e);
+        }
+    }
+}
 
+macro_rules! delete_all_below {
+    ($conn:ident, $dsl: ident, $nets: ident) => {
+        let mut statement = delete($dsl::table).into_boxed();
+
+        for removed_net in $nets.iter() {
+            statement = statement.or_filter($dsl::net.subnet_or_eq6(removed_net));
+        }
+
+        statement.execute($conn).fix_cause()?;
+    };
+}
+
+fn save_change(conn: &mut PgConnection, change: &AsSetEntry, params: &Params) -> Result<()> {
+    info!(" --- Saving changes to AS{}", change.asn);
+
+    let removed = &change.removed;
+    if !removed.is_empty() {
+        info!(
+            "Removing some prefixes of AS{} from prefix tree: {:?}",
+            change.asn, removed
+        );
+        delete_all_below!(conn, prefix_tree, removed);
+        delete_all_below!(conn, as_prefix, removed);
+    }
+
+    if !change.added.is_empty() {
+        info!(
+            "Adding new prefixes of AS{}: {:?}",
+            change.asn, change.added
+        );
+        save_as_prefixes(conn, change).context("saving added AS prefixes")?;
+        if params.push_fresh_prefixes_to_tree {
+            save_fresh_prefix_nodes(conn, change).context("saving fresh prefix nodes")?;
+        }
+    }
+
+    Ok(())
+}
+
+fn save_as_prefixes(conn: &mut PgConnection, change: &AsSetEntry) -> Result<()> {
+    use db_model::schema::as_prefix::dsl::*;
+
+    let tuples = change
+        .added
+        .iter()
+        .map(|it| (net.eq6(it), asn.eq(change.asn as i64)))
+        .collect_vec();
+
+    diesel::insert_into(as_prefix)
+        .values(tuples)
+        .on_conflict((net, asn))
+        .do_update()
+        .set(deleted.eq(false))
+        .execute(conn)
+        .fix_cause()?;
+    Ok(())
+}
+
+fn save_fresh_prefix_nodes(conn: &mut PgConnection, change: &AsSetEntry) -> Result<()> {
+    use db_model::schema::prefix_tree::dsl::*;
+
+    let tuples = change
+        .added
+        .iter()
+        .map(|it| (net.eq6(it), merge_status.eq(MergeStatus::UnsplitRoot)))
+        .collect_vec();
+
+    let inserted = diesel::insert_into(prefix_tree)
+        .values(tuples)
+        .on_conflict_do_nothing()
+        .execute(conn)
+        .fix_cause()?;
+
+    if inserted != change.added.len() {
+        warn!(
+            "Some added prefixes for {:?} conflicted with existing prefix nodes, skipped {}.",
+            change,
+            change.added.len() - inserted
+        );
+    } else {
+        info!("Created {} prefix nodes.", inserted);
+    }
 
     Ok(())
 }

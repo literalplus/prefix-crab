@@ -32,14 +32,11 @@ gns3-down:
 
 .PHONY: build
 build:
-	cargo build
+	cargo build --workspace
 
 .PHONY: build-release
 build-release:
-	cargo build --release
-	cd zmap-buddy && cargo build --release
-	cd yarrp-buddy && cargo build --release
-	cd aggregator && cargo build --release
+	cargo build --release --workspace
 
 .PHONY: clippy
 clippy:

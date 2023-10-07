@@ -11,6 +11,14 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    as_filter_list (asn) {
+        asn -> Int8,
+        #[max_length = 255]
+        comment -> Varchar,
+    }
+}
+
+diesel::table! {
     as_prefix (net) {
         net -> Cidr,
         deleted -> Bool,
@@ -69,6 +77,7 @@ diesel::table! {
 diesel::joinable!(split_analysis -> prefix_tree (tree_net));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    as_filter_list,
     as_prefix,
     measurement_tree,
     prefix_tree,

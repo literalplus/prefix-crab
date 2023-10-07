@@ -1,7 +1,6 @@
 CREATE TABLE split_analysis(
     id bigserial PRIMARY KEY NOT NULL,
-    -- deleting a prefix with stored analyses should be a conscious decision v
-    tree_net cidr NOT NULL REFERENCES prefix_tree(net) ON DELETE RESTRICT,
+    tree_net cidr NOT NULL REFERENCES prefix_tree(net) ON DELETE CASCADE,
     created_at timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
     completed_at timestamp NULL DEFAULT NULL,
     -- https://github.com/jetpack-io/typeid
