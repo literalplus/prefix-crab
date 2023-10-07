@@ -1,14 +1,15 @@
 use std::{
+    collections::HashSet,
     fs::{DirEntry, File, Metadata},
     io::{BufRead, BufReader},
-    path::{Path, PathBuf}, collections::HashSet,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{bail, Context, Result};
 use db_model::persist::DieselErrorFixCause;
 use diesel::{pg::PgRowByRowLoadingMode, prelude::*, PgConnection, QueryDsl};
 use ipnet::{IpNet, Ipv6Net};
-use log::{warn, trace, debug};
+use log::{debug, warn};
 use nohash_hasher::IntMap;
 use prefix_crab::helpers::ip::ExpectV6;
 
@@ -21,11 +22,13 @@ pub struct AsSetEntry {
 
 impl AsSetEntry {
     fn has_changes(&self) -> bool {
-        return !self.added.is_empty() || !self.removed.is_empty();
+        !self.added.is_empty() || !self.removed.is_empty()
     }
 }
 
-pub fn determine(conn: &mut PgConnection, base_dir: &Path) -> Result<IntMap<u32, AsSetEntry>> {
+pub type AsChangeset = IntMap<u32, AsSetEntry>;
+
+pub fn determine(conn: &mut PgConnection, base_dir: &Path) -> Result<AsChangeset> {
     if !base_dir.is_dir() {
         bail!("AS repo base dir {:?} is not a directory", base_dir);
     }
@@ -64,8 +67,10 @@ fn to_model(entry: DirEntry, meta: Metadata) -> Option<AsSetEntry> {
     let asn: u32 = name_safe.parse().ok()?;
     match read_prefixes(entry.path()) {
         Ok(prefixes) => {
-            let mut entry = AsSetEntry::default();
-            entry.asn = asn;
+            let mut entry = AsSetEntry {
+                asn,
+                ..Default::default()
+            };
             entry.added.extend(&prefixes);
             Some(entry)
         }
@@ -85,9 +90,8 @@ fn read_prefixes(base_path: PathBuf) -> Result<Vec<Ipv6Net>> {
     let file = File::open(path.clone()).context("opening file")?;
     let result = BufReader::new(file)
         .lines()
-        .into_iter()
-        .filter_map(|it| it.ok())
-        .filter(|it| !it.starts_with("#"))
+        .map_while(|it| it.ok())
+        .filter(|it| !it.starts_with('#'))
         .filter_map(|it| it.parse::<Ipv6Net>().ok())
         .collect();
     Ok(result)
@@ -100,21 +104,23 @@ fn extend_with_db_asns(
     let iter = {
         use crate::schema::as_prefix::dsl::*;
         as_prefix
-            .select((asn, net))
-            .load_iter::<(i64, IpNet), PgRowByRowLoadingMode>(conn)
+            .select((asn, net, deleted))
+            .load_iter::<(i64, IpNet, bool), PgRowByRowLoadingMode>(conn)
             .fix_cause()?
     };
 
     for res in iter {
-        let (asn, net) = res.context("iterating previous ASNs from DB")?;
+        let (asn, net, deleted) = res.context("iterating previous ASNs from DB")?;
         let asn = asn as u32;
         let net = net.expect_v6();
 
         let entry = indexed.entry(asn).or_default();
         if entry.added.contains(&net) {
-            // if it is in the "current prefixes", then it was not added, it is unchanged
-            entry.added.remove(&net);
-        } else {
+            if !deleted {
+                // if it is in the "current prefixes", then it was not added, it is unchanged
+                entry.added.remove(&net);
+            }
+        } else if !deleted {
             entry.removed.push(net);
         }
     }

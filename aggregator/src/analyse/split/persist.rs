@@ -146,7 +146,6 @@ fn insert_split_subnets(conn: &mut PgConnection, subnets: Subnets) -> Result<usi
         .collect();
     let on_conflict = (
         merge_status.eq(MergeStatus::Leaf),
-        is_routed.eq(true),
         priority_class.eq(PriorityClass::HighFresh),
     );
     diesel::insert_into(prefix_tree)
@@ -167,11 +166,4 @@ fn mark_parent_obsolete(conn: &mut PgConnection, parent: &PrefixTree) -> Result<
     .execute(conn)
     .fix_cause()
     .context("updating parent with new merge status")
-}
-
-#[derive(Insertable)]
-#[diesel(table_name = crate::schema::prefix_tree)]
-struct SubnetAsPrefix {
-    pub net: IpNet,
-    pub is_routed: bool,
 }

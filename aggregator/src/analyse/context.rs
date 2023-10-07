@@ -1,6 +1,7 @@
 use diesel::prelude::*;
 use ipnet::{Ipv6Net, IpNet};
 use log::warn;
+use prefix_crab::error::IsPermanent;
 use queue_models::probe_request::TraceRequestId;
 use thiserror::Error;
 
@@ -28,8 +29,8 @@ impl ContextOps for Context {
 
 #[derive(Error, Debug)]
 pub enum ContextFetchError {
-    #[error("no analysis is active for {parent:?}")]
-    NoActiveAnalysis { parent: prefix_tree::Context },
+    #[error("no analysis is active for {net:?}")]
+    NoActiveAnalysis { net: Ipv6Net },
 
     #[error("no analysis is waiting for follow-up trace {id}")]
     NoMatchingAnalysis { id: TraceRequestId },
@@ -38,12 +39,33 @@ pub enum ContextFetchError {
     DbError(#[from] anyhow::Error),
 }
 
+pub type TreeContextFetchError = db_model::prefix_tree::context::ContextFetchError;
+
+impl From<TreeContextFetchError> for ContextFetchError {
+    fn from(value: TreeContextFetchError) -> Self {
+        match value {
+            TreeContextFetchError::NotInPrefixTree { net } => Self::NoActiveAnalysis { net },
+            TreeContextFetchError::DbError(src) => Self::DbError(src),
+        }
+    }
+}
+
+impl IsPermanent for ContextFetchError {
+    fn is_permanent(&self) -> bool {
+        match self {
+            Self::NoActiveAnalysis { net: _ } => true,
+            Self::NoMatchingAnalysis { id: _ } => true,
+            Self::DbError(_) => false,
+        }
+    }
+}
+
 pub type ContextFetchResult = Result<Context, ContextFetchError>;
 
 pub fn fetch(conn: &mut PgConnection, parent: prefix_tree::Context) -> ContextFetchResult {
     let actives = fetch_active(conn, &parent.node)?;
     if actives.is_empty() {
-        return Err(ContextFetchError::NoActiveAnalysis { parent });
+        return Err(ContextFetchError::NoActiveAnalysis { net: parent.node().net });
     } else if actives.len() > 1 {
         warn!("Multiple analyses are active for {}.", parent.log_id());
     }
@@ -72,7 +94,7 @@ fn fetch_active(
 pub fn fetch_by_follow_up(conn: &mut PgConnection, request_id: &TraceRequestId) -> ContextFetchResult {
     let target_net = find_follow_up_prefix(conn, request_id)?;
     let parent = prefix_tree::context::fetch(conn, &target_net)
-        .map_err(ContextFetchError::DbError)?;
+        .map_err(ContextFetchError::from)?;
     fetch(conn, parent)
 }
 

@@ -23,19 +23,20 @@ use crate::persist::DieselErrorFixCause;
 use crate::schema::measurement_tree::dsl::measurement_tree;
 use crate::schema::measurement_tree::target_net;
 
-use db_model::prefix_tree::{self, ContextOps};
 use diesel::dsl::*;
 
-use crate::schema::split_analysis::dsl as analysis_dsl;
+pub fn begin_bulk(conn: &mut PgConnection, nets: &[Ipv6Net]) -> Result<()> {
+    use crate::schema::split_analysis::dsl::*;
 
-use super::context::ContextFetchResult;
-
-pub fn begin(conn: &mut PgConnection, parent: prefix_tree::Context) -> ContextFetchResult {
-    insert_into(analysis_dsl::split_analysis)
-        .values((analysis_dsl::tree_net.eq6(&parent.node().net),))
+    let tuples = nets
+        .iter()
+        .map(|net| tree_net.eq6(net))
+        .collect_vec();
+    insert_into(split_analysis)
+        .values(tuples)
         .execute(conn)
         .fix_cause()?;
-    super::context::fetch(conn, parent)
+    Ok(())
 }
 
 pub trait UpdateAnalysis {

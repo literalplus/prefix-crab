@@ -6,13 +6,7 @@ use log::{info, warn};
 use queue_models::probe_response::EchoProbeResponse;
 
 use crate::{
-    analyse::{
-        self,
-        context::{self, ContextFetchError, ContextFetchResult},
-        persist::UpdateAnalysis,
-        split,
-        EchoResult,
-    },
+    analyse::{self, context, persist::UpdateAnalysis, split, EchoResult},
     schedule::FollowUpRequest,
 };
 
@@ -52,8 +46,8 @@ fn interpret_and_save(
 ) -> Result<(EchoResult, context::Context)> {
     let tree_context =
         prefix_tree::context::fetch(conn, &target_net).context("fetching tree context")?;
-    let mut context = fetch_or_begin_context(conn, tree_context)
-        .context("fetch/begin context for probe handling")?;
+    let mut context = analyse::context::fetch(conn, tree_context)
+        .context("fetch context for probe handling")?;
 
     let mut interpretation = analyse::echo::process(model);
 
@@ -62,16 +56,4 @@ fn interpret_and_save(
         .context("while saving analysis data")?;
 
     Ok((interpretation, context))
-}
-
-fn fetch_or_begin_context(
-    conn: &mut PgConnection,
-    parent: prefix_tree::context::Context,
-) -> ContextFetchResult {
-    let result = analyse::context::fetch(conn, parent);
-    if let Err(ContextFetchError::NoActiveAnalysis { parent }) = result {
-        // TODO probably shouldn't tolerate this any more once we actually create these analyses
-        return analyse::persist::begin(conn, parent);
-    }
-    result
 }

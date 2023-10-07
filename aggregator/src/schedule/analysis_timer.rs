@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use crate::analyse;
+
 use super::Params;
 use anyhow::*;
 use log::{error, info, trace, warn};
@@ -65,10 +67,13 @@ impl Timer {
             );
             prefix_count += prefixes.len();
 
+            analyse::persist::begin_bulk(&mut conn, &prefixes)
+                .context("saving analyses to begin")?;
+
             // TODO space out a bit maybe? or anyways doesn't matter due to downstream batching?
             for target_net in prefixes {
                 let req = EchoProbeRequest { target_net };
-                if let Err(_) = self.probe_tx.send(ProbeRequest::Echo(req)) {
+                if self.probe_tx.send(ProbeRequest::Echo(req)).is_err() {
                     info!("Receiver closed probe channel, assume shutdown.");
                     return Ok(());
                 }

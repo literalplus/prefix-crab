@@ -39,7 +39,6 @@ diesel::table! {
         net -> Cidr,
         created_at -> Timestamp,
         updated_at -> Timestamp,
-        is_routed -> Bool,
         merge_status -> PrefixMergeStatus,
         priority_class -> PrefixPriorityClass,
         confidence -> Int2,

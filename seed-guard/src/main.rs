@@ -13,7 +13,6 @@ pub use db_model::{schema, sql_types};
 
 pub mod schedule;
 pub mod as_changeset;
-pub mod tree_update;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -26,9 +25,6 @@ struct Cli {
 
     #[clap(flatten)]
     schedule: schedule::Params,
-
-    #[clap(flatten)]
-    tree_update: tree_update::Params,
 }
 
 fn main() -> Result<()> {

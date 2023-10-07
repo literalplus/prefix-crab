@@ -480,6 +480,7 @@ dependencies = [
  "queue-models",
  "serde",
  "serde_json",
+ "thiserror",
  "type-safe-id",
 ]
 

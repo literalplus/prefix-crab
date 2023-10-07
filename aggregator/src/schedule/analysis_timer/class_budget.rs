@@ -62,7 +62,7 @@ macro_rules! leaf_where_no_analysis {
 
         let $var_name = prefix_tree
             .filter(not(exists(a_pending_analysis)))
-            .filter(merge_status.eq(MergeStatus::Leaf));
+            .filter(merge_status.eq(MergeStatus::Leaf).or(merge_status.eq(MergeStatus::UnsplitRoot)));
     };
 }
 
@@ -85,7 +85,7 @@ impl ClassBudgets {
         let remaining_ratio: u16 = self
             .available_per_class
             .keys()
-            .map(|prio| allocation_ratio(prio))
+            .map(allocation_ratio)
             .sum();
         if remaining_ratio == 0 {
             return false;

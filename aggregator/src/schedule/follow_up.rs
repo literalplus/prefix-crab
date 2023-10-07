@@ -31,6 +31,7 @@ pub async fn run(
     }
 }
 
+#[allow(clippy::if_same_then_else)] // same expr, different reason/meaning
 fn flatten_request(req: FollowUpRequest) -> ProbeRequest {
     let id = req.id;
     let targets = if req.prefix_tree.confidence > 100 && thread_rng().gen_ratio(2, 3) {

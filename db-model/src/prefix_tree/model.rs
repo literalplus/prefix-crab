@@ -15,6 +15,14 @@ pub enum MergeStatus {
     Leaf,
     SplitDown,
     MergedUp,
+    UnsplitRoot,
+    SplitRoot,
+}
+
+impl MergeStatus {
+    pub fn is_leaf(&self) -> bool {
+        matches!(self, MergeStatus::Leaf | MergeStatus::UnsplitRoot)
+    }
 }
 
 #[derive(
@@ -58,7 +66,6 @@ pub struct PrefixTree {
     pub net: Ipv6Net,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub is_routed: bool,
     pub merge_status: MergeStatus,
     pub priority_class: PriorityClass,
     #[diesel(deserialize_as = crate::persist::ConfidenceLoader)]
@@ -87,7 +94,6 @@ impl Selectable<Pg> for PrefixTree {
         dsl::net,
         dsl::created_at,
         dsl::updated_at,
-        dsl::is_routed,
         dsl::merge_status,
         dsl::priority_class,
         dsl::confidence,
@@ -99,7 +105,6 @@ impl Selectable<Pg> for PrefixTree {
             net,
             created_at,
             updated_at,
-            is_routed,
             merge_status,
             priority_class,
             confidence,

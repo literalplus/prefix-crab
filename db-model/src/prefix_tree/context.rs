@@ -1,12 +1,11 @@
-use anyhow::{Context as AnyhowContext, *};
-use diesel::insert_into;
 use diesel::prelude::*;
 use ipnet::Ipv6Net;
+use prefix_crab::error::IsPermanent;
+use thiserror::Error;
 
 use crate::persist::dsl::CidrMethods;
 use crate::persist::DieselErrorFixCause;
 use crate::prefix_tree::PrefixTree;
-use crate::schema::prefix_tree::dsl::*;
 
 #[derive(Debug)]
 pub struct Context {
@@ -34,28 +33,44 @@ impl ContextOps for Context {
     }
 }
 
-pub fn fetch(conn: &mut PgConnection, target_net: &Ipv6Net) -> Result<Context> {
-    insert_if_new(conn, target_net)?;
+#[derive(Error, Debug)]
+pub enum ContextFetchError {
+    #[error("this net is not in the prefix tree: {net:?}")]
+    NotInPrefixTree { net: Ipv6Net },
+    
+    #[error("problem talking to the database")]
+    DbError(#[from] anyhow::Error),
+}
 
+impl IsPermanent for ContextFetchError {
+    fn is_permanent(&self) -> bool {
+        match self {
+            ContextFetchError::NotInPrefixTree { net: _ } => true,
+            ContextFetchError::DbError(_) => false,
+        }
+    }
+}
+
+pub type ContextFetchResult = Result<Context, ContextFetchError>;
+
+pub fn fetch(conn: &mut PgConnection, target_net: &Ipv6Net) -> ContextFetchResult {
     let node = select_self(conn, target_net)?;
     Result::Ok(Context { node })
 }
 
-fn select_self(conn: &mut PgConnection, target_net: &Ipv6Net) -> Result<PrefixTree> {
+fn select_self(conn: &mut PgConnection, target_net: &Ipv6Net) -> Result<PrefixTree, ContextFetchError> {
+    use crate::schema::prefix_tree::dsl::*;
+
     let tree = prefix_tree
         .filter(net.eq6(target_net))
         .order_by(net)
-        .get_result(conn)
+        .get_results(conn)
         .fix_cause()
-        .with_context(|| "while selecting prefix tree")?;
-    Ok(tree)
-}
+        .map_err(ContextFetchError::from)?;
 
-fn insert_if_new(conn: &mut PgConnection, target_net: &Ipv6Net) -> Result<()> {
-    insert_into(prefix_tree)
-        .values((net.eq6(target_net), is_routed.eq(true)))
-        .on_conflict_do_nothing()
-        .execute(conn)
-        .with_context(|| "while trying to insert into prefix_tree")?;
-    Ok(())
+    if tree.len() != 1 {
+        Err(ContextFetchError::NotInPrefixTree { net: *target_net })
+    } else {
+        Ok(tree.into_iter().next().expect("vec with one entry to yield that entry"))
+    }
 }
