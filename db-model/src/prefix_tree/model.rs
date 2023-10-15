@@ -13,6 +13,7 @@ use crate::analyse::Confidence;
 #[ExistingTypePath = "crate::sql_types::PrefixMergeStatus"]
 pub enum MergeStatus {
     Leaf,
+    MinSizeReached,
     SplitDown,
     MergedUp,
     UnsplitRoot,
@@ -20,7 +21,7 @@ pub enum MergeStatus {
 }
 
 impl MergeStatus {
-    pub fn is_leaf(&self) -> bool {
+    pub fn is_eligible_for_split(&self) -> bool {
         matches!(self, MergeStatus::Leaf | MergeStatus::UnsplitRoot)
     }
 
@@ -29,6 +30,14 @@ impl MergeStatus {
             MergeStatus::SplitRoot
         } else {
             MergeStatus::SplitDown
+        }
+    }
+
+    pub fn new(child_prefix_len: u8) -> MergeStatus {
+        if child_prefix_len >= 64 {
+            MergeStatus::MinSizeReached
+        } else {
+            MergeStatus::Leaf
         }
     }
 }

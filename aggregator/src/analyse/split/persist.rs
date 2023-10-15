@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use diesel::dsl::now;
 use diesel::{prelude::*, PgConnection};
-use ipnet::IpNet;
+use itertools::Itertools;
 use log::warn;
 
 use crate::analyse::SplitAnalysis;
@@ -140,12 +140,13 @@ pub fn perform_prefix_split(
 fn insert_split_subnets(conn: &mut PgConnection, subnets: Subnets) -> Result<usize> {
     use crate::schema::prefix_tree::dsl::*;
 
-    let tuples: Vec<diesel::dsl::Eq<net, IpNet>> = subnets
+    let new_merge = MergeStatus::new(subnets[0].subnet.network.prefix_len());
+    let tuples = subnets
         .iter()
-        .map(|it| net.eq6(&it.subnet.network))
-        .collect();
+        .map(|it| (net.eq6(&it.subnet.network), merge_status.eq(new_merge)))
+        .collect_vec();
     let on_conflict = (
-        merge_status.eq(MergeStatus::Leaf),
+        merge_status.eq(new_merge),
         priority_class.eq(PriorityClass::HighFresh),
     );
     diesel::insert_into(prefix_tree)

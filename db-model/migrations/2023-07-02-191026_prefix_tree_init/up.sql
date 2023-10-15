@@ -4,7 +4,8 @@ CREATE TYPE prefix_merge_status AS ENUM (
 CREATE TYPE prefix_priority_class AS ENUM(
     'low_unknown', 'low_weird',
     'medium_multi_weird', 'medium_same_single', 'medium_same_multi',
-    'high_disjoint', 'high_overlapping', 'high_fresh'
+    'high_disjoint', 'high_overlapping', 'high_fresh',
+    'min_size_reached'
 );
 
 CREATE TABLE public.prefix_tree

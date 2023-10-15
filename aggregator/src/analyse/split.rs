@@ -35,7 +35,7 @@ pub enum SplitError {
 pub type SplitResult<T> = std::result::Result<T, SplitError>;
 
 pub fn process(conn: &mut PgConnection, request: context::Context) -> SplitResult<()> {
-    if !request.node().merge_status.is_leaf() {
+    if !request.node().merge_status.is_eligible_for_split() {
         warn!(
             "Handled prefix is (no longer?) a leaf, split not possible: {:?}",
             request.node().net,
