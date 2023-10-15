@@ -52,8 +52,8 @@ impl ProbeStore {
             // ZMAP stage due to ICMP rate limiting or similar. Echo replies don't quote the incoming packet header,
             // so the intended target cannot be determined (?).
             info!(
-                "Received response for an unknown target {} - directed at {} and coming from {}, ignoring.",
-                 key, response.intended_target, response.actual_from
+                "Received response {}/{} for an unknown target {} - directed at {} and coming from {}, ignoring.",
+                 response.icmp_type, response.icmp_code, key, response.intended_target, response.actual_from
                 );
             return;
         }
