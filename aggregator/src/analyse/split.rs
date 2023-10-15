@@ -7,7 +7,7 @@ use crate::{
     persist::dsl::CidrMethods,
     persist::DieselErrorFixCause,
 };
-use db_model::prefix_tree::{ContextOps, MergeStatus};
+use db_model::prefix_tree::ContextOps;
 
 use self::subnet::Subnets;
 
@@ -35,7 +35,7 @@ pub enum SplitError {
 pub type SplitResult<T> = std::result::Result<T, SplitError>;
 
 pub fn process(conn: &mut PgConnection, request: context::Context) -> SplitResult<()> {
-    if request.node().merge_status != MergeStatus::Leaf {
+    if !request.node().merge_status.is_leaf() {
         warn!(
             "Handled prefix is (no longer?) a leaf, split not possible: {:?}",
             request.node().net,

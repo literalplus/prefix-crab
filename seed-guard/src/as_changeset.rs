@@ -9,9 +9,11 @@ use anyhow::{bail, Context, Result};
 use db_model::persist::DieselErrorFixCause;
 use diesel::{pg::PgRowByRowLoadingMode, prelude::*, PgConnection, QueryDsl};
 use ipnet::{IpNet, Ipv6Net};
-use log::{debug, warn};
+use log::{debug, warn, info};
 use nohash_hasher::IntMap;
 use prefix_crab::helpers::ip::ExpectV6;
+
+use crate::as_filter_list::AsFilterList;
 
 #[derive(Default, Debug)]
 pub struct AsSetEntry {
@@ -28,12 +30,16 @@ impl AsSetEntry {
 
 pub type AsChangeset = IntMap<u32, AsSetEntry>;
 
-pub fn determine(conn: &mut PgConnection, base_dir: &Path) -> Result<AsChangeset> {
+pub fn determine(
+    conn: &mut PgConnection,
+    base_dir: &Path,
+    filter: &AsFilterList,
+) -> Result<AsChangeset> {
     if !base_dir.is_dir() {
         bail!("AS repo base dir {:?} is not a directory", base_dir);
     }
 
-    let mut indexed = read_ases_from_dir(base_dir).context("determining present ASNs")?;
+    let mut indexed = read_ases_from_dir(base_dir, filter).context("determining present ASNs")?;
     extend_with_db_asns(conn, &mut indexed).context("loading removed ASNs")?;
 
     indexed.retain(|_, v| v.has_changes());
@@ -41,9 +47,10 @@ pub fn determine(conn: &mut PgConnection, base_dir: &Path) -> Result<AsChangeset
     Ok(indexed)
 }
 
-fn read_ases_from_dir(base_dir: &Path) -> Result<IntMap<u32, AsSetEntry>> {
+fn read_ases_from_dir(base_dir: &Path, filter: &AsFilterList) -> Result<IntMap<u32, AsSetEntry>> {
     let mut result = IntMap::default();
     let read_dir = base_dir.read_dir().context("reading base directory")?;
+    let mut skipped = 0u64;
     for entry in read_dir {
         let entry = entry.context("iterating base directory")?;
         let meta = entry
@@ -51,11 +58,16 @@ fn read_ases_from_dir(base_dir: &Path) -> Result<IntMap<u32, AsSetEntry>> {
             .context("reading directory entry metadata")?;
         let file_name = entry.file_name().clone();
         if let Some(model) = to_model(entry, meta) {
-            result.insert(model.asn, model);
+            if filter.allows(model.asn) {
+                result.insert(model.asn, model);
+            } else {
+                skipped += 1;
+            }
         } else {
             debug!("Invalid AS dir {:?}", file_name);
         }
     }
+    info!("Skipped {} entries due to AS filter list, kept {}", skipped, result.len());
     Ok(result)
 }
 

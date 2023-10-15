@@ -1,0 +1,11 @@
+# AS64511
+# GNS example network (reserved ASN)
+#
+# --- FULL net
+#fddc:9d0b:e318::/48
+#
+# --- Actually allocated nets
+# Remote Site
+fddc:9d0b:e318:1000::/52
+# Main allocation
+fddc:9d0b:e318:8600::/55

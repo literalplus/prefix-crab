@@ -1,8 +1,6 @@
-use crate::as_changeset::AsChangeset;
 use anyhow::Result;
 use db_model::persist::DieselErrorFixCause;
-use diesel::{prelude::*, ExpressionMethods, PgConnection, QueryDsl};
-use itertools::Itertools;
+use diesel::{prelude::*, PgConnection, QueryDsl};
 use nohash_hasher::IntSet;
 
 pub struct AsFilterList {
@@ -26,21 +24,18 @@ impl AsFilterList {
     }
 }
 
-pub fn fetch_for(
+pub fn fetch(
     conn: &mut PgConnection,
-    changes: &AsChangeset,
     is_allow_list: bool,
 ) -> Result<AsFilterList> {
     use db_model::schema::as_filter_list::dsl::*;
 
-    let affected_asns = changes.keys().map(|it| *it as i64).collect_vec();
-    let matched_entries: Vec<i64> = as_filter_list
-        .filter(asn.eq_any(affected_asns))
+    let all_asns: Vec<i64> = as_filter_list
         .select(asn)
         .distinct()
         .load(conn)
         .fix_cause()?;
-    let matched_entries = matched_entries
+    let matched_entries = all_asns
         .into_iter()
         .filter_map(|it| it.try_into().ok())
         .collect();

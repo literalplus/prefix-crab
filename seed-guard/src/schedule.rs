@@ -7,7 +7,7 @@ use db_model::{
     prefix_tree::MergeStatus,
     schema::{as_prefix, prefix_tree},
 };
-use diesel::{delete, Connection, ExpressionMethods, PgConnection, RunQueryDsl};
+use diesel::{delete, Connection, ExpressionMethods, PgConnection, RunQueryDsl, upsert::excluded};
 use itertools::Itertools;
 use log::{error, info, warn};
 use prefix_crab::loop_with_stop;
@@ -72,19 +72,20 @@ fn do_tick(params: &Params) -> Result<()> {
     let mut conn = crate::persist::connect()?;
     let start = Instant::now();
 
-    let changes = as_changeset::determine(&mut conn, &params.as_repo_base_dir)
+    let filter = as_filter_list::fetch(&mut conn, params.asn_filter_is_deny_list)
+        .context("loading AS filter list")?;
+    let changes = as_changeset::determine(&mut conn, &params.as_repo_base_dir, &filter)
         .context("determining AS set")?;
-    let filter = as_filter_list::fetch_for(&mut conn, &changes, params.asn_filter_is_deny_list);
 
-    try_save_changes(&mut conn, changes, params);
+    try_save_changes(&mut conn, changes);
 
     info!("Re-seed completed in {}ms.", start.elapsed().as_millis());
     Ok(())
 }
 
-fn try_save_changes(conn: &mut PgConnection, changes: AsChangeset, params: &Params) {
+fn try_save_changes(conn: &mut PgConnection, changes: AsChangeset) {
     for change in changes.values() {
-        let res = conn.transaction(|conn| save_change(conn, change, params));
+        let res = conn.transaction(|conn| save_change(conn, change));
         if let Err(e) = res {
             error!("Unable to save changes to AS {:?} due to: {:?}", change, e);
         }
@@ -103,7 +104,7 @@ macro_rules! delete_all_below {
     };
 }
 
-fn save_change(conn: &mut PgConnection, change: &AsSetEntry, params: &Params) -> Result<()> {
+fn save_change(conn: &mut PgConnection, change: &AsSetEntry) -> Result<()> {
     info!(" --- Saving changes to AS{}", change.asn);
 
     let removed = &change.removed;
@@ -122,9 +123,7 @@ fn save_change(conn: &mut PgConnection, change: &AsSetEntry, params: &Params) ->
             change.asn, change.added
         );
         save_as_prefixes(conn, change).context("saving added AS prefixes")?;
-        if params.push_fresh_prefixes_to_tree {
-            save_fresh_prefix_nodes(conn, change).context("saving fresh prefix nodes")?;
-        }
+        save_fresh_prefix_nodes(conn, change).context("saving fresh prefix nodes")?;
     }
 
     Ok(())
@@ -141,9 +140,9 @@ fn save_as_prefixes(conn: &mut PgConnection, change: &AsSetEntry) -> Result<()> 
 
     diesel::insert_into(as_prefix)
         .values(tuples)
-        .on_conflict((net, asn))
+        .on_conflict(net)
         .do_update()
-        .set(deleted.eq(false))
+        .set((deleted.eq(false), asn.eq(excluded(asn))))
         .execute(conn)
         .fix_cause()?;
     Ok(())
