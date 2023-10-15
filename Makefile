@@ -11,7 +11,7 @@ MY_ADDR_YARRP := $(ULA_PFX):8710::cc:2
 BOLD := $$(tput setaf 6; tput bold)
 UNBOLD := $$(tput sgr0)
 
-
+# --- Local setup
 .PHONY: gns3
 gns3:
 	sudo systemctl start gns3-server@$(USER)
@@ -30,34 +30,6 @@ gns3-down:
 	sudo ip link del $(BRIDGE_IF) || echo "link removal failed, was it present?"
 	sudo systemctl stop gns3-server@$(USER)
 
-.PHONY: build
-build:
-	cargo build --workspace
-
-.PHONY: build-release
-build-release:
-	cargo build --release --workspace
-
-.PHONY: clippy
-clippy:
-	cargo clippy --workspace
-
-.PHONY: run-zmap
-run-zmap:
-	cd zmap-buddy && cargo run -- rabbit-mq-listen
-
-.PHONY: run-aggregator
-run-aggregator:
-	cd aggregator && cargo run
-
-.PHONY: run-yarrp
-run-yarrp:
-	cd yarrp-buddy && cargo run
-
-.PHONY: example-scan
-example-scan:
-	./scan-oneoff.sh fddc:9d0b:e318:8712::bc:1/48
-
 .PHONY: infra
 infra: docker-running
 	@if ! docker-compose ps >/dev/null; then docker-compose up -d; fi
@@ -71,6 +43,41 @@ rmq-ui: infra
 	@xdg-open http://10.45.87.51:15672/
 	@echo "#### Credentials: rabbit / localsetupveryinsecure"
 
+# --- Build
+.PHONY: build
+build:
+	cargo build --workspace
+
+.PHONY: build-release
+build-release:
+	cargo build --release --workspace
+
+.PHONY: clippy
+clippy:
+	cargo clippy --workspace
+
+# --- Run local components
+.PHONY: run-zmap
+run-zmap:
+	cd zmap-buddy && cargo run -- rabbit-mq-listen
+
+.PHONY: run-aggregator
+run-aggregator:
+	cd aggregator && cargo run
+
+.PHONY: run-yarrp
+run-yarrp:
+	cd yarrp-buddy && cargo run
+
+.PHONY: run-guard
+run-guard:
+	cd seed-guard && cargo run
+
+.PHONY: example-scan
+example-scan:
+	./scan-oneoff.sh fddc:9d0b:e318:8712::bc:1/48
+
+# --- tmux local setup
 .PHONY: tmux
 tmux:
 	@if which resize >/dev/null 2>&1; then resize -s 30 129; fi
@@ -90,6 +97,7 @@ in-tmux:
 	@tmux new-window -n zmap -d make --no-print-directory run-zmap || echo "zmap-buddy already running."
 	@tmux new-window -n yrp -d make --no-print-directory run-yarrp || echo "yarrp-buddy already running."
 	@tmux new-window -n agg -d make --no-print-directory run-aggregator || echo "aggregator already running."
+	@tmux new-window -n seed -d make --no-print-directory run-guard || echo "seed-guard already running."
 	@clear
 	@make -s banner
 	@echo "    $(BOLD)Trigger an example scan:$(UNBOLD)    Ctrl-B, then E"

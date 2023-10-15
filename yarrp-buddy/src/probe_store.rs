@@ -41,17 +41,20 @@ impl ProbeStore {
     }
 
     pub fn register_response(&mut self, response: ProbeResponse) {
-        let key = if response.actual_from.is_unspecified() {
-            response.intended_target
+        let key = if response.intended_target.is_unspecified() { // intended may be :: if we don't know
+            response.actual_from // <-- likely not super useful, as this is the router, but better than ::
         } else {
-            response.actual_from
+            response.intended_target
         };
         let entry = self.store.get_mut(&key);
         if entry.is_none() {
             // most likely this is an echo reply coming from the router directly, and it wasn't caught in the
             // ZMAP stage due to ICMP rate limiting or similar. Echo replies don't quote the incoming packet header,
             // so the intended target cannot be determined (?).
-            info!("Received response for an unknown target {} - directed at {} and coming from {}, ignoring.", key, response.intended_target, response.actual_from);
+            info!(
+                "Received response for an unknown target {} - directed at {} and coming from {}, ignoring.",
+                 key, response.intended_target, response.actual_from
+                );
             return;
         }
         entry.unwrap().register_response(response);
