@@ -41,10 +41,10 @@ impl ProbeStore {
     }
 
     pub fn register_response(&mut self, response: ProbeResponse) {
-        let key = if response.intended_target.is_unspecified() {
-            response.actual_from
-        } else {
+        let key = if response.actual_from.is_unspecified() {
             response.intended_target
+        } else {
+            response.actual_from
         };
         let entry = self.store.get_mut(&key);
         if entry.is_none() {
