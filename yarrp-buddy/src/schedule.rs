@@ -91,7 +91,7 @@ impl Scheduler {
         let mut at_least_one_ok = false;
         for chunk in chunks.into_iter() {
             match task.push_work(chunk) {
-                Err(e) => warn!("Unable to push work to task due to {}", e),
+                Err(e) => warn!("Unable to push work to task {:?}", e),
                 Ok(_) => at_least_one_ok = true,
             }
         }

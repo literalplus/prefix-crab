@@ -86,7 +86,7 @@ impl Scheduler {
         let mut at_least_one_ok = false;
         for chunk in chunks.iter() {
             match task.push_work(chunk) {
-                Err(e) => warn!("Unable to push work to task due to {}", e),
+                Err(e) => warn!("Unable to push work to task {:?}", e),
                 Ok(_) => at_least_one_ok = true,
             }
         }
@@ -138,7 +138,7 @@ mod task {
             let split = split(base_net).context("splitting IPv6 prefix")?;
             let samples = split.to_samples(super::SAMPLES_PER_SUBNET);
             for sample in samples.iter() {
-                self.targets.push_slice(sample.addresses.as_slice())?;
+                self.targets.push_slice(sample.addresses.as_slice()).context("pushing targets")?;
             }
             self.store.register_request(split, samples, item);
             Ok(())
