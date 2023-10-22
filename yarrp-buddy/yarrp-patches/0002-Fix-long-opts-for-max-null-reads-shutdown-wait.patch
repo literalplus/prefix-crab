@@ -1,0 +1,43 @@
+From 426fbb93b70f32adbfb44b535aac908553ba3961 Mon Sep 17 00:00:00 2001
+From: Philipp Nowak <git@lit.plus>
+Date: Sun, 22 Oct 2023 17:12:53 +0200
+Subject: [PATCH 2/2] Fix long opts for max null reads & shutdown wait
+
+---
+ .gitignore  | 6 +++++-
+ yconfig.cpp | 3 ++-
+ 2 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/.gitignore b/.gitignore
+index 10148d3..6fdfff2 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -19,4 +19,8 @@
+ *.status
+ *.o
+ *.dirstamp
+-yarrp
+\ No newline at end of file
++*~
++yarrp
++Makefile
++/build
++config.h
+\ No newline at end of file
+diff --git a/yconfig.cpp b/yconfig.cpp
+index f0d0382..9da85f9 100644
+--- a/yconfig.cpp
++++ b/yconfig.cpp
+@@ -38,7 +38,8 @@ static struct option long_options[] = {
+     {"granularity", required_argument, NULL, 'g'},
+     {"v6eh", no_argument, NULL, 'X'}, 
+     {"version", no_argument, NULL, 'V'},
+-    {"shutdown_wait", no_argument, NULL, 'D'},
++    {"shutdown_wait", required_argument, NULL, 'D'},
++    {"max_null_reads", required_argument, NULL, 'd'},
+     {NULL, 0, NULL, 0},
+ };
+ 
+-- 
+2.41.0
+

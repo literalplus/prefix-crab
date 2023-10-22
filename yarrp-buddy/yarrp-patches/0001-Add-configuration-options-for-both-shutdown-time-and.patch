@@ -1,0 +1,164 @@
+From 79407a8c030d94305d4a328cef630a2300176f19 Mon Sep 17 00:00:00 2001
+From: Markus Maier <markus.maier@univie.ac.at>
+Date: Tue, 12 Sep 2023 15:17:26 +0200
+Subject: [PATCH 1/2] Add configuration options for both shutdown time and max
+ null reads
+
+Signed-off-by: Markus Maier <markus.maier@univie.ac.at>
+---
+ listener.cpp  |  4 ++--
+ listener6.cpp |  4 ++--
+ yarrp.cpp     |  4 ++--
+ yconfig.cpp   | 16 ++++++++++++++--
+ yconfig.h     |  6 +++++-
+ 5 files changed, 25 insertions(+), 9 deletions(-)
+
+diff --git a/listener.cpp b/listener.cpp
+index c2ec675..9061eca 100644
+--- a/listener.cpp
++++ b/listener.cpp
+@@ -35,7 +35,7 @@ listener(void *args) {
+     }
+ 
+     while (true) {
+-        if (nullreads >= MAXNULLREADS)
++        if (nullreads >= trace->config->max_null_reads)
+             break;
+         timeout.tv_sec = 5;
+         timeout.tv_usec = 0;
+@@ -46,7 +46,7 @@ listener(void *args) {
+         if ((n == 0) and (trace->config->probe)) {
+             nullreads++;
+             cerr << ">> Listener: timeout " << nullreads;
+-            cerr << "/" << MAXNULLREADS << endl;
++            cerr << "/" << trace->config->max_null_reads << endl;
+             continue;
+         }
+         if (n > 0) {
+diff --git a/listener6.cpp b/listener6.cpp
+index beaf3e9..5cdfa5c 100644
+--- a/listener6.cpp
++++ b/listener6.cpp
+@@ -83,7 +83,7 @@ void *listener6(void *args) {
+ 
+     signal(SIGINT, intHandler);
+     while (true and run) {
+-        if (nullreads >= MAXNULLREADS)
++        if (nullreads >= trace->config->max_null_reads)
+             break;
+ #ifdef _LINUX
+         timeout.tv_sec = 5;
+@@ -94,7 +94,7 @@ void *listener6(void *args) {
+         if (n == 0) {
+             nullreads++;
+             cerr << ">> Listener: timeout " << nullreads;
+-            cerr << "/" << MAXNULLREADS << endl;
++            cerr << "/" << trace->config->max_null_reads << endl;
+             continue;
+         }
+ 	if (n == -1) {
+diff --git a/yarrp.cpp b/yarrp.cpp
+index e5ecc48..3e70551 100644
+--- a/yarrp.cpp
++++ b/yarrp.cpp
+@@ -315,8 +315,8 @@ main(int argc, char **argv) {
+         }
+     }
+     if (config.receive) {
+-        debug(LOW, ">> Waiting " << SHUTDOWN_WAIT << "s for outstanding replies...");
+-        sleep(SHUTDOWN_WAIT);
++        debug(LOW, ">> Waiting " << config.shutdown_wait << "s for outstanding replies...");
++        sleep(config.shutdown_wait);
+     }
+     /* Finished, cleanup */
+     if (config.receive) {
+diff --git a/yconfig.cpp b/yconfig.cpp
+index ba68223..f0d0382 100644
+--- a/yconfig.cpp
++++ b/yconfig.cpp
+@@ -37,7 +37,8 @@ static struct option long_options[] = {
+     {"storeechoreply", no_argument, NULL, 'e'},
+     {"granularity", required_argument, NULL, 'g'},
+     {"v6eh", no_argument, NULL, 'X'}, 
+-    {"version", no_argument, NULL, 'V'}, 
++    {"version", no_argument, NULL, 'V'},
++    {"shutdown_wait", no_argument, NULL, 'D'},
+     {NULL, 0, NULL, 0},
+ };
+ 
+@@ -65,7 +66,7 @@ YarrpConfig::parse_opts(int argc, char **argv) {
+ #endif
+     params["RTT_Granularity"] = val_t("us", true);
+     params["Targets"] = val_t("entire", true);
+-    while (-1 != (c = getopt_long(argc, argv, "a:b:B:c:CE:eF:G:g:hi:I:l:m:M:n:o:p:PQr:RsS:t:vVTX:Z:", long_options, &opt_index))) {
++    while (-1 != (c = getopt_long(argc, argv, "a:b:B:c:Cd:D:E:eF:G:g:hi:I:l:m:M:n:o:p:PQr:RsS:t:vVTX:Z:", long_options, &opt_index))) {
+         switch (c) {
+         case 'b':
+             bgpfile = optarg;
+@@ -87,9 +88,16 @@ YarrpConfig::parse_opts(int argc, char **argv) {
+             count = strtol(optarg, &endptr, 10);
+             params["Count"] = val_t(to_string(count), true);
+             break;
++        // HavoK: somewhere in space and time added store_echo_reply
+         case 'e':
+             store_echo_reply = true;
+             break;
++        case 'd':
++            max_null_reads = strtol(optarg, &endptr, 10);
++            break;
++        case 'D':
++            shutdown_wait = strtol(optarg, &endptr, 10);
++            break;
+         case 'F':
+             fillmode = strtol(optarg, &endptr, 10);
+             break;
+@@ -226,6 +234,8 @@ YarrpConfig::parse_opts(int argc, char **argv) {
+     params["Seed"] = val_t(to_string(seed), true);
+     params["Random"] = val_t(to_string(random_scan), true);
+     params["Rate"] = val_t(to_string(rate), true);
++    params["Shutdown_Wait"] = val_t(to_string(shutdown_wait), true);
++    params["Max_Null_Reads"] = val_t(to_string(max_null_reads), true);
+     params["Trace_Type"] = val_t(Tr_Type_String[type], true);
+     if (ipv6) {
+         params["v6_EH"] = val_t(to_string(v6_eh), true);
+@@ -276,6 +286,8 @@ YarrpConfig::usage(char *prog) {
+     << "  -E, --instance          Prober instance (default: 0)" << endl
+     << "  -e, --storeechoreply    Store echo reply (default: off)" << endl
+     << "                          Without rtt and other fields" << endl
++    << "  -d, --max_null_reads    Number of rounds to wait for new packets (default: 10)" << endl
++    << "  -D, --shutdown_wait     Timeout for listener at the end of the run (default: 60)" << endl
+ 
+     << "Target options:" << endl
+     << "  -i, --input             Input target file" << endl
+diff --git a/yconfig.h b/yconfig.h
+index 16caa38..0c91d7d 100644
+--- a/yconfig.h
++++ b/yconfig.h
+@@ -3,11 +3,12 @@ typedef std::map <std::string, val_t> params_t;
+ 
+ class YarrpConfig {
+ public:
++    // HavoK (12.09) Add shutdown_wait(60)
+     YarrpConfig() : rate(10), random_scan(true), ttl_neighborhood(0),
+                     testing(false), entire(false), output(NULL),
+                     bgpfile(NULL), inlist(NULL), blocklist(NULL),
+                     count(0), minttl(1), maxttl(16), seed(0),
+-                    dstport(80),
++                    dstport(80), shutdown_wait(60), max_null_reads(10),
+                     ipv6(false), int_name(NULL), dstmac(NULL), srcmac(NULL),
+                     coarse(false), fillmode(32), poisson(0),
+                     probesrc(NULL), probe(true), receive(true), instance(0), v6_eh(255), out(NULL) {};
+@@ -45,7 +46,10 @@ public:
+     char *probesrc;
+     bool probe;
+     bool receive;
++    // Havok (12.09) Add shutdown_wait, max_null_reads
+     bool store_echo_reply;
++    unsigned int shutdown_wait;
++    unsigned int max_null_reads;
+     uint8_t instance;
+     uint8_t v6_eh;
+     uint8_t granularity;
+-- 
+2.41.0
+
