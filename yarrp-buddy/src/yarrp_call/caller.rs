@@ -90,7 +90,9 @@ impl Caller {
             .arg(format!("--minttl={}", params.min_ttl))
             .arg(format!("--maxttl={}", params.max_ttl))
             .arg(format!("--neighborhood={}", params.neighborhood_max_ttl))
-            .arg(format!("--fillmode={}", params.fill_mode_max_ttl));
+            .arg(format!("--fillmode={}", params.fill_mode_max_ttl))
+            .arg("--shutdown-wait=10")
+            .arg("--max_null_reads=5");
     }
 
     /// Runs the configured command, consuming this instance.
