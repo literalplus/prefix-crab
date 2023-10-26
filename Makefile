@@ -11,6 +11,9 @@ MY_ADDR_YARRP := $(ULA_PFX):8710::cc:2
 BOLD := $$(tput setaf 6; tput bold)
 UNBOLD := $$(tput sgr0)
 
+# Docker
+DOCKER_PREFIX := prefix-crab.local
+
 # --- Local setup
 .PHONY: gns3
 gns3:
@@ -130,3 +133,13 @@ banner:
 	@echo "  ▄████▀        ███    ███   ██████████   ███        █▀   ████       ███▄      ████████▀    ███    ███   ███    █▀  ▄█████████▀  ";
 	@echo "                ███    ███                                                                  ███    ███                           ";
 	@echo "                                                                                                                                ";
+
+# --- Docker builds
+
+.PHONY: docker-builder
+docker-builder:
+	docker build -t $(DOCKER_PREFIX)/builder .
+
+.PHONY: docker-aggregator
+docker-aggregator: docker-builder
+	cd aggregator && docker build -t $(DOCKER_PREFIX)/aggregator .

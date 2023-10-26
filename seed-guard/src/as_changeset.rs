@@ -36,7 +36,7 @@ pub fn determine(
     filter: &AsFilterList,
 ) -> Result<AsChangeset> {
     if !base_dir.is_dir() {
-        bail!("AS repo base dir {:?} is not a directory", base_dir);
+        bail!("AS directory {:?} is not a directory", base_dir);
     }
 
     let mut indexed = read_ases_from_dir(base_dir, filter).context("determining present ASNs")?;

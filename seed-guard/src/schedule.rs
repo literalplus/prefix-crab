@@ -1,4 +1,4 @@
-use std::{path::PathBuf, time::Duration};
+use std::{path::{PathBuf, Path}, time::Duration};
 
 use anyhow::*;
 use clap::Args;
@@ -51,6 +51,7 @@ pub async fn run(stop_rx: CancellationToken, params: Params) -> Result<()> {
             params.as_repo_base_dir
         ));
     }
+    let as_dir = params.as_repo_base_dir.join("as");
     info!(
         "Automatic re-seed scheduled every {}s.",
         params.reseed_interval_secs
@@ -58,23 +59,23 @@ pub async fn run(stop_rx: CancellationToken, params: Params) -> Result<()> {
     let mut trigger = interval(Duration::from_secs(params.reseed_interval_secs));
     loop_with_stop!(
         "analysis timer", stop_rx,
-        trigger.tick() => tick((&params)) as simple
+        trigger.tick() => tick((&params), (&as_dir)) as simple
     )
 }
 
-fn tick(params: &Params) {
-    if let Err(e) = do_tick(params) {
+fn tick(params: &Params, as_dir: &Path) {
+    if let Err(e) = do_tick(params, as_dir) {
         error!("Failed to perform scheduled re-seed due to {:?}", e);
     }
 }
 
-fn do_tick(params: &Params) -> Result<()> {
+fn do_tick(params: &Params, as_dir: &Path) -> Result<()> {
     let mut conn = crate::persist::connect()?;
     let start = Instant::now();
 
     let filter = as_filter_list::fetch(&mut conn, params.asn_filter_is_deny_list)
         .context("loading AS filter list")?;
-    let changes = as_changeset::determine(&mut conn, &params.as_repo_base_dir, &filter)
+    let changes = as_changeset::determine(&mut conn, as_dir, &filter)
         .context("determining AS set")?;
 
     try_save_changes(&mut conn, changes);

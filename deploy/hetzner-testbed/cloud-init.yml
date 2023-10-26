@@ -1,0 +1,39 @@
+#cloud-config
+users:
+  - name: lit
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKPaVc0Vd4BQIpXfkCXDP/CNHHqGs+uYCV11w+Pyeige lit@dishwasher"
+
+packages:
+# https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md
+  - slirp4netns
+  - fuse-overlayfs
+# undocumented
+  - uidmap
+  - catatonit
+# https://podman.io/docs/installation#linux-distributions
+  - podman
+package_update: true
+package_upgrade: true
+
+# Assume cloud provider firewall is used
+
+runcmd:
+# SSH security
+  - sed -i -e '/^\(#\|\)PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)PasswordAuthentication/s/^.*$/PasswordAuthentication no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)X11Forwarding/s/^.*$/X11Forwarding no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)MaxAuthTries/s/^.*$/MaxAuthTries 2/' /etc/ssh/sshd_config
+#  - sed -i -e '/^\(#\|\)AllowTcpForwarding/s/^.*$/AllowTcpForwarding no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)AllowAgentForwarding/s/^.*$/AllowAgentForwarding no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)AuthorizedKeysFile/s/^.*$/AuthorizedKeysFile .ssh\/authorized_keys/' /etc/ssh/sshd_config
+  - sed -i '$a AllowUsers lit' /etc/ssh/sshd_config
+
+# https://github.com/containers/podman/blob/main/docs/tutorials/rootless_tutorial.md
+  - usermod --add-subuids 100000-165535 --add-subgids 100000-165535 lit
+  - sysctl -w "net.ipv4.ping_group_range=0 2000000"
+  - echo "net.ipv4.ping_group_range=0 2000000" >/etc/sysctl.d/cloud-init-podman-rootless-ping.conf
+
