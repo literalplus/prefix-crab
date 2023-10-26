@@ -46,44 +46,12 @@ journalctl --user -u prefix-crab-postgres
 ssh podman-test.lit.plus mkdir -p prefix-crab/deploy
 scp shared.env podman-test.lit.plus:prefix-crab/deploy
 
-# --env-file=/home/lit/prefix-crab/deploy/shared.env \
+Dependencies between the containers themselves don't play well with systemd (e.g. restart of postgres fails because
+removing the container is prohibited due to a running dependent container), so we use native systemd dependencies that
+are configured manually.
 
-podman run \
---rm \
---name=prefix-crab-aggregator \
---add-host=localhost.containers.internal:10.0.2.2 \
---network=slirp4netns:allow_host_loopback=true \
---memory=1g \
---pull=never \
---read-only \
---read-only-tmpfs \
---replace \
---requires=prefix-crab-rabbitmq \
---requires=prefix-crab-postgres \
---restart=no \
---secret=prefix-crab-rmq-password,type=env,target=RMQ_PW \
---secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PW \
---mount=type=bind,source=/home/lit/prefix-crab/deploy/shared.env,destination=/home/app/.env \
---tz=UTC \
-prefix-crab.local/aggregator
-
-podman run \
---rm \
---name=prefix-crab-seed-guard \
---add-host=localhost.containers.internal:10.0.2.2 \
---network=slirp4netns:allow_host_loopback=true \
---memory=1g \
---pull=never \
---read-only \
---read-only-tmpfs \
---replace \
---requires=prefix-crab-postgres \
---restart=no \
---secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PW \
---mount=type=bind,source=/home/lit/prefix-crab/deploy/shared.env,destination=/home/app/.env \
---volume=prefix-crab-seed-guard:/opt/asn-ip \
---tz=UTC \
-prefix-crab.local/seed-guard
+Note: Using --env-file doesn't work as it doesn't seem to resolve environment variables populated by
+secrets. Instead, we bind mount the env file.
 
 Once the systemd unit file is generated, install it to $HOME/.config/systemd/user for installing it as a non-root user. Enable the copied unit file or files using systemctl enable.
 
@@ -93,3 +61,17 @@ https://docs.podman.io/en/latest/markdown/podman-generate-systemd.1.html
 
 Quadlet supports auto-update and restart if the images change, but we don't have that yet sadly (v4.4):
 https://docs.podman.io/en/latest/markdown/podman-auto-update.1.html
+
+We use systemd to manage auto restarts:
+
+```
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#RestartSec=
+# Additional manual restart settings
+Restart=always
+RestartSec=5s
+RestartSteps=20
+RestartMaxDelaySec=5m
+```
+
+The latter two options are supported starting with systemd v254, which isn't far away from the version used in
+Debian 12.

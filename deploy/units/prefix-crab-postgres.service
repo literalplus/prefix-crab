@@ -43,5 +43,12 @@ ExecStopPost=/usr/bin/podman rm \
 Type=notify
 NotifyAccess=all
 
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#RestartSec=
+# Additional manual restart settings
+Restart=always
+RestartSec=5s
+RestartSteps=20
+RestartMaxDelaySec=5m
+
 [Install]
 WantedBy=default.target
