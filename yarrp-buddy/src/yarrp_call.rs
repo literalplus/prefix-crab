@@ -44,8 +44,8 @@ pub struct Params {
     #[arg(long, env = "YARRP_RATE_PPS", default_value = "10")] // upstream default
     yarrp_rate_pps: i16,
 
-    /// FQ path to zmap binary
-    #[arg(long, default_value = "/usr/local/bin/yarrp")]
+    /// FQ path to yarrp binary
+    #[arg(long, default_value = "/usr/local/bin/yarrp", env = "YARRP_BIN_PATH")]
     bin_path: String,
 
     /// FQ path to sudo binary

@@ -21,7 +21,6 @@ After=prefix-crab-rabbitmq.service
 
 [Service]
 Environment=PODMAN_SYSTEMD_UNIT=%n
-Restart=no
 TimeoutStopSec=70
 ExecStartPre=/bin/rm \
 	-f %t/%n.ctr-id

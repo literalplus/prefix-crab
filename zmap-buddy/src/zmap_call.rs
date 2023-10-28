@@ -30,7 +30,7 @@ pub struct Params {
     interface: Option<String>,
 
     /// FQ path to zmap binary
-    #[arg(long, default_value = "/usr/local/sbin/zmap")]
+    #[arg(long, default_value = "/usr/local/sbin/zmap", env = "ZMAP_BIN_PATH")]
     bin_path: String,
 
     /// FQ path to sudo binary
