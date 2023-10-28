@@ -83,7 +83,7 @@ scp ./gen-systemd.sh podman-test.lit.plus:.
 journalctl --user -u prefix-crab-postgres
 
 ssh podman-test.lit.plus mkdir -p prefix-crab/deploy
-scp shared.env podman-test.lit.plus:prefix-crab/deploy
+scp containers.env podman-test.lit.plus:prefix-crab/deploy
 
 Dependencies between the containers themselves don't play well with systemd (e.g. restart of postgres fails because
 removing the container is prohibited due to a running dependent container), so we use native systemd dependencies that
