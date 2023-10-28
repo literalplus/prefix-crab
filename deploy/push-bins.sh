@@ -7,6 +7,9 @@ pushd .. || exit 17
 make docker-builder
 
 TMP_CONTAINER_ID=$(docker create prefix-crab.local/builder)
-docker cp $TMP_CONTAINER_ID:/usr/src/prefix-crab/target/release/yarrp-buddy - | ssh $TARGET_HOST cat >./prefix-crab/deploy/bin/yarrp-buddy
-docker cp $TMP_CONTAINER_ID:/usr/src/prefix-crab/target/release/zmap-buddy - | ssh $TARGET_HOST cat >./prefix-crab/deploy/bin/zmap-buddy
+echo "Uploading yarrp-buddy..."
+docker cp $TMP_CONTAINER_ID:/usr/src/prefix-crab/target/release/yarrp-buddy - | ssh $TARGET_HOST bash -c "cat > ./prefix-crab/deploy/bin/yarrp-buddy"
+echo "Uploading zmap-buddy..."
+docker cp $TMP_CONTAINER_ID:/usr/src/prefix-crab/target/release/zmap-buddy - | ssh $TARGET_HOST bash -c "cat > ./prefix-crab/deploy/bin/zmap-buddy"
 docker rm -v $TMP_CONTAINER_ID
+echo "Done."
