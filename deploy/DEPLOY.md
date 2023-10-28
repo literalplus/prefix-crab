@@ -16,7 +16,7 @@ https://www.lpalmieri.com/posts/fast-rust-docker-builds/
 
 ## How to set up on a new host
 
-Adjust the TARGET_HOST in `push-img.sh` (currently set to a name that requires configuration in `/etc/hosts`).
+Adjust the TARGET_HOST in `push-*.sh` (by default set to a name that requires configuration in `/etc/hosts`).
 
 On the server:
 
@@ -37,12 +37,13 @@ ln -s bare-metal.env ../.env
 ```
 
 Build & push the images on the developer machine. Note that this relies on `docker`, like the local setup, and not
-`buildah`.
+`buildah`. `push-bins.sh` compiles & deploys the bare-metal Rust binaries (target machine has too old Rust version).
 
 ```bash
 cd deploy
 ./push-img.sh aggregator
 ./push-img.sh seed-guard
+./push-bins.sh
 ```
 
 Enable and start the services on the server:
