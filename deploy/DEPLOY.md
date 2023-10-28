@@ -11,7 +11,43 @@ run on bare metal for simplicity of network setup and performance.
 https://www.lpalmieri.com/posts/fast-rust-docker-builds/
 
 ```bash
-make docker-aggregator
+./push-img.sh [aggregator|seed-guard]
+```
+
+## How to set up on a new host
+
+Adjust the TARGET_HOST in `push-img.sh` (currently set to a name that requires configuration in `/etc/hosts`).
+
+On the server:
+
+```bash
+# Add deploy key to the repo
+cd
+git clone git@github.com:literalplus/prefix-crab.git
+cd prefix-crab/deploy
+mkdir -p ~/.config/systemd/user
+systemctl --user link $PWD/units/*
+systemctl --user daemon-reload
+
+# leading space to prevent .bash_history
+ echo -n "changeme" | podman secret create prefix-crab-postgres-password -
+ echo -n "changeme" | podman secret create prefix-crab-rmq-password -
+```
+
+Build & push the images on the developer machine:
+
+```bash
+cd deploy
+./push-img.sh aggregator
+./push-img.sh seed-guard
+```
+
+Enable and start the services on the server:
+
+```bash
+pushd units && systemctl --user enable --now *.service; popd
+# in non-ancient versions of systemd you can also do:
+#systemctl --user enable --now "prefix-crab*"
 ```
 
 ## Various notes

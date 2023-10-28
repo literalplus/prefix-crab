@@ -39,7 +39,7 @@ ExecStart=/usr/bin/podman run \
 	--replace \
 	--requires=prefix-crab-postgres \
 	--secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PW \
-	--mount=type=bind,source=/home/lit/prefix-crab/deploy/shared.env,ro,destination=/home/app/.env \
+	--mount=type=bind,source=/home/%u/prefix-crab/deploy/shared.env,ro,destination=/home/app/.env \
 	--volume=prefix-crab-seed-guard:/opt/asn-ip \
 	--tz=UTC prefix-crab.local/seed-guard
 ExecStop=/usr/bin/podman stop \

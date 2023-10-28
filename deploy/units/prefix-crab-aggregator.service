@@ -41,7 +41,7 @@ ExecStart=/usr/bin/podman run \
 	--replace \
 	--secret=prefix-crab-rmq-password,type=env,target=RMQ_PW \
 	--secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PW \
-	--mount=type=bind,source=/home/lit/prefix-crab/deploy/shared.env,ro,destination=/home/app/.env \
+	--mount=type=bind,source=/home/%u/prefix-crab/deploy/shared.env,ro,destination=/home/app/.env \
 	--tz=UTC prefix-crab.local/aggregator
 ExecStop=/usr/bin/podman stop \
 	--ignore -t 10 \
