@@ -24,7 +24,7 @@ ExecStart=/home/%u/prefix-crab/deploy/run-with-rmq-pw.sh \
 
 OOMScoreAdjust=-10
 ProtectSystem=full
-ReadWritePaths=/home/%u/prefix-crab/yarrp-buddy/out
+ReadWritePaths=/home/%u/prefix-crab/yarrp-buddy
 
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#RestartSec=
 # Additional manual restart settings
