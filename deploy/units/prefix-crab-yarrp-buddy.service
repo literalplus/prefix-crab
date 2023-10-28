@@ -2,7 +2,7 @@
 # bare-metal
 
 [Unit]
-Description=A friend for yarrp
+Description=prefix-crab yarrp-buddy (bare-metal)
 Wants=network-online.target
 After=network-online.target
 
@@ -13,7 +13,9 @@ After=prefix-crab-rabbitmq.service
 
 [Service]
 Type=simple
-TimeoutStopSec=70
+TimeoutStopSec=70s
+# updating crates.io index + building may take a long time
+TimeoutStartSec=5m
 WorkingDirectory=/home/%u/prefix-crab/yarrp-buddy
 
 ExecStartPre=cargo build --release
