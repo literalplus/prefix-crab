@@ -2,8 +2,11 @@
 
 TARGET_HOST=pnowak@measurement-aim.etchosts.internal
 
-make build-release
-
 pushd .. || exit 17
-scp target/release/yarrp-buddy $TARGET_HOST:prefix-crab/deploy/bin/
-scp target/release/zmap-buddy $TARGET_HOST:prefix-crab/deploy/bin/
+
+make docker-builder
+
+TMP_CONTAINER_ID=$(docker create prefix-crab.local/builder)
+docker cp $TMP_CONTAINER_ID:/usr/src/prefix-crab/target/release/yarrp-buddy - | ssh $TARGET_HOST cat >./prefix-crab/deploy/bin/yarrp-buddy
+docker cp $TMP_CONTAINER_ID:/usr/src/prefix-crab/target/release/zmap-buddy - | ssh $TARGET_HOST cat >./prefix-crab/deploy/bin/zmap-buddy
+docker rm -v $TMP_CONTAINER_ID
