@@ -16,7 +16,7 @@ Type=simple
 TimeoutStopSec=70
 WorkingDirectory=/home/%u/prefix-crab/yarrp-buddy
 
-ExecPreStart=cargo build --release
+ExecStartPre=cargo build --release
 ExecStart=/home/%u/prefix-crab/deploy/run-with-rmq-pw.sh \
 	/home/%u/prefix-crab/target/release/yarrp-buddy
 
