@@ -1,15 +1,4 @@
-# Examples for testing
-
-Don't forget to set the correct RabbitMQ credentials in the environment, otherwise it will look like the
-connection was just closed.
-
-Routing key: `echo`
-
-```json
-{
-  "target_net": "fddc:9d0b:e318:8712::bc:1/48"
-}
-```
+# Local setup
 
 To run an all-in-one local setup based on `docker-compose` and `tmux`, run:
 
@@ -23,3 +12,5 @@ Test data:
 
  * `fddc:9d0b:e318::/48` - full base prefix
  * `fddc:9d0b:e318:8680::/60` - a non-homogenous subnet
+
+Please note that the local setup is based on `docker` for historical reasons. In production, we use `podman`.

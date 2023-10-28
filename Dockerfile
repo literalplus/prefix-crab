@@ -11,6 +11,16 @@ FROM chef AS builder
 COPY --from=planner /usr/src/prefix-crab/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
 RUN cargo chef cook --release --recipe-path recipe.json --workspace
-# Build application
+
+# Build base libraries
+COPY Cargo.toml .
+COPY Cargo.lock .
+COPY src src
+RUN cargo build --release
+
+COPY db-model db-model
+RUN cd db-model && cargo build --release
+
+# Build remaining applications
 COPY . .
 RUN cargo build --release --workspace

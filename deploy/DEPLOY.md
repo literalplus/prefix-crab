@@ -34,7 +34,8 @@ systemctl --user daemon-reload
  echo -n "changeme" | podman secret create prefix-crab-rmq-password -
 ```
 
-Build & push the images on the developer machine:
+Build & push the images on the developer machine. Note that this relies on `docker`, like the local setup, and not
+`buildah`.
 
 ```bash
 cd deploy
@@ -64,7 +65,7 @@ Host Ports:
  - 17861 RabbitMQ
  - 17862 Postgres
 
-Do not use spaces in the RabbitMQ password !
+Do not use spaces in the passwords !
 
 echo -n "changeme" | podman secret create prefix-crab-postgres-password -
 echo -n "changeme" | podman secret create prefix-crab-rmq-password -
@@ -89,9 +90,7 @@ are configured manually.
 Note: Using --env-file doesn't work as it doesn't seem to resolve environment variables populated by
 secrets. Instead, we bind mount the env file.
 
-Once the systemd unit file is generated, install it to $HOME/.config/systemd/user for installing it as a non-root user. Enable the copied unit file or files using systemctl enable.
-
-Note: Copying a unit file to $HOME/.config/systemd/user and enabling it marks the unit file to be automatically started on user login.
+Once the systemd unit file is generated, install it to $HOME/.config/systemd/user for installing it as a non-root user. Enable the copied unit file or files using systemctl enable. Note: Copying a unit file to $HOME/.config/systemd/user and enabling it marks the unit file to be automatically started on user login. (i.e. either set `loginctl` linger or use an empty tmux instance to keep the session active)
 
 https://docs.podman.io/en/latest/markdown/podman-generate-systemd.1.html
 

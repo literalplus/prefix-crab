@@ -6,7 +6,7 @@ if [[ "$#" -ne 1 ]]; then
 fi
 
 MODULE=$1
-TARGET_HOST=measurement-aim.etchosts.internal
+TARGET_HOST=pnowak@measurement-aim.etchosts.internal
 
 pushd .. || exit 3
 
