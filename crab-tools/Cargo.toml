@@ -1,0 +1,33 @@
+[package]
+name                   = "crab-tools"
+description            = "Various command-line tools to manage prefix-crab. https://en.wikipedia.org/wiki/Cow_tools"
+version.workspace      = true
+edition.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+
+[dependencies]
+amqprs              = { version = "1.2.0", features = ["traces", "urispec"] }
+anyhow              = { workspace = true }
+assertor            = "0.0.2"
+clap                = { workspace = true }
+clap-verbosity-flag = { workspace = true }
+flexi_logger        = { workspace = true }
+human-panic         = { workspace = true }
+ipnet               = { workspace = true }
+log                 = { workspace = true }
+prefix-crab         = { path = ".." }
+serde               = { workspace = true }
+serde_json          = { workspace = true }
+queue-models        = { path = "../queue-models" }
+db-model            = { path = "../db-model" }
+async-trait         = { workspace = true }
+type-safe-id        = { workspace = true }
+diesel              = { workspace = true }
+diesel-derive-enum  = { workspace = true }
+tokio               = { workspace = true }
+futures             = { workspace = true }
+chrono              = "0.4.26"
+itertools           = "0.11.0"
+thiserror           = "1.0.44"

@@ -6,6 +6,7 @@ members = [
     "aggregator",
     "seed-guard",
     "db-model",
+    "crab-tools",
 ]
 
     [workspace.package]

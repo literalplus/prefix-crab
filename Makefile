@@ -62,7 +62,7 @@ clippy:
 # --- Run local components
 .PHONY: run-zmap
 run-zmap:
-	cd zmap-buddy && cargo run -- rabbit-mq-listen
+	cd zmap-buddy && cargo run
 
 .PHONY: run-aggregator
 run-aggregator:
