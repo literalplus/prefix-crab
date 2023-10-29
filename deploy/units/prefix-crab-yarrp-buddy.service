@@ -15,12 +15,12 @@ After=prefix-crab-rabbitmq.service
 Type=simple
 TimeoutStopSec=70s
 # updating crates.io index + building may take a long time
-#TimeoutStartSec=5m
+TimeoutStartSec=3m
 WorkingDirectory=/home/%u/prefix-crab/yarrp-buddy
 
 ExecStartPre=/home/%u/.cargo/bin/rustup run stable -- cargo build --release
 ExecStart=/home/%u/prefix-crab/deploy/run-with-rmq-pw.sh \
-	/home/%u/prefix-crab/deploy/bin/yarrp-buddy
+	/home/%u/prefix-crab/target/release/yarrp-buddy
 
 OOMScoreAdjust=-10
 ProtectSystem=full
