@@ -32,8 +32,7 @@ systemctl --user daemon-reload
 # leading space to prevent .bash_history
  echo -n "changeme" | podman secret create prefix-crab-postgres-password -
  echo -n "changeme" | podman secret create prefix-crab-rmq-password -
-
-ln -s bare-metal.env ../.env
+pushd .. && ln -s deploy/bare-metal.env .env; popd
 ```
 
 Build & push the images on the developer machine. Note that this relies on `docker`, like the local setup, and not
