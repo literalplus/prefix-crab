@@ -18,8 +18,7 @@ TimeoutStopSec=70s
 #TimeoutStartSec=5m
 WorkingDirectory=/home/%u/prefix-crab/yarrp-buddy
 
-# cannot cargo build on the machine, Rust is too old
-#ExecStartPre=cargo build --release
+ExecStartPre=/home/%u/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo build --release
 ExecStart=/home/%u/prefix-crab/deploy/run-with-rmq-pw.sh \
 	/home/%u/prefix-crab/deploy/bin/yarrp-buddy
 

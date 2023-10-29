@@ -139,7 +139,3 @@ banner:
 .PHONY: docker-builder
 docker-builder:
 	docker build -t $(DOCKER_PREFIX)/builder .
-
-.PHONY: docker-aggregator
-docker-aggregator: docker-builder
-	cd aggregator && docker build -t $(DOCKER_PREFIX)/aggregator .

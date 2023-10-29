@@ -43,8 +43,21 @@ Build & push the images on the developer machine. Note that this relies on `dock
 cd deploy
 ./push-img.sh aggregator
 ./push-img.sh seed-guard
-./push-bins.sh
 ```
+
+In case your server uses a package manager installation of Rust (that is likely outdated), you need to install
+`rustup` for your user (as we depend on non-ancient features). Please note that you need to take extra care with your
+`$PATH` in this case, and ideally verify for each binary that the `rustup` version is used using `which cargo` etc.
+
+```bash
+# https://rust-lang.github.io/rustup/installation/package-managers.html
+curl https://sh.rustup.rs -sSf | sh -s -- -y
+source ~/.bashrc
+rustup toolchain link system /usr
+```
+
+If you for some reason wish to use your package manager's version of Rust, you can e.g. `cargop +system`.
+Please note that the bare-metal `units` files expect a Rustup installation of Cargo, and you will need to modify them.
 
 Enable and start the services on the server:
 
