@@ -63,13 +63,23 @@ impl ProbeHandler {
         match self.handle_one(&req) {
             Result::Ok(_) => self.ack_tx.send(req).context("sending ack"),
             Err(e) => {
-                drop_if_permanent!(e <- ContextFetchError);
-                drop_if_permanent!(e <- analyse::context::ContextFetchError);
-                // TODO Could be handled with DLQ
-                error!("Failed to handle request: {:?} - shutting down.", req);
-                Err(e)
+                match self.process_error(e, &req) {
+                    Result::Ok(_) => {
+                        self.ack_tx.send(req).context("sending err ack")?;
+                        Ok(())
+                    },
+                    any => any,
+                }
             }
         }
+    }
+
+    fn process_error(&self, e: Error, req: &TaskRequest) -> Result<()> {
+        drop_if_permanent!(e <- ContextFetchError);
+        drop_if_permanent!(e <- analyse::context::ContextFetchError);
+        // TODO Could be handled with DLQ
+        error!("Failed to handle request: {:?} - shutting down.", req);
+        Err(e)
     }
 
     fn handle_one(&mut self, req: &TaskRequest) -> Result<()> {

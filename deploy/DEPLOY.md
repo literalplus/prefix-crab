@@ -78,7 +78,7 @@ We bind this to the hosts file via `localhost.containers.internal:10.0.2.2`.
 
 Host Ports:
  - 17861 RabbitMQ
- - 17862 Postgres
+ - 17862 Postgres `ssh -L 17862:localhost:17862 pnowak@measurement-aim.etchosts.internal`
 
 Do not use spaces in the passwords !
 
