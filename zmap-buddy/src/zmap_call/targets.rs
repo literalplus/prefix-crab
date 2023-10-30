@@ -59,6 +59,7 @@ impl TargetCollector {
     /// Pushes a vector of addresses to this collector.
     ///
     /// See [TargetCollector::push] for usage notes!
+    #[cfg(test)]
     pub fn push_slice(&mut self, addrs: &[Ipv6Addr]) -> Result<()> {
         for addr in addrs {
             self.push(addr)?;
