@@ -1,11 +1,17 @@
+use std::net::Ipv6Addr;
+
 use anyhow::{Context, Result};
 use itertools::Itertools;
-use log::{trace, debug};
-use queue_models::probe_response::{LastHop, TraceResponse, TraceResult};
+use log::{debug, info, trace};
+use prefix_crab::blocklist::{self, PrefixBlocklist};
+use queue_models::{
+    probe_request::TraceRequest,
+    probe_response::{LastHop, TraceResponse, TraceResult},
+};
 
 use crate::{
     probe_store::{ProbeStore, RequestGroup, Target},
-    yarrp_call::{self, Caller, TargetCollector},
+    yarrp_call::{Caller, TargetCollector},
 };
 
 use super::{TaskRequest, TaskResponse};
@@ -14,26 +20,42 @@ pub struct SchedulerTask {
     store: ProbeStore,
     caller: Caller,
     targets: TargetCollector,
+    blocklist: PrefixBlocklist,
 }
 
 impl SchedulerTask {
-    pub fn new(zmap_params: yarrp_call::Params) -> Result<Self> {
+    pub fn new(params: super::Params) -> Result<Self> {
         Ok(Self {
             store: ProbeStore::default(),
-            caller: zmap_params.to_caller_assuming_sudo()?,
+            caller: params.base.to_caller_assuming_sudo()?,
             targets: TargetCollector::new_default()?,
+            blocklist: blocklist::read(params.blocklist)?,
         })
     }
 
-    pub fn push_work(&mut self, item: TaskRequest) -> Result<()> {
-        self.push_work_internal(&item)
+    pub fn push_work(&mut self, mut item: TaskRequest) -> Result<()> {
+        self.push_work_internal(&mut item)
             .with_context(|| format!("for request: {:?}", item))
     }
 
-    fn push_work_internal(&mut self, item: &TaskRequest) -> Result<()> {
+    fn push_work_internal(&mut self, item: &mut TaskRequest) -> Result<()> {
+        self.apply_blocklist(&mut item.model);
         self.targets.push_slice(&item.model.targets)?;
         self.store.request_all(item);
         Ok(())
+    }
+
+    fn apply_blocklist(&self, item: &mut TraceRequest) {
+        let predicate = |target: &Ipv6Addr| {
+            if self.blocklist.is_blocked(target) {
+                info!("[{}] Not tracing {:?} due to blocklist", item.id, target);
+                false
+            } else {
+                true
+            }
+        };
+        let filtered_targets = item.targets.clone().into_iter().filter(predicate).collect_vec();
+        item.targets = filtered_targets;
     }
 
     pub async fn run(mut self) -> Result<Vec<TaskResponse>> {

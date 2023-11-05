@@ -1,0 +1,9 @@
+# Example blocklist
+
+### RESERVED ADDRESSES
+# global IPv4-IPv6 translation
+64:ff9b::/96
+# private IPv4-IPv6 translation
+64:ff9b:1::/48
+# Teredo tunneling
+2001:0000::/32

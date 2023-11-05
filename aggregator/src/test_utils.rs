@@ -5,13 +5,7 @@ pub use std::net::Ipv6Addr;
 
 use crate::analyse::{MeasurementTree, HitCount, LhrSource};
 
-pub fn net(input: &str) -> Ipv6Net {
-    input.parse().expect(input)
-}
-
-pub fn addr(input: &str) -> Ipv6Addr {
-    input.parse().expect(input)
-}
+pub use prefix_crab::test_utils::*;
 
 pub const TREE_BASE_NET: &str = "2001:db8::/32";
 pub const TREE_UNRELATED_NET: &str = "2001:db9::/64";

@@ -32,4 +32,4 @@ queue-models        = { path = "../queue-models" }
 derive-where        = "1.2.1"
 async-trait         = { workspace = true }
 assertor            = { workspace = true }
-itertools           = "0.11.0"
+itertools           = { workspace = true }
