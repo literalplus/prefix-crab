@@ -70,7 +70,6 @@ impl Timer {
             analyse::persist::begin_bulk(&mut conn, &prefixes)
                 .context("saving analyses to begin")?;
 
-            // TODO space out a bit maybe? or anyways doesn't matter due to downstream batching?
             for target_net in prefixes {
                 let req = EchoProbeRequest { target_net };
                 if self.probe_tx.send(ProbeRequest::Echo(req)).is_err() {

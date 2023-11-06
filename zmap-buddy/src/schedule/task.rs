@@ -37,7 +37,6 @@ impl<'req> SchedulerTask<'req> {
 
         // Stage samples instead of pushing directly to allow interweaving of different requests
         let samples = if self.blocklist.is_whole_net_blocked(&base_net) {
-            // TODO signal blockage of whole net in response?
             vec![]
         } else {
             split.to_samples(super::SAMPLES_PER_SUBNET)

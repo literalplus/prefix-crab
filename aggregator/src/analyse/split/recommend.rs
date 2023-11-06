@@ -44,8 +44,6 @@ pub fn recommend(subnets: &Subnets) -> SplitRecommendation {
     use PriorityClass::*;
     use SplitRecommendation::*;
 
-    // TODO incorporate non-hits 
-
     let diff = subnets.lhr_diff();
     trace!("LHR diff: {:?}", diff);
     match diff {

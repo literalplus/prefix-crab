@@ -98,7 +98,7 @@ impl Scheduler {
             Ok(_) => info!("zmap call was successful."),
             Err(e) => {
                 error!("zmap call failed: {}", e);
-                // TODO signal this somehow
+                // TODO signal this somehow (DLQ?)
             }
         }
     }

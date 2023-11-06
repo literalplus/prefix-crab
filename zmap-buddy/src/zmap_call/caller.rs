@@ -200,7 +200,6 @@ impl Caller {
             .arg("--bandwidth=10K") // TODO use "rate" in pps instead for consistency with yarrp?
             .arg("--verbosity=5")
             .arg("--cooldown-time=4") // wait for responses for n secs after sending
-            // TODO: Permute addresses manually, as --seed is not supported for v6
             .arg("--probe-module=icmp6_echoscan")
             .arg("--probe-ttl=255")
             .arg("--output-fields=type,code,original_ttl,orig-dest-ip,saddr,classification")
@@ -209,7 +208,6 @@ impl Caller {
             //.arg("--cores=idx,idx,idx") // cores to pin to
             .arg("--sender-threads=1")
             .arg("--ignore-blacklist-errors");
-        // TODO: check that blocklist is actually used with --ipv6-target-file ?
 
         // self.cmd.stdin(Stdio::piped()); // Allow password entry for sudo (local debug)
         self.cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
