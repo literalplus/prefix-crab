@@ -1,16 +1,26 @@
 use anyhow::*;
+use clap::Args;
 use db_model::prefix_tree::context::ContextFetchError;
 use diesel::prelude::*;
 use log::{error, info, trace};
 use tokio::sync::mpsc::{Receiver, UnboundedSender};
 
-use prefix_crab::{helpers::rabbit::ack_sender::CanAck, error::IsPermanent, drop_if_permanent};
+use prefix_crab::{
+    blocklist::{self, PrefixBlocklist}, drop_if_permanent, error::IsPermanent, helpers::rabbit::ack_sender::CanAck,
+};
 use queue_models::probe_response::ProbeResponse;
 
-use crate::{schedule::FollowUpRequest, analyse};
+use crate::{analyse, schedule::FollowUpRequest};
 mod archive;
 mod echo;
 mod trace;
+
+#[derive(Args)]
+#[group(id = "handleprobe")]
+pub struct Params {
+    #[clap(flatten)]
+    pub blocklist: blocklist::Params,
+}
 
 #[derive(Debug)]
 pub struct TaskRequest {
@@ -28,12 +38,15 @@ pub async fn run(
     task_rx: Receiver<TaskRequest>,
     ack_tx: UnboundedSender<TaskRequest>,
     follow_up_tx: UnboundedSender<FollowUpRequest>,
+    params: Params,
 ) -> Result<()> {
     let conn = crate::persist::connect()?;
+    let blocklist = blocklist::read(params.blocklist)?;
     let handler = ProbeHandler {
         conn,
         ack_tx,
         follow_up_tx,
+        blocklist,
     };
 
     info!("Probe handler is ready to receive work!");
@@ -44,6 +57,7 @@ struct ProbeHandler {
     conn: PgConnection,
     ack_tx: UnboundedSender<TaskRequest>,
     follow_up_tx: UnboundedSender<FollowUpRequest>,
+    blocklist: PrefixBlocklist,
 }
 
 impl ProbeHandler {
@@ -62,15 +76,13 @@ impl ProbeHandler {
     fn handle_recv(&mut self, req: TaskRequest) -> Result<()> {
         match self.handle_one(&req) {
             Result::Ok(_) => self.ack_tx.send(req).context("sending ack"),
-            Err(e) => {
-                match self.process_error(e, &req) {
-                    Result::Ok(_) => {
-                        self.ack_tx.send(req).context("sending err ack")?;
-                        Ok(())
-                    },
-                    any => any,
+            Err(e) => match self.process_error(e, &req) {
+                Result::Ok(_) => {
+                    self.ack_tx.send(req).context("sending err ack")?;
+                    Ok(())
                 }
-            }
+                any => any,
+            },
         }
     }
 

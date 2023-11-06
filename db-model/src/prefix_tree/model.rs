@@ -18,6 +18,7 @@ pub enum MergeStatus {
     MergedUp,
     UnsplitRoot,
     SplitRoot,
+    Blocked, // won't get automatically unblocked, leaf/root state doesn't matter
 }
 
 impl MergeStatus {
@@ -28,6 +29,8 @@ impl MergeStatus {
     pub fn split(&self) -> MergeStatus {
         if matches!(self, MergeStatus::UnsplitRoot | MergeStatus::SplitRoot) {
             MergeStatus::SplitRoot
+        } else if self == &MergeStatus::Blocked {
+            MergeStatus::Blocked
         } else {
             MergeStatus::SplitDown
         }

@@ -25,6 +25,6 @@ impl ProbeHandler {
         let mut interpretation = analyse::trace::process(res);
         interpretation.update_analysis(&mut self.conn, &mut context)?;
 
-        analyse::split::process(&mut self.conn, context).map_err(|e| anyhow!(e))
+        analyse::split::process(&mut self.conn, context, &self.blocklist).map_err(|e| anyhow!(e))
     }
 }

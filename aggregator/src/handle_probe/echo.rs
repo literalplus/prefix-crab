@@ -32,7 +32,7 @@ impl ProbeHandler {
             }
         } else {
             info!("No further follow-up necessary, scheduling split analysis.");
-            split::process(&mut self.conn, context)?;
+            split::process(&mut self.conn, context, &self.blocklist)?;
         }
 
         Ok(())

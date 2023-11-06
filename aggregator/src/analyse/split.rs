@@ -1,12 +1,10 @@
 use diesel::{prelude::*, PgConnection, QueryDsl, SelectableHelper};
 use ipnet::Ipv6Net;
 use log::{debug, info, warn};
+use prefix_crab::blocklist::PrefixBlocklist;
 use thiserror::Error;
 
-use crate::{
-    persist::dsl::CidrMethods,
-    persist::DieselErrorFixCause,
-};
+use crate::{persist::dsl::CidrMethods, persist::DieselErrorFixCause};
 use db_model::prefix_tree::ContextOps;
 
 use self::subnet::Subnets;
@@ -23,25 +21,43 @@ mod subnet;
 #[derive(Error, Debug)]
 pub enum SplitError {
     #[error("database error loading relevant measurements fpr {base_net} from the database")]
-    LoadMeasurementsFromDb { source: anyhow::Error, base_net: Ipv6Net },
+    LoadMeasurementsFromDb {
+        source: anyhow::Error,
+        base_net: Ipv6Net,
+    },
     #[error("unable to split prefix into subnets")]
     SplitSubnets { source: anyhow::Error },
     #[error("unable to save recommendation to database")]
     SaveRecommendation { source: anyhow::Error },
     #[error("unable to perform prefix split")]
     PerformSplit { source: anyhow::Error },
+    #[error("unable to apply blocked state to node (blocklist)")]
+    MarkBlocked { source: anyhow::Error },
 }
 
 pub type SplitResult<T> = std::result::Result<T, SplitError>;
 
-pub fn process(conn: &mut PgConnection, request: context::Context) -> SplitResult<()> {
+pub fn process(
+    conn: &mut PgConnection,
+    request: context::Context,
+    blocklist: &PrefixBlocklist,
+) -> SplitResult<()> {
     if !request.node().merge_status.is_eligible_for_split() {
         warn!(
             "Handled prefix is (no longer?) a leaf, split not possible: {:?}",
             request.node().net,
         );
         return Ok(());
+    } else if blocklist.is_whole_net_blocked(&request.node().net) {
+        info!(
+            "Entire prefix {} is blocked, marking the node as such.",
+            request.node().net
+        );
+        return persist::mark_as_blocked(conn, &request)
+            .map(|_| ())
+            .map_err(|source| SplitError::MarkBlocked { source });
     }
+    // FIXME apply blocklist to prefix itself?
     let relevant_measurements = load_relevant_measurements(conn, &request.node().net)?;
     let subnets = Subnets::new(request.node().net, relevant_measurements)
         .map_err(|source| SplitError::SplitSubnets { source })?;
@@ -62,7 +78,7 @@ pub fn process(conn: &mut PgConnection, request: context::Context) -> SplitResul
                 rec.priority().class,
                 confidence
             );
-            persist::perform_prefix_split(conn, request, subnets)
+            persist::perform_prefix_split(conn, request, subnets, blocklist)
                 .map_err(|source| SplitError::PerformSplit { source })?;
         } else {
             debug!(
@@ -94,5 +110,8 @@ fn load_relevant_measurements(
         .select(MeasurementTree::as_select())
         .load(conn)
         .fix_cause()
-        .map_err(|source| SplitError::LoadMeasurementsFromDb { source, base_net: *base_net })
+        .map_err(|source| SplitError::LoadMeasurementsFromDb {
+            source,
+            base_net: *base_net,
+        })
 }

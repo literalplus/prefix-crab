@@ -3,7 +3,9 @@ use diesel::dsl::now;
 use diesel::{prelude::*, PgConnection};
 use itertools::Itertools;
 use log::warn;
+use prefix_crab::blocklist::PrefixBlocklist;
 
+use crate::analyse::split::subnet::Subnet;
 use crate::analyse::SplitAnalysis;
 use crate::persist::dsl::CidrMethods;
 use crate::persist::DieselErrorFixCause;
@@ -129,26 +131,39 @@ pub fn perform_prefix_split(
     conn: &mut PgConnection,
     context: context::Context,
     subnets: Subnets,
+    blocklist: &PrefixBlocklist,
 ) -> Result<usize> {
     conn.transaction(|conn| {
-        insert_split_subnets(conn, subnets)?;
+        insert_split_subnets(conn, subnets, blocklist)?;
         mark_parent_obsolete(conn, context.node())
     })
     .context("in tx to perform prefix split")
 }
 
-fn insert_split_subnets(conn: &mut PgConnection, subnets: Subnets) -> Result<usize> {
+fn insert_split_subnets(
+    conn: &mut PgConnection,
+    subnets: Subnets,
+    blocklist: &PrefixBlocklist,
+) -> Result<usize> {
     use crate::schema::prefix_tree::dsl::*;
 
-    let new_merge = MergeStatus::new(subnets[0].subnet.network.prefix_len());
-    let tuples = subnets
-        .iter()
-        .map(|it| (net.eq6(&it.subnet.network), merge_status.eq(new_merge)))
-        .collect_vec();
+    let base_merge = MergeStatus::new(subnets[0].subnet.network.prefix_len());
+    let to_tuple = |it: &Subnet| {
+        let merge = if blocklist.is_whole_net_blocked(&it.subnet.network) {
+            MergeStatus::Blocked
+        } else {
+            base_merge
+        };
+        (net.eq6(&it.subnet.network), merge_status.eq(merge))
+    };
+    let tuples = subnets.iter().map(to_tuple).collect_vec();
+
     let on_conflict = (
-        merge_status.eq(new_merge),
+        // if already exists, it shouldn't be blocked, and if it is, we'd realise with the next split attempt
+        merge_status.eq(base_merge),
         priority_class.eq(PriorityClass::HighFresh),
     );
+
     diesel::insert_into(prefix_tree)
         .values(tuples)
         .on_conflict(net)
@@ -167,4 +182,14 @@ fn mark_parent_obsolete(conn: &mut PgConnection, parent: &PrefixTree) -> Result<
         .execute(conn)
         .fix_cause()
         .context("updating parent with new merge status")
+}
+
+pub fn mark_as_blocked(conn: &mut PgConnection, context: &context::Context) -> Result<usize> {
+    use crate::schema::prefix_tree::dsl::*;
+
+    diesel::update(context.node())
+        .set(merge_status.eq(MergeStatus::Blocked))
+        .execute(conn)
+        .fix_cause()
+        .context("marking parent node as blocked")
 }
