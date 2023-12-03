@@ -2,12 +2,11 @@ use std::collections::HashSet;
 use std::net::Ipv6Addr;
 use std::{collections::HashMap, fmt::Display};
 
+use db_model::analyse::LhrAddr;
 use db_model::analyse::map64::{self, Net64Map};
 
 use crate::analyse::WeirdType;
 use crate::analyse::{HitCount, LhrSource};
-
-pub type LhrAddr = Ipv6Addr;
 
 /// Interpretation of a probe response
 #[derive(Debug, Default)]

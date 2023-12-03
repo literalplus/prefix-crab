@@ -57,7 +57,7 @@ pub fn process(
             .map(|_| ())
             .map_err(|source| SplitError::MarkBlocked { source });
     }
-    // FIXME apply blocklist to prefix itself?
+    
     let relevant_measurements = load_relevant_measurements(conn, &request.node().net)?;
     let subnets = Subnets::new(request.node().net, relevant_measurements)
         .map_err(|source| SplitError::SplitSubnets { source })?;
