@@ -1,6 +1,6 @@
 use std::net::Ipv6Addr;
 
-use crate::analyse::WeirdType;
+use db_model::analyse::WeirdType;
 
 use super::result::*;
 use log::debug;

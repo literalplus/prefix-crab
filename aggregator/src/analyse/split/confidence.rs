@@ -55,7 +55,7 @@ fn min_equivalent_responses_thresh(net: &Ipv6Net) -> u32 {
 mod tests {
     use super::*;
     use db_model::prefix_tree::PriorityClass::MediumSameMulti;
-    use crate::test_utils::*;
+    use db_model::test_utils::*;
     use anyhow::*;
 
     // "Google Sheet cases" are based on https://docs.google.com/spreadsheets/d/1rOlf3MNCSIj58b9yB1Ni-Dnr2sWrostZoqOcSjIm_To/edit#gid=164692237

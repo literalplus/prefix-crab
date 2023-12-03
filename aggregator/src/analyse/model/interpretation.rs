@@ -2,8 +2,10 @@ use std::collections::HashSet;
 use std::net::Ipv6Addr;
 use std::{collections::HashMap, fmt::Display};
 
-use crate::analyse::{map64, WeirdType};
-use crate::analyse::{map64::Net64Map, HitCount, LhrSource};
+use db_model::analyse::map64::{self, Net64Map};
+
+use crate::analyse::WeirdType;
+use crate::analyse::{HitCount, LhrSource};
 
 pub type LhrAddr = Ipv6Addr;
 

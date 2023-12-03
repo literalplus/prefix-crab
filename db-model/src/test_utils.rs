@@ -3,7 +3,7 @@ use std::collections::HashSet;
 pub use ipnet::Ipv6Net;
 pub use std::net::Ipv6Addr;
 
-use crate::analyse::{MeasurementTree, HitCount, LhrSource};
+use crate::analyse::{HitCount, LhrSource, MeasurementTree};
 
 pub use prefix_crab::test_utils::*;
 
@@ -41,4 +41,3 @@ pub fn gen_add_lhr_beef(tree: &mut MeasurementTree, hits: HitCount) {
     let sources: HashSet<LhrSource> = vec![LhrSource::Trace].into_iter().collect();
     tree.add_lhr_no_sum(addr(TREE_LHR_BEEF), sources, hits);
 }
-

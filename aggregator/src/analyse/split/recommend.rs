@@ -140,11 +140,9 @@ fn sum_weird_hits(weirds: Vec<WeirdItem>) -> HitCount {
 mod tests {
     use assertor::{assert_that, EqualityAssertion};
 
-    use super::{PriorityClass::*, SplitRecommendation::*, *};
-    use crate::{
-        analyse::{split::subnet::Subnets, MeasurementTree},
-        test_utils::*,
-    };
+    use super::{*, PriorityClass::*, SplitRecommendation::*};
+    use crate::analyse::{split::subnet::Subnets, MeasurementTree};
+    use db_model::test_utils::*;
 
     #[test]
     fn same_single_lhr() {

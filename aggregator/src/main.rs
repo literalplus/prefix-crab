@@ -16,13 +16,10 @@ pub use db_model::{schema, sql_types};
 mod analyse;
 /// Business logic for handling incoming probes
 mod handle_probe;
-mod measurement_tree;
 /// RabbitMQ-specific logic (producers, consumers), encapsulated using in-memory senders/receivers
 mod rabbit;
 /// Scheduling new analyses based on priority and capacity
 mod schedule;
-#[cfg(test)]
-mod test_utils;
 
 #[derive(Parser)]
 #[command(author, version, about)]

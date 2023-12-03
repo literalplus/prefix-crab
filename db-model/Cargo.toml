@@ -23,3 +23,5 @@ clap               = { workspace = true }
 queue-models       = { path = "../queue-models" }
 assertor           = { version = "0.0.2" }
 thiserror          = { workspace = true }
+itertools          = { workspace = true }
+nohash-hasher      = "0.2.0"

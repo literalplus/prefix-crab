@@ -1,10 +1,8 @@
 pub use analysis::*;
-pub use crate::measurement_tree::*;
-pub use measurement_forest::*;
+pub use db_model::analyse::forest::*;
 pub use interpretation::*;
 
 mod analysis;
-mod measurement_forest;
 mod interpretation;
 
-pub use crate::measurement_tree::HitCount;
+pub use db_model::analyse::HitCount;

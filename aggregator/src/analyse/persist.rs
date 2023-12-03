@@ -1,5 +1,6 @@
 use anyhow::{Context as AnyhowContext, *};
 
+use db_model::analyse::MeasurementTree;
 use diesel::prelude::*;
 use diesel::PgConnection;
 use ipnet::Ipv6Net;
@@ -11,7 +12,6 @@ use crate::analyse::context::Context;
 use crate::analyse::Interpretation;
 use crate::analyse::LastHopRouter;
 use crate::analyse::MeasurementForest;
-use crate::analyse::MeasurementTree;
 use crate::analyse::ModifiableTree;
 use crate::analyse::ModificationType;
 use crate::analyse::Prefix;

@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
-    net::Ipv6Addr, ops::IndexMut,
+    net::Ipv6Addr,
+    ops::IndexMut,
 };
 
 use anyhow::{bail, Result};

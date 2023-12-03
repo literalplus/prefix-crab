@@ -192,7 +192,8 @@ mod tests {
     use assertor::{assert_that, EqualityAssertion, MapAssertion, IteratorAssertion};
 
     use super::*;
-    use crate::{analyse::LhrSource, test_utils::*};
+    use crate::analyse::LhrSource;
+    use db_model::test_utils::*;
 
     #[test]
     fn new_empty() {

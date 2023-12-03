@@ -1,5 +1,6 @@
 pub use model::*;
 pub use echo::result::*;
+pub use db_model::analyse::*;
 
 pub mod context;
 pub mod echo;
