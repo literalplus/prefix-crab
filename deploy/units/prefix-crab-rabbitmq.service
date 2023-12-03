@@ -24,6 +24,7 @@ ExecStart=/usr/bin/podman run \
 	--sdnotify=conmon \
 	-d \
 	--name=prefix-crab-rabbitmq \
+	--hostname=prefix-crab-rabbitmq \
 	--publish=127.0.0.1:17861:5672 \
 	--publish=127.0.0.1:17863:15672 \
 	--memory=1g \
