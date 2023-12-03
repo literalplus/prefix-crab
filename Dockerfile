@@ -18,9 +18,6 @@ COPY Cargo.lock .
 COPY src src
 RUN cargo build --release
 
-COPY db-model db-model
-RUN cd db-model && cargo build --release
-
 # Build remaining applications
 COPY . .
 RUN cargo build --release --workspace
