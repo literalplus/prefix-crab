@@ -78,3 +78,4 @@ chrono              = { workspace = true }
 tokio-util          = { workspace = true }
 itertools           = { workspace = true }
 thiserror           = { workspace = true }
+nix                 = { version = "0.27", features = ["signal"] }

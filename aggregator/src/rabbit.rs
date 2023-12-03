@@ -3,6 +3,7 @@ use anyhow::*;
 use clap::Args;
 use log::debug;
 use prefix_crab::helpers::rabbit::{ConfigureRabbit, RabbitHandle};
+use prefix_crab::helpers::stop;
 use queue_models::probe_request::ProbeRequest;
 use queue_models::probe_response::{EchoProbeResponse, TraceResponse};
 use queue_models::TypeRoutedMessage;
@@ -66,7 +67,8 @@ pub async fn run(
         exit_res = receiver => exit_res,
         exit_res = probe_sender => exit_res,
     };
-    debug!("RabbitMQ handler shutting down.");
+    debug!("RabbitMQ handler is shutting down. Triggering clean stop.");
+    stop::trigger();
     res
 }
 
