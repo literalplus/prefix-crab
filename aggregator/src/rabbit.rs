@@ -1,6 +1,7 @@
 use crate::handle_probe::TaskRequest;
 use anyhow::*;
 use clap::Args;
+use log::debug;
 use prefix_crab::helpers::rabbit::{ConfigureRabbit, RabbitHandle};
 use queue_models::probe_request::ProbeRequest;
 use queue_models::probe_response::{EchoProbeResponse, TraceResponse};
@@ -61,10 +62,12 @@ pub async fn run(
         params.pretty_print,
         stop_rx,
     );
-    select! {
+    let res = select! {
         exit_res = receiver => exit_res,
         exit_res = probe_sender => exit_res,
-    }
+    };
+    debug!("RabbitMQ handler shutting down.");
+    res
 }
 
 async fn prepare(params: &Params) -> Result<RabbitHandle> {

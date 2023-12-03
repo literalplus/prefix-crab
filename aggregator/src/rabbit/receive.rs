@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use amqprs::Deliver;
 use anyhow::*;
 use async_trait::async_trait;
+use log::debug;
 use prefix_crab::helpers::rabbit::ack_sender::AckSender;
 use prefix_crab::loop_with_stop;
 use queue_models::TypeRoutedMessage;
@@ -37,11 +38,13 @@ pub async fn run(
     let trace = trace_recv.run(stop_rx.clone());
     let echo = echo_recv.run(stop_rx);
 
-    select! {
+    let res = select! {
         res = echo => res.context("in echo listener"),
         res = trace => res.context("in trace listener"),
         res = ack => res.context("in ack sender"),
-    }
+    };
+    debug!("RabbitMQ receivers shutting down.");
+    res
 }
 
 fn make_receiver<'han, T>(
