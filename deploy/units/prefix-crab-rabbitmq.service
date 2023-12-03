@@ -38,11 +38,11 @@ ExecStart=/usr/bin/podman run \
 	--mount=type=bind,source=/home/%u/prefix-crab/deploy/rabbitmq.conf,ro,destination=/etc/rabbitmq/conf.d/20-prefix-crab-bind-mount.conf \
 	--tz=UTC docker.io/rabbitmq:3-management-alpine
 ExecStop=/usr/bin/podman stop \
-	--ignore --time=10 \
+	--ignore \
 	--cidfile=%t/%n.ctr-id
 ExecStopPost=/usr/bin/podman rm \
 	-f \
-	--ignore --time=10 \
+	--ignore \
 	--cidfile=%t/%n.ctr-id
 Type=notify
 NotifyAccess=all

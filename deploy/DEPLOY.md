@@ -79,6 +79,10 @@ You also need to create the data directories (`postgresql-data`, `rabbitmq-data`
 The `--group-add=keep-groups` flag on the container command lines ensures that the container users are able to access
 the volume using the user's group on the host system, which must have r/w access to the directories.
 
+If you need access to the volume directory afterwards from the host, this can be accomplished like so:
+`podman unshare chmod g+r /path/to/postgresql-data`. `podman unshare` runs a command in the podman user namespace,
+allowing access to the directory -- as the user is `root` in the user namespace.
+
 ## Various notes
 
 Host loopback binds to host.containers.internal, but this is the public IP address of the host, and we cannot
