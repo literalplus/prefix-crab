@@ -30,7 +30,8 @@ ExecStart=/usr/bin/podman run \
 	--secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PASSWORD \
 	--env=POSTGRES_USER=postgres \
 	--env=POSTGRES_DB=prefix_crab \
-	--mount=type=bind,source=/scans/2023_12_prefix-crab-univie/postgresql-data,rw,destination=/var/lib/postgresql/data,chown \
+	--group-add=keep-groups \
+	--mount=type=bind,source=/scans/2023_12_prefix-crab-univie/postgresql-data,rw,destination=/var/lib/postgresql/data \
 	--tz=UTC docker.io/postgres:15.3-alpine
 ExecStop=/usr/bin/podman stop \
 	--ignore --time=1010 \

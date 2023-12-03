@@ -67,7 +67,7 @@ pushd units && systemctl --user enable --now *.service; popd
 #systemctl --user enable --now "prefix-crab*"
 ```
 
-## Storage
+### Storage
 
 The only persistent storage in the system are the infrastructure services (RabbitMQ, Postgres).
 
@@ -75,6 +75,9 @@ These are configured to specific host-paths in the `/scans/` directory. If you w
 you need to create a new directory there and adjust the bind mounts in the systemd units.
 
 You also need to create the data directories (`postgresql-data`, `rabbitmq-data`) upfront, empty.
+
+The `--group-add=keep-groups` flag on the container command lines ensures that the container users are able to access
+the volume using the user's group on the host system, which must have r/w access to the directories.
 
 ## Various notes
 
