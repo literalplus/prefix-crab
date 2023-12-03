@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 
-SECRET_NAME=prefix-crab-postgres-password
+echo "Use the \`crab-tools\` command in the container to access the tools"
 
-SECRET_VALUE=$(podman run --secret "$SECRET_NAME" --log-driver=none --rm docker.io/alpine cat "/run/secrets/$SECRET_NAME" || (echo "Failed to read credential!" && exit 17))
-
-pushd ../crab-tools || exit 6
-DATABASE_URL="postgres://postgres:${SECRET_VALUE}@localhost:17862/prefix_crab" rustup run stable -- cargo run -- "${@}"
-popd || exit 6
+/usr/bin/podman run \
+	--rm \
+	--add-host=localhost.containers.internal:10.0.2.2 \
+	--network=slirp4netns:allow_host_loopback=true \
+	--pull=never \
+	--secret=prefix-crab-rmq-password,type=env,target=RMQ_PW \
+	--secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PW \
+	--mount=type=bind,source=/home/%u/prefix-crab/deploy/containers.env,ro,destination=/home/app/.env \
+	--mount=type=bind,source=/etc/scanning/blocklist,ro,destination=/etc/scanning/blocklist \
+    --entrypoint=/bin/bash \
+    -it \
+	--tz=UTC prefix-crab.local/crab-tools
