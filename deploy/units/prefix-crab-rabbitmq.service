@@ -34,11 +34,11 @@ ExecStart=/usr/bin/podman run \
 	--volume=prefix-crab-rabbitmq:/var/lib/rabbitmq \
 	--tz=UTC docker.io/rabbitmq:3-management-alpine
 ExecStop=/usr/bin/podman stop \
-	--ignore -t 10 \
+	--ignore -t=10 \
 	--cidfile=%t/%n.ctr-id
 ExecStopPost=/usr/bin/podman rm \
 	-f \
-	--ignore -t 10 \
+	--ignore -t=10 \
 	--cidfile=%t/%n.ctr-id
 Type=notify
 NotifyAccess=all

@@ -43,11 +43,11 @@ ExecStart=/usr/bin/podman run \
 	--mount=type=bind,source=/home/%u/prefix-crab/deploy/containers.env,ro,destination=/home/app/.env \
 	--tz=UTC prefix-crab.local/aggregator
 ExecStop=/usr/bin/podman stop \
-	--ignore -t 10 \
+	--ignore -t=10 \
 	--cidfile=%t/%n.ctr-id
 ExecStopPost=/usr/bin/podman rm \
 	-f \
-	--ignore -t 10 \
+	--ignore -t=10 \
 	--cidfile=%t/%n.ctr-id
 Type=notify
 NotifyAccess=all
