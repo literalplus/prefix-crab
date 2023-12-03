@@ -27,13 +27,14 @@ ExecStart=/usr/bin/podman run \
 	--hostname=prefix-crab-rabbitmq \
 	--publish=127.0.0.1:17861:5672 \
 	--publish=127.0.0.1:17863:15672 \
-	--memory=1g \
+	--memory=2g \
 	--read-only \
 	--read-only-tmpfs=false \
 	--replace \
 	--secret=prefix-crab-rmq-password,type=env,target=RABBITMQ_DEFAULT_PASS \
 	--env=RABBITMQ_DEFAULT_USER=rabbit \
 	--volume=prefix-crab-rabbitmq:/var/lib/rabbitmq \
+	--mount=type=bind,source=/home/%u/prefix-crab/deploy/rabbitmq.conf,ro,destination=/var/lib/rabbitmq/conf.d/10-prefix-crab-bind-mount.conf \
 	--tz=UTC docker.io/rabbitmq:3-management-alpine
 ExecStop=/usr/bin/podman stop \
 	--ignore --time=10 \
