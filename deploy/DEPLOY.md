@@ -67,6 +67,15 @@ pushd units && systemctl --user enable --now *.service; popd
 #systemctl --user enable --now "prefix-crab*"
 ```
 
+## Storage
+
+The only persistent storage in the system are the infrastructure services (RabbitMQ, Postgres).
+
+These are configured to specific host-paths in the `/scans/` directory. If you want to start completely fresh,
+you need to create a new directory there and adjust the bind mounts in the systemd units.
+
+You also need to create the data directories (`postgresql-data`, `rabbitmq-data`) upfront, empty.
+
 ## Various notes
 
 Host loopback binds to host.containers.internal, but this is the public IP address of the host, and we cannot
@@ -127,9 +136,9 @@ RestartMaxDelaySec=5m
 The latter two options are supported starting with systemd v254, which isn't far away from the version used in
 Debian 12.
 
-# How to update
+## How to update
 
-## Bare-Metal (buddies)
+### Bare-Metal (buddies)
 
 ```bash
 # ON THE SERVER
@@ -138,7 +147,7 @@ systemctl --user daemon-reload  # if there are changes to the unit files
 systemctl --user restart prefix-crab-{yarrp,zmap}-buddy.service  # will recompile
 ```
 
-## Containers (everything else)
+### Containers (everything else)
 
 ```bash
 # ON THE DEVELOPER MACHINE (server has no Docker builder)
@@ -153,7 +162,7 @@ systemctl --user restart prefix-crab-aggregator.service
 systemctl --user restart prefix-crab-seed-guard.service
 ```
 
-# Access to infrastructure services (port forwarding)
+## Access to infrastructure services (port forwarding)
 
 ```bash
 ssh -L 17863:localhost:17863 pnowak@measurement-aim.etchosts.internal  # rmq UI
