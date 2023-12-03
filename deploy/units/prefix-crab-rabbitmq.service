@@ -25,6 +25,7 @@ ExecStart=/usr/bin/podman run \
 	-d \
 	--name=prefix-crab-rabbitmq \
 	--publish=127.0.0.1:17861:5672 \
+	--publish=127.0.0.1:17863:15672 \
 	--memory=1g \
 	--read-only \
 	--read-only-tmpfs=false \

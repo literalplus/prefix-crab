@@ -152,3 +152,12 @@ systemctl --user daemon-reload
 systemctl --user restart prefix-crab-aggregator.service
 systemctl --user restart prefix-crab-seed-guard.service
 ```
+
+# Access to infrastructure services (port forwarding)
+
+```bash
+ssh -L 17863:localhost:17863 pnowak@measurement-aim.etchosts.internal  # rmq UI
+ssh -L 17862:localhost:17862 pnowak@measurement-aim.etchosts.internal  # postgres
+```
+
+https://localhost:17863
