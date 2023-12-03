@@ -11,6 +11,7 @@ use regex::Regex;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
+use super::Params;
 use super::targets::TargetCollector;
 
 /// Base config for calling zmap
@@ -65,13 +66,20 @@ impl Caller {
         self.sudo_verified = true;
     }
 
-    /// Pushes an IPv6 source address to the generated command. Should only be called once.
-    pub fn push_source_address(&mut self, source_address_string: String) -> Result<()> {
-        let parsed_source_address: Ipv6Addr = source_address_string
+    /// Should only be called once
+    pub fn setup(&mut self, params: &Params) -> Result<()> {
+        if let Some(interface_name) = &params.interface {
+            self.cmd.arg(format!("--interface={}", interface_name));
+        }
+        if let Some(gateway_mac) = &params.gateway_mac {
+            self.cmd.arg(format!("--gateway-mac={}", gateway_mac));
+        }
+        let parsed_source_address: Ipv6Addr = params.source_address
             .parse()
-            .with_context(|| format!("Failed to parse source IPv6: {}", source_address_string))?;
+            .with_context(|| format!("Failed to parse source IPv6: {}", params.source_address))?;
         self.cmd
-            .arg(format!("--ipv6-source-ip={}", parsed_source_address));
+            .arg(format!("--ipv6-source-ip={}", parsed_source_address))
+            .arg(format!("--rate={}", params.rate_pps));
         Ok(())
     }
 
@@ -82,14 +90,6 @@ impl Caller {
         let (tx, rx) = mpsc::unbounded_channel();
         self.response_tx = Some(tx);
         rx
-    }
-
-    pub fn request_interface(&mut self, interface_name: String) {
-        self.cmd.arg(format!("--interface={}", interface_name));
-    }
-
-    pub fn request_gateway_mac(&mut self, gateway_mac: String) {
-        self.cmd.arg(format!("--gateway-mac={}", gateway_mac));
     }
 
     /// Runs the configured command, consuming this instance.
@@ -197,11 +197,10 @@ impl Caller {
 
     fn set_base(&mut self) {
         self.cmd
-            .arg("--bandwidth=10K") // TODO use "rate" in pps instead for consistency with yarrp?
             .arg("--verbosity=5")
             .arg("--cooldown-time=4") // wait for responses for n secs after sending
             .arg("--probe-module=icmp6_echoscan")
-            .arg("--probe-ttl=255")
+            .arg("--probe-ttl=128") // Windows value; 64 is RECOMMENDED and should also be safe (if we can't reach it with 64 then it's likely not a super reachable host)
             .arg("--output-fields=type,code,original_ttl,orig-dest-ip,saddr,classification")
             .arg("--output-module=csv")
             .arg("--disable-syslog")

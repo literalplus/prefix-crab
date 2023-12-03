@@ -36,6 +36,12 @@ pub struct Params {
     /// FQ path to sudo binary
     #[arg(long, default_value = "/usr/bin/sudo")]
     sudo_path: String,
+
+    #[arg(long, env = "ZMAP_RATE_PPS", default_value = "10")]
+    rate_pps: u16,
+
+    #[arg(long, env = "ZMAP_SHUTDOWN_WAIT_SECS", default_value = "23")]
+    shutdown_wait_secs: u16,
 }
 
 impl Params {
@@ -50,14 +56,8 @@ impl Params {
         let mut caller = Caller::new(
             self.sudo_path.to_string(), self.bin_path.to_string(),
         );
-        if let Some(interface_name) = &self.interface {
-            caller.request_interface(interface_name.to_string());
-        }
-        if let Some(gateway_mac) = &self.gateway_mac {
-            caller.request_gateway_mac(gateway_mac.to_string());
-        }
         debug!("Using zmap caller: {:?}", caller);
-        caller.push_source_address(self.source_address.to_string())?;
+        caller.setup(&self)?;
         Ok(caller)
     }
 

@@ -42,7 +42,10 @@ pub struct Params {
     interface: Option<String>,
 
     #[arg(long, env = "YARRP_RATE_PPS", default_value = "10")] // upstream default
-    yarrp_rate_pps: i16,
+    rate_pps: u16,
+
+    #[arg(long, env = "YARRP_SHUTDOWN_WAIT_SECS", default_value = "23")]
+    shutdown_wait_secs: u16,
 
     /// FQ path to yarrp binary
     #[arg(long, default_value = "/usr/local/bin/yarrp", env = "YARRP_BIN_PATH")]

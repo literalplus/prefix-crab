@@ -86,12 +86,12 @@ impl Caller {
             .expect("IPv6 source address to be a valid IPv6 address");
         self.cmd
             .arg(format!("--srcaddr={}", params.source_address))
-            .arg(format!("--rate={}", params.yarrp_rate_pps))
+            .arg(format!("--rate={}", params.rate_pps))
             .arg(format!("--minttl={}", params.min_ttl))
             .arg(format!("--maxttl={}", params.max_ttl))
             .arg(format!("--neighborhood={}", params.neighborhood_max_ttl))
             .arg(format!("--fillmode={}", params.fill_mode_max_ttl))
-            .arg("--shutdown_wait=10")
+            .arg(format!("--shutdown_wait={}", params.shutdown_wait_secs))
             .arg("--max_null_reads=5");
     }
 
