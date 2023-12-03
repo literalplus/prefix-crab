@@ -9,7 +9,7 @@ echo "Use the \`crab-tools\` command in the container to access the tools"
 	--pull=never \
 	--secret=prefix-crab-rmq-password,type=env,target=RMQ_PW \
 	--secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PW \
-	--mount=type=bind,source=$(pwd)/containers.env,ro,destination=/home/app/.env \
+	--mount=type=bind,source=$(pwd)/containers.env,ro,destination=/.env \
 	--mount=type=bind,source=/etc/scanning/blocklist,ro,destination=/etc/scanning/blocklist \
     --entrypoint=/bin/bash \
     -it \
