@@ -36,7 +36,8 @@ pushd .. && ln -s deploy/bare-metal.env .env; popd
 ```
 
 Build & push the images on the developer machine. Note that this relies on `docker`, like the local setup, and not
-`buildah`. `push-bins.sh` compiles & deploys the bare-metal Rust binaries (target machine has too old Rust version).
+`buildah`. If the target machine has `docker` installed (or `buildah` and the scripts are slightly adapted), it could
+be used directly with `build-img.sh`.
 
 ```bash
 cd deploy
@@ -125,3 +126,29 @@ RestartMaxDelaySec=5m
 
 The latter two options are supported starting with systemd v254, which isn't far away from the version used in
 Debian 12.
+
+# How to update
+
+## Bare-Metal (buddies)
+
+```bash
+# ON THE SERVER
+git pull
+systemctl --user daemon-reload  # if there are changes to the unit files
+systemctl --user restart prefix-crab-{yarrp,zmap}-buddy.service  # will recompile
+```
+
+## Containers (everything else)
+
+```bash
+# ON THE DEVELOPER MACHINE (server has no Docker builder)
+cd deploy
+./push-img.sh aggregator
+./push-img.sh seed-guard
+
+# ON THE SERVER
+git pull
+systemctl --user daemon-reload
+systemctl --user restart prefix-crab-aggregator.service
+systemctl --user restart prefix-crab-seed-guard.service
+```

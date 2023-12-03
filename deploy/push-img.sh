@@ -8,17 +8,7 @@ fi
 MODULE=$1
 TARGET_HOST=pnowak@measurement-aim.etchosts.internal
 
-pushd .. || exit 3
-
-if [[ ! -d "$MODULE" ]]; then
-    echo "$MODULE is not a directory"
-    exit 6
-fi
-
-make "docker-builder" || exit 2
-pushd "$MODULE" || exit 3
-docker build -t "prefix-crab.local/$MODULE" . || exit 18
-popd || exit 3
+./build-img.sh "$MODULE"
 
 echo " --- Now sending over image prefix-crab.local/$MODULE ---"
 docker save "prefix-crab.local/$MODULE" | ssh "$TARGET_HOST" podman load
