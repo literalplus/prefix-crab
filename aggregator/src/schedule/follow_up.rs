@@ -53,8 +53,8 @@ fn make_actual_targets(req: FollowUpRequest) -> Vec<Ipv6Addr> {
     let mut rng = thread_rng();
     req.follow_ups
         .into_iter()
-        // drop 75% of requests to reduce load
-        .filter(|_| rng.gen_ratio(1, 4))
+        // drop 50% of requests to reduce load
+        .filter(|_| rng.gen_ratio(1, 2))
         .flat_map(|it| it.targets)
         .collect()
 }
