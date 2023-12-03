@@ -77,7 +77,7 @@ impl Default for PriorityClass {
     }
 }
 
-#[derive(Queryable, Debug, Copy, Clone)]
+#[derive(Queryable, Debug, Copy, Clone, PartialEq, Eq)]
 #[diesel(table_name = crate::schema::prefix_tree)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(primary_key(net))]
