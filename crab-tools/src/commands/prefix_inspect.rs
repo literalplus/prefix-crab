@@ -22,8 +22,8 @@ pub fn handle(params: Params) -> Result<()> {
 
     let tree = load_tree(&mut conn, &params.target_prefix)?;
     println!(
-        " -> Tree data: {} / {:?} / {}%",
-        tree.net, tree.merge_status, tree.confidence
+        " -> Tree data: {} / {:?} / {:?} / {}%",
+        tree.net, tree.merge_status, tree.priority_class, tree.confidence
     );
 
     let measurements = load_relevant_measurements(&mut conn, &params.target_prefix)?;
@@ -46,7 +46,9 @@ pub fn handle(params: Params) -> Result<()> {
 
         println!("   Last-Hop Routers:");
         for (addr, item) in subnet.iter_lhrs() {
-            println!("    * {} - {} hits", addr, item.hit_count);
+            let percent =
+                (item.hit_count as i64 * 100i64).div_euclid(subnet.responsive_count() as i64);
+            println!("    * {} - {} hits ({}%)", addr, item.hit_count, percent);
         }
         println!("   Weirdness:");
         for (typ, item) in subnet.iter_weirds() {
