@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Args;
 use db_model::{
-    analyse::{MeasurementTree, subnet::Subnets},
+    analyse::{subnet::Subnets, MeasurementTree},
     persist::{self, dsl::CidrMethods, DieselErrorFixCause},
     prefix_tree::PrefixTree,
 };
@@ -21,16 +21,29 @@ pub fn handle(params: Params) -> Result<()> {
     let mut conn = persist::connect()?;
 
     let tree = load_tree(&mut conn, &params.target_prefix)?;
-    println!(" -> Tree data: {} / {:?} / {}%", tree.net, tree.merge_status, tree.confidence);
+    println!(
+        " -> Tree data: {} / {:?} / {}%",
+        tree.net, tree.merge_status, tree.confidence
+    );
 
     let measurements = load_relevant_measurements(&mut conn, &params.target_prefix)?;
-    println!(" -> {} measurements recorded for this prefix", measurements.len());
+    println!(
+        " -> {} /64 prefixes probed in this prefix",
+        measurements.len()
+    );
 
     let subnets = Subnets::new(params.target_prefix, measurements)?;
-
     for subnet in subnets.iter() {
         println!();
         println!(" # Subnet: {}", subnet.subnet.network);
+
+        println!(
+            "   {} Probes:",
+            subnet.unresponsive_count() + subnet.responsive_count()
+        );
+        println!("    * {} responsive", subnet.responsive_count());
+        println!("    * {} unresponsive", subnet.unresponsive_count());
+
         println!("   Last-Hop Routers:");
         for (addr, item) in subnet.iter_lhrs() {
             println!("    * {} - {} hits", addr, item.hit_count);

@@ -29,6 +29,14 @@ impl Subnet {
     pub fn iter_weirds(&self) -> std::collections::hash_map::Iter<'_, WeirdType, WeirdItem> {
         self.synthetic_tree.weirdness.items.iter()
     }
+
+    pub fn unresponsive_count(&self) -> i32 {
+        self.synthetic_tree.unresponsive_count
+    }
+
+    pub fn responsive_count(&self) -> i32 {
+        self.synthetic_tree.responsive_count
+    }
 }
 
 impl From<SplitSubnet> for Subnet {
