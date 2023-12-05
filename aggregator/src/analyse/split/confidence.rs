@@ -15,13 +15,14 @@ pub fn rate(net: Ipv6Net, rec: &SplitRecommendation) -> Confidence {
 }
 
 fn rate_yes(prio: &ReProbePriority, net: &Ipv6Net) -> Confidence {
-    // TODO evaluate what different function we could use for the "distinct responses required for same" case,
-    // it seems like it should be different.
-    rate_no(prio, net)
+    rate_with_thresh(prio, max_equivalent_responses_thresh(net))
 }
 
 fn rate_no(prio: &ReProbePriority, net: &Ipv6Net) -> Confidence {
-    let thresh = min_equivalent_responses_thresh(net);
+    rate_with_thresh(prio, min_equivalent_responses_thresh(net))
+}
+
+fn rate_with_thresh(prio: &ReProbePriority, thresh: u32) -> Confidence {
     debug_assert!(thresh > 0);
     let evidence = 0i32.max(prio.supporting_observations) as u32;
     if evidence > thresh {
@@ -47,6 +48,15 @@ fn min_equivalent_responses_thresh(net: &Ipv6Net) -> u32 {
     let prefix_len_capped = MIN_REALISTIC_AGGREGATE.max(net.prefix_len());
     let height = 64u8.saturating_sub(prefix_len_capped);
     let min_response_exp = 2f64.powf(height as f64 / 4f64);
+    debug_assert!(min_response_exp >= 1.0);
+    (min_response_exp * (THRESH_FOR_64_CONST as f64)).trunc() as u32
+}
+
+fn max_equivalent_responses_thresh(net: &Ipv6Net) -> u32 {
+    // https://docs.google.com/spreadsheets/d/1rOlf3MNCSIj58b9yB1Ni-Dnr2sWrostZoqOcSjIm_To/edit#gid=0
+    let prefix_len_capped = MIN_REALISTIC_AGGREGATE.max(net.prefix_len());
+    let height = 64u8.saturating_sub(prefix_len_capped);
+    let min_response_exp = 1.5f64.powf(height as f64 / 4f64);
     debug_assert!(min_response_exp >= 1.0);
     (min_response_exp * (THRESH_FOR_64_CONST as f64)).trunc() as u32
 }
@@ -94,18 +104,18 @@ mod tests {
         // given
         let cases = [
             (64, 64),
-            (63, 76),
-            (62, 90),
-            (61, 107),
-            (60, 128),
-            (16, 262_144),
-            (12, 262_144),
+            (63, 70),
+            (62, 78),
+            (61, 86),
+            (60, 96),
+            (16, 8303),
+            (12, 8303),
         ];
 
         // when, then
         for (prefix_size, threshold) in cases {
             let net = Ipv6Net::new(addr(TREE_LHR_BEEF), prefix_size).unwrap();
-            let actual = min_equivalent_responses_thresh(&net);
+            let actual = max_equivalent_responses_thresh(&net);
             if actual != threshold {
                 bail!(
                     "Prefix size {}: Expected threshold {} but got {}",
