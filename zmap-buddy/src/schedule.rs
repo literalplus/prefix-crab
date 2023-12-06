@@ -84,10 +84,10 @@ impl Scheduler {
         })
         .await
         .context("pre-flight sudo access check failed")??;
-    info!(
-        "Loading blocklist from `{:?}`",
-        params.blocklist.blocklist_file
-    );
+        info!(
+            "Loading blocklist from `{:?}`",
+            params.blocklist.blocklist_file
+        );
         blocklist::read(params.blocklist)
             .context("pre-flight blocklist check failed")
             .map(|_| ())
@@ -104,6 +104,11 @@ impl Scheduler {
     }
 
     async fn do_scan_batch(&self, batch: Vec<TaskRequest>) -> Result<()> {
+        info!(
+            "Scanning a batch of {} prefixes, {} probes total...",
+            batch.len(),
+            SAMPLES_PER_SUBNET as usize * 2 * batch.len(),
+        );
         let mut task = SchedulerTask::new(self.params.clone())?;
         let mut at_least_one_ok = false;
         for item in batch.iter() {

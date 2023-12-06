@@ -32,7 +32,7 @@ pub struct Params {
 
     /// How many measurements to include in a chunk at most. If this many probes have been
     /// buffered, a chunk is immediately created and zmap will be invoked.
-    #[arg(long, default_value = "32")]
+    #[arg(long, default_value = "32", env = "MAX_CHUNK_SIZE")]
     max_chunk_size: usize,
 }
 
@@ -98,8 +98,12 @@ impl Scheduler {
             }
         }
     }
-
     async fn do_scan_batch(&self, chunk: Vec<TaskRequest>) -> Result<()> {
+        info!(
+            "Scanning a batch of {} requests, comprising {} targets...", 
+            chunk.len(),
+            chunk.iter().map(|req| req.model.targets.len()).sum::<usize>(),
+        );
         let mut task = SchedulerTask::new(self.params.clone())?;
         let mut at_least_one_ok = false;
         for item in chunk.into_iter() {
