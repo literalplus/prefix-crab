@@ -32,7 +32,7 @@ pub struct Params {
 
     /// How many measurements to include in a chunk at most. If this many probes have been
     /// buffered, a chunk is immediately created and zmap will be invoked.
-    #[arg(long, default_value = "32", env = "MAX_CHUNK_SIZE")]
+    #[arg(long, default_value = "32", env = "YARRP_MAX_CHUNK_SIZE")]
     max_chunk_size: usize,
 }
 
