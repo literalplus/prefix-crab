@@ -1,3 +1,5 @@
+use std::io::{BufWriter, Write};
+
 use anyhow::Result;
 use clap::Args;
 use db_model::{
@@ -7,6 +9,12 @@ use db_model::{
 };
 use diesel::{PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
 use ipnet::Ipv6Net;
+use tuirealm::{AttrValue, Attribute, PollStrategy, Update};
+
+use self::app::Model;
+
+mod app;
+mod components;
 
 #[derive(Args, Clone)]
 pub struct Params {
@@ -18,45 +26,108 @@ pub struct Params {
 
 pub fn handle(params: Params) -> Result<()> {
     persist::initialize(&params.persist)?;
+
+    println!("Starting...");
+    let mut model = Model::new(params.target_prefix)?;
+    model.terminal.enter_alternate_screen()?;
+    if let Err(e) = model.terminal.enable_raw_mode() {
+        model.terminal.leave_alternate_screen()?;
+        Err(e)?;
+    }
+
+    let res = do_run(&mut model);
+
+    let _ = model.terminal.disable_raw_mode();
+    let _ = model.terminal.leave_alternate_screen();
+
+    res
+}
+
+fn do_run(model: &mut Model) -> Result<()> {
+    while !model.quit {
+        match model.app.tick(PollStrategy::Once) {
+            Err(err) => {
+                model
+                    .app
+                    .attr(
+                        &Id::StatusBar,
+                        Attribute::Text,
+                        AttrValue::String(format!("Application error: {}", err)),
+                    )
+                    .unwrap();
+            }
+            Result::Ok(messages) if messages.len() > 0 => {
+                model.redraw = true;
+                for msg in messages.into_iter() {
+                    let mut msg = Some(msg);
+                    while msg.is_some() {
+                        msg = model.update(msg);
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        if model.redraw {
+            model.view()?;
+            model.redraw = false;
+        }
+    }
+    Ok(())
+}
+
+fn print_prefix(net: &Ipv6Net) -> Result<String> {
+    let mut buf = BufWriter::new(vec![]);
     let mut conn = persist::connect()?;
 
-    let tree = load_tree(&mut conn, &params.target_prefix)?;
-    println!(
+    let tree = load_tree(&mut conn, net)?;
+    writeln!(
+        &mut buf,
         " -> Tree data: {} / {:?} / {:?} / {}%",
         tree.net, tree.merge_status, tree.priority_class, tree.confidence
-    );
+    )?;
 
-    let measurements = load_relevant_measurements(&mut conn, &params.target_prefix)?;
-    println!(
+    let measurements = load_relevant_measurements(&mut conn, net)?;
+    writeln!(
+        &mut buf,
         " -> {} /64 prefixes probed in this prefix",
         measurements.len()
-    );
+    )?;
 
-    let subnets = Subnets::new(params.target_prefix, measurements)?;
+    let subnets = Subnets::new(*net, measurements)?;
     for subnet in subnets.iter() {
-        println!();
-        println!(" # Subnet: {}", subnet.subnet.network);
+        writeln!(&mut buf)?;
+        writeln!(&mut buf, " # Subnet: {}", subnet.subnet.network)?;
 
-        println!(
+        writeln!(
+            &mut buf,
             "   {} Probes:",
             subnet.unresponsive_count() + subnet.responsive_count()
-        );
-        println!("    * {} responsive", subnet.responsive_count());
-        println!("    * {} unresponsive", subnet.unresponsive_count());
+        )?;
+        writeln!(&mut buf, "    * {} responsive", subnet.responsive_count())?;
+        writeln!(
+            &mut buf,
+            "    * {} unresponsive",
+            subnet.unresponsive_count()
+        )?;
 
-        println!("   Last-Hop Routers:");
+        writeln!(&mut buf, "   Last-Hop Routers:")?;
         for (addr, item) in subnet.iter_lhrs() {
             let percent =
                 (item.hit_count as i64 * 100i64).div_euclid(subnet.responsive_count() as i64);
-            println!("    * {} - {} hits ({}%)", addr, item.hit_count, percent);
+            writeln!(
+                &mut buf,
+                "    * {} - {} hits ({}%)",
+                addr, item.hit_count, percent
+            )?;
         }
-        println!("   Weirdness:");
+        writeln!(&mut buf, "   Weirdness:")?;
         for (typ, item) in subnet.iter_weirds() {
-            println!("    * {:?} - {} hits", typ, item.hit_count);
+            writeln!(&mut buf, "    * {:?} - {} hits", typ, item.hit_count)?;
         }
     }
 
-    Ok(())
+    Ok(String::from_utf8(buf.into_inner()?)?)
 }
 
 fn load_tree(conn: &mut PgConnection, target: &Ipv6Net) -> Result<PrefixTree> {
@@ -80,4 +151,17 @@ fn load_relevant_measurements(
         .select(MeasurementTree::as_select())
         .load(conn)
         .fix_cause()
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Msg {
+    AppClose,
+    SetStatus(String),
+    JustRedraw,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
+pub enum Id {
+    Viewport,
+    StatusBar,
 }
