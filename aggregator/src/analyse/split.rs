@@ -62,11 +62,6 @@ pub fn process(
     let subnets = Subnets::new(request.node().net, relevant_measurements)
         .map_err(|source| SplitError::SplitSubnets { source })?;
     let rec = recommend::recommend(&subnets);
-    debug!(
-        "For {}, the department is: Parks & {:?}",
-        request.log_id(),
-        rec
-    );
     let confidence = confidence::rate(request.node().net, &rec);
     persist::save_recommendation(conn, &request, &rec, confidence)
         .map_err(|source| SplitError::SaveRecommendation { source })?;
@@ -75,7 +70,7 @@ pub fn process(
             info!(
                 "Splitting prefix {} due to recommendation {:?} at {}% confidence.",
                 request.log_id(),
-                rec.priority().class,
+                rec,
                 confidence
             );
             persist::perform_prefix_split(conn, request, subnets, blocklist)
@@ -84,7 +79,7 @@ pub fn process(
             debug!(
                 "Keeping prefix {} due to recommendation {:?} at {}% confidence.",
                 request.log_id(),
-                rec.priority().class,
+                rec,
                 confidence
             );
         }
@@ -92,7 +87,7 @@ pub fn process(
         debug!(
             "No action on prefix {} due to recommendation {:?} at insufficient {}% confidence.",
             request.log_id(),
-            rec.priority().class,
+            rec,
             confidence
         );
     }
