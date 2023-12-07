@@ -144,7 +144,7 @@ impl Viewport {
                         .modifiers(BorderType::Thick)
                         .color(Color::Yellow),
                 )
-                .highlighted_str("🥕"),
+                .highlighted_str("👉"),
             current_prefix: *prefix,
             state: Mutex::new(ViewportState::Missing).into(),
             spinner,

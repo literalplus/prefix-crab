@@ -30,6 +30,10 @@ impl Subnet {
         self.synthetic_tree.weirdness.items.iter()
     }
 
+    pub fn probe_count(&self) -> i32 {
+        self.responsive_count() + self.unresponsive_count()
+    }
+
     pub fn unresponsive_count(&self) -> i32 {
         self.synthetic_tree.unresponsive_count
     }

@@ -1,4 +1,4 @@
-use std::io::{BufWriter, Write};
+use std::{io::{BufWriter, Write}, time::Instant};
 
 use anyhow::Result;
 use clap::Args;
@@ -83,47 +83,48 @@ fn print_prefix(net: &Ipv6Net) -> Result<String> {
     let tree = load_tree(&mut conn, net)?;
     writeln!(
         &mut buf,
-        " -> Tree data: {} / {:?} / {:?} / {}%",
+        "🌳 Tree data: {} 🍃{:?} 💰{:?} 💪{}%",
         tree.net, tree.merge_status, tree.priority_class, tree.confidence
     )?;
 
+    let load_start = Instant::now();
     let measurements = load_relevant_measurements(&mut conn, net)?;
     writeln!(
         &mut buf,
-        " -> {} /64 prefixes probed in this prefix",
-        measurements.len()
+        "👀 {} /64 prefixes probed in this prefix (loaded from DB in {:?})",
+        measurements.len(),
+        load_start.elapsed(),
     )?;
 
     let subnets = Subnets::new(*net, measurements)?;
     for subnet in subnets.iter() {
         writeln!(&mut buf)?;
-        writeln!(&mut buf, " # Subnet: {}", subnet.subnet.network)?;
+        writeln!(&mut buf, "▶ Subnet: {}", subnet.subnet.network)?;
 
+        let responsive_percent =
+            (subnet.responsive_count() as i64 * 100i64).div_euclid(subnet.probe_count() as i64);
         writeln!(
             &mut buf,
-            "   {} Probes:",
-            subnet.unresponsive_count() + subnet.responsive_count()
-        )?;
-        writeln!(&mut buf, "    * {} responsive", subnet.responsive_count())?;
-        writeln!(
-            &mut buf,
-            "    * {} unresponsive",
-            subnet.unresponsive_count()
+            " {} Probes, of these: (🔊{} 🔇{}) => {}% responsive",
+            subnet.probe_count(),
+            subnet.responsive_count(),
+            subnet.unresponsive_count(),
+            responsive_percent,
         )?;
 
-        writeln!(&mut buf, "   Last-Hop Routers:")?;
+        writeln!(&mut buf, " Last-Hop Routers:")?;
         for (addr, item) in subnet.iter_lhrs() {
             let percent =
                 (item.hit_count as i64 * 100i64).div_euclid(subnet.responsive_count() as i64);
             writeln!(
                 &mut buf,
-                "    * {} - {} hits ({}%)",
+                "  🚏 {} - {} hits ({}%)",
                 addr, item.hit_count, percent
             )?;
         }
-        writeln!(&mut buf, "   Weirdness:")?;
+        writeln!(&mut buf, " Weirdness:")?;
         for (typ, item) in subnet.iter_weirds() {
-            writeln!(&mut buf, "    * {:?} - {} hits", typ, item.hit_count)?;
+            writeln!(&mut buf, "  🌪 {:?} - {} hits", typ, item.hit_count)?;
         }
     }
 
