@@ -33,9 +33,9 @@ fn main() -> Result<()> {
 }
 
 fn do_run(cli: Cli) -> Result<()> {
-    // TODO tune buffer size parameter
     // bounded s.t. we don't keep consuming new work items when the scheduler is blocked for some reason.
-    let (task_tx, task_rx) = mpsc::channel(4096);
+    // (and also it makes the RabbitMQ graphs a bit more meaningful)
+    let (task_tx, task_rx) = mpsc::channel(10);
     let (res_tx, res_rx) = mpsc::unbounded_channel();
 
     // This task if shut down by the RabbitMQ receiver closing the channel
