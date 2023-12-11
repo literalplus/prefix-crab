@@ -5,7 +5,7 @@ use db_model::prefix_tree::PrefixTree;
 use log::{debug, info};
 use queue_models::probe_request::{ProbeRequest, TraceRequest, TraceRequestId};
 use rand::prelude::*;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::analyse::EchoFollowUp;
 
@@ -17,13 +17,13 @@ pub struct FollowUpRequest {
 }
 
 pub async fn run(
-    probe_tx: UnboundedSender<ProbeRequest>,
-    mut follow_up_rx: UnboundedReceiver<FollowUpRequest>,
+    probe_tx: Sender<ProbeRequest>,
+    mut follow_up_rx: Receiver<FollowUpRequest>,
 ) -> Result<()> {
     info!("Follow-up scheduler is ready for work.");
     loop {
         if let Some(req) = follow_up_rx.recv().await {
-            probe_tx.send(flatten_request(req))?;
+            probe_tx.send(flatten_request(req)).await?;
         } else {
             info!("Follow-up scheduler shutting down.");
             return Ok(());

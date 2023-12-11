@@ -27,7 +27,7 @@ pub async fn run(
     params: &Params,
     work_tx: mpsc::Sender<TaskRequest>,
     stop_rx: CancellationToken,
-    ack_rx: mpsc::UnboundedReceiver<TaskRequest>,
+    ack_rx: mpsc::Receiver<TaskRequest>,
 ) -> Result<()> {
     let echo_handle = handle.fork().await?;
     let echo_recv = make_receiver::<EchoProbeResponse>(&echo_handle, work_tx.clone(), params);
@@ -95,7 +95,7 @@ where
 
 async fn run_ack_router(
     echo_handle: &RabbitHandle, trace_handle: &RabbitHandle,
-    ack_rx: mpsc::UnboundedReceiver<TaskRequest>, stop_rx: CancellationToken
+    ack_rx: mpsc::Receiver<TaskRequest>, stop_rx: CancellationToken
 ) -> Result<()> {
     AckRouter {
         echo_ack: AckSender::new(echo_handle),
@@ -113,7 +113,7 @@ struct AckRouter<'a, 'b> {
 impl AckRouter<'_, '_> {
     async fn run(
         mut self,
-        mut ack_rx: mpsc::UnboundedReceiver<TaskRequest>,
+        mut ack_rx: mpsc::Receiver<TaskRequest>,
         stop_rx: CancellationToken,
     ) -> Result<()> {
         loop_with_stop!(

@@ -2,7 +2,7 @@ use anyhow::*;
 use clap::Args;
 use queue_models::probe_request::ProbeRequest;
 use tokio::{
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{Receiver, Sender},
     try_join,
 };
 use tokio_util::sync::CancellationToken;
@@ -31,8 +31,8 @@ pub struct Params {
 }
 
 pub async fn run(
-    probe_tx: UnboundedSender<ProbeRequest>,
-    follow_up_rx: UnboundedReceiver<FollowUpRequest>,
+    probe_tx: Sender<ProbeRequest>,
+    follow_up_rx: Receiver<FollowUpRequest>,
     stop_rx: CancellationToken,
     params: Params,
 ) -> Result<()> {

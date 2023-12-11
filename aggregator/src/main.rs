@@ -48,9 +48,9 @@ fn do_run(cli: Cli) -> Result<()> {
     // TODO tune buffer size parameter
     // bounded s.t. we don't keep consuming new work items when we block for some reason
     let (result_tx, result_rx) = mpsc::channel(64);
-    let (ack_tx, ack_rx) = mpsc::unbounded_channel();
-    let (probe_tx, probe_rx) = mpsc::unbounded_channel();
-    let (follow_up_tx, follow_up_rx) = mpsc::unbounded_channel();
+    let (ack_tx, ack_rx) = mpsc::channel(32);
+    let (probe_tx, probe_rx) = mpsc::channel(64);
+    let (follow_up_tx, follow_up_rx) = mpsc::channel(64);
 
     persist::initialize(&cli.persist)?;
 

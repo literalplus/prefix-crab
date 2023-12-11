@@ -8,7 +8,7 @@ use log::{error, info, trace, warn};
 use prefix_crab::loop_with_stop;
 use queue_models::probe_request::{EchoProbeRequest, ProbeRequest};
 use tokio::{
-    sync::mpsc::UnboundedSender,
+    sync::mpsc::Sender,
     time::{interval, Instant},
 };
 use tokio_util::sync::CancellationToken;
@@ -16,7 +16,7 @@ use tokio_util::sync::CancellationToken;
 mod class_budget;
 
 pub async fn run(
-    probe_tx: UnboundedSender<ProbeRequest>,
+    probe_tx: Sender<ProbeRequest>,
     stop_rx: CancellationToken,
     params: Params,
 ) -> Result<()> {
@@ -24,7 +24,7 @@ pub async fn run(
 }
 
 struct Timer {
-    probe_tx: UnboundedSender<ProbeRequest>,
+    probe_tx: Sender<ProbeRequest>,
     params: Params,
 }
 
@@ -40,17 +40,17 @@ impl Timer {
         ));
         loop_with_stop!(
             "analysis timer", stop_rx,
-            trigger.tick() => self.tick() as simple
+            trigger.tick() => self.tick() as void_async
         )
     }
 
-    fn tick(&mut self) {
-        if let Err(e) = self.do_tick() {
+    async fn tick(&mut self) {
+        if let Err(e) = self.do_tick().await {
             error!("Failed to schedule timed analysis due to {:?}", e);
         }
     }
 
-    fn do_tick(&mut self) -> Result<()> {
+    async fn do_tick(&mut self) -> Result<()> {
         let mut conn = crate::persist::connect()?;
         let budgets = class_budget::allocate(&mut conn, self.params.analysis_timer_prefix_budget)?;
 
@@ -76,7 +76,7 @@ impl Timer {
 
             for target_net in prefixes {
                 let req = EchoProbeRequest { target_net };
-                if self.probe_tx.send(ProbeRequest::Echo(req)).is_err() {
+                if self.probe_tx.send(ProbeRequest::Echo(req)).await.is_err() {
                     info!("Receiver closed probe channel, assume shutdown.");
                     return Ok(());
                 }

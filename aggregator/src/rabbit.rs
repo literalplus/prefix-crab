@@ -49,8 +49,8 @@ impl Params {
 
 pub async fn run(
     work_tx: mpsc::Sender<TaskRequest>,
-    ack_rx: mpsc::UnboundedReceiver<TaskRequest>,
-    probe_rx: mpsc::UnboundedReceiver<ProbeRequest>,
+    ack_rx: mpsc::Receiver<TaskRequest>,
+    probe_rx: mpsc::Receiver<ProbeRequest>,
     stop_rx: CancellationToken,
     params: Params,
 ) -> Result<()> {

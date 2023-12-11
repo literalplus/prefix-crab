@@ -52,5 +52,9 @@ macro_rules! loop_with_stop {
 
 (simple_async $result_simple:ident for $task_name:expr, $($calls:ident).+(it$(, $work_arg:ident)*)) => {
     loop_with_stop!(fn_call $($calls).+($($params),*) with $result_simple).await?;
+};
+
+(void_async $result_simple:ident for $task_name:expr, $($calls:ident).+($($params:tt),*)) => {
+    loop_with_stop!(fn_call $($calls).+($($params),*) with $result_simple).await;
 }
 }

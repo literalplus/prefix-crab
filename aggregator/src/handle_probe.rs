@@ -3,7 +3,7 @@ use clap::Args;
 use db_model::prefix_tree::context::ContextFetchError;
 use diesel::prelude::*;
 use log::{error, info, trace};
-use tokio::sync::mpsc::{Receiver, UnboundedSender};
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use prefix_crab::{
     blocklist::{self, PrefixBlocklist}, drop_if_permanent, error::IsPermanent, helpers::rabbit::ack_sender::CanAck,
@@ -36,8 +36,8 @@ impl CanAck for TaskRequest {
 
 pub async fn run(
     task_rx: Receiver<TaskRequest>,
-    ack_tx: UnboundedSender<TaskRequest>,
-    follow_up_tx: UnboundedSender<FollowUpRequest>,
+    ack_tx: Sender<TaskRequest>,
+    follow_up_tx: Sender<FollowUpRequest>,
     params: Params,
 ) -> Result<()> {
     let conn = crate::persist::connect()?;
@@ -55,8 +55,8 @@ pub async fn run(
 
 struct ProbeHandler {
     conn: PgConnection,
-    ack_tx: UnboundedSender<TaskRequest>,
-    follow_up_tx: UnboundedSender<FollowUpRequest>,
+    ack_tx: Sender<TaskRequest>,
+    follow_up_tx: Sender<FollowUpRequest>,
     blocklist: PrefixBlocklist,
 }
 
@@ -65,7 +65,7 @@ impl ProbeHandler {
         loop {
             if let Some(req) = task_rx.recv().await {
                 trace!("Received something: {:?}", req);
-                self.handle_recv(req).context("handling probe responses")?;
+                self.handle_recv(req).await.context("handling probe responses")?;
             } else {
                 info!("Probe handler shutting down.");
                 return Ok(());
@@ -73,12 +73,12 @@ impl ProbeHandler {
         }
     }
 
-    fn handle_recv(&mut self, req: TaskRequest) -> Result<()> {
-        match self.handle_one(&req) {
-            Result::Ok(_) => self.ack_tx.send(req).context("sending ack"),
-            Err(e) => match self.process_error(e, &req) {
+    async fn handle_recv(&mut self, req: TaskRequest) -> Result<()> {
+        match self.handle_one(&req).await {
+            Result::Ok(_) => self.ack_tx.send(req).await.context("sending ack"),
+            Err(e) => match process_error(e, &req) {
                 Result::Ok(_) => {
-                    self.ack_tx.send(req).context("sending err ack")?;
+                    self.ack_tx.send(req).await.context("sending err ack")?;
                     Ok(())
                 }
                 any => any,
@@ -86,18 +86,18 @@ impl ProbeHandler {
         }
     }
 
-    fn process_error(&self, e: Error, req: &TaskRequest) -> Result<()> {
-        drop_if_permanent!(e <- ContextFetchError);
-        drop_if_permanent!(e <- analyse::context::ContextFetchError);
-        // TODO Could be handled with DLQ
-        error!("Failed to handle request: {:?} - shutting down.", req);
-        Err(e)
-    }
-
-    fn handle_one(&mut self, req: &TaskRequest) -> Result<()> {
+    async fn handle_one(&mut self, req: &TaskRequest) -> Result<()> {
         match &req.model {
-            ProbeResponse::Echo(model) => self.handle_echo(model),
+            ProbeResponse::Echo(model) => self.handle_echo(model).await,
             ProbeResponse::Trace(model) => self.handle_trace(model),
         }
     }
+}
+
+fn process_error(e: Error, req: &TaskRequest) -> Result<()> {
+    drop_if_permanent!(e <- ContextFetchError);
+    drop_if_permanent!(e <- analyse::context::ContextFetchError);
+    // TODO Could be handled with DLQ
+    error!("Failed to handle request: {:?} - shutting down.", req);
+    Err(e)
 }

@@ -9,7 +9,7 @@ use prefix_crab::loop_with_stop;
 use queue_models::probe_request::ProbeRequest;
 use queue_models::RoutedMessage;
 use serde::Serialize;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::Receiver;
 use tokio_util::sync::CancellationToken;
 
 struct RabbitSender<'han> {
@@ -20,7 +20,7 @@ struct RabbitSender<'han> {
 
 pub async fn run(
     handle: &RabbitHandle,
-    work_rx: UnboundedReceiver<ProbeRequest>,
+    work_rx: Receiver<ProbeRequest>,
     exchange_name: String,
     pretty_print: bool,
     stop_rx: CancellationToken,
@@ -38,7 +38,7 @@ pub async fn run(
 impl RabbitSender<'_> {
     async fn run(
         mut self,
-        mut work_rx: UnboundedReceiver<ProbeRequest>,
+        mut work_rx: Receiver<ProbeRequest>,
         stop_rx: CancellationToken,
     ) -> Result<()> {
         loop_with_stop!(

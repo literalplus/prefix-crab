@@ -13,7 +13,7 @@ use crate::{
 use super::{archive, ProbeHandler};
 
 impl ProbeHandler {
-    pub(super) fn handle_echo(&mut self, res: &EchoProbeResponse) -> Result<()> {
+    pub(super) async fn handle_echo(&mut self, res: &EchoProbeResponse) -> Result<()> {
         archive::process(&mut self.conn, &res.target_net, res);
 
         let (interpretation, context) = interpret_and_save(&mut self.conn, res.target_net, res)?;
@@ -26,7 +26,7 @@ impl ProbeHandler {
                     follow_ups: interpretation.follow_ups,
                 };
                 info!("Requesting follow-up {}, split analysis delayed.", model.id);
-                self.follow_up_tx.send(model).context("sending follow-up")?;
+                self.follow_up_tx.send(model).await.context("sending follow-up")?;
             } else {
                 warn!("Interpretation needs follow-up but it wasn't registered in the node");
             }
