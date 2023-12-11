@@ -24,6 +24,10 @@ pub struct Params {
     /// How many prefixes to scan per timer interval
     #[arg(long, env = "ANALYSIS_TIMER_PREFIX_BUDGET", default_value = "20")]
     analysis_timer_prefix_budget: u32,
+
+    // Whether to run the regular prefix schedule, or not (disabling the entire feedback system eventually)
+    #[arg(long, env = "AGG_DO_SCHEDULE", default_value = "true")]
+    do_schedule: bool,
 }
 
 pub async fn run(
