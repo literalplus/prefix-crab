@@ -30,6 +30,10 @@ struct Timer {
 
 impl Timer {
     async fn run(mut self, stop_rx: CancellationToken) -> Result<()> {
+        if !self.params.do_schedule {
+            warn!("Regular scheduling is disabled, not doing that.");
+            return Ok(());
+        }
         info!("Analysis timer is ready for work.");
         let mut trigger = interval(Duration::from_secs(
             self.params.analysis_timer_interval_secs,
