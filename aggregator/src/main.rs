@@ -47,7 +47,7 @@ fn main() -> Result<()> {
 fn do_run(cli: Cli) -> Result<()> {
     // TODO tune buffer size parameter
     // bounded s.t. we don't keep consuming new work items when we block for some reason
-    let (task_tx, task_rx) = mpsc::channel(4096);
+    let (result_tx, result_rx) = mpsc::channel(64);
     let (ack_tx, ack_rx) = mpsc::unbounded_channel();
     let (probe_tx, probe_rx) = mpsc::unbounded_channel();
     let (follow_up_tx, follow_up_rx) = mpsc::unbounded_channel();
@@ -56,7 +56,7 @@ fn do_run(cli: Cli) -> Result<()> {
 
     // This task is shut down by the RabbitMQ receiver closing the channel
     let probe_handle = tokio::spawn(handle_probe::run(
-        task_rx,
+        result_rx,
         ack_tx,
         follow_up_tx,
         cli.handle_probe,
@@ -73,7 +73,7 @@ fn do_run(cli: Cli) -> Result<()> {
         cli.schedule,
     ));
 
-    let rabbit_handle = tokio::spawn(rabbit::run(task_tx, ack_rx, probe_rx, stop_rx, cli.rabbit));
+    let rabbit_handle = tokio::spawn(rabbit::run(result_tx, ack_rx, probe_rx, stop_rx, cli.rabbit));
 
     executor::block_on(async {
         try_join!(
