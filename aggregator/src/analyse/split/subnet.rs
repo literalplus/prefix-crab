@@ -6,6 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use db_model::analyse::LhrSource;
 use ipnet::{IpNet, Ipv6Net};
 use log::warn;
 use prefix_crab::prefix_split::{self, SplitSubnet};
@@ -41,6 +42,24 @@ impl From<SplitSubnet> for Subnet {
     }
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct LhrDiff {
+    pub sources: HashSet<LhrSource>,
+    // Important: Multiple places in the code assume the exact length 2 !
+    pub hit_counts: [HitCount; 2],
+}
+
+impl LhrDiff {
+    fn consume(&mut self, subnet_id: usize, item: LhrItem) {
+        self.hit_counts[subnet_id] = item.hit_count;
+        self.sources.extend(item.sources);
+    }
+
+    pub fn total_hit_count(&self) -> HitCount {
+        self.hit_counts[0].saturating_add(self.hit_counts[1])
+    }
+}
+
 #[derive(Debug)]
 pub struct Subnets {
     splits: [Subnet; 2],
@@ -72,13 +91,13 @@ impl Subnets {
         Ok(Self { splits })
     }
 
-    pub fn lhr_diff(&self) -> Diff<LhrItem> {
-        let mut lookup: HashMap<&LhrAddr, LhrItem> = HashMap::new();
+    pub fn lhr_diff(&self) -> Diff<LhrDiff> {
+        let mut lookup: HashMap<&LhrAddr, LhrDiff> = HashMap::new();
         let mut addr_sets: [HashSet<&LhrAddr>; 2] = Default::default();
         for (i, subnet) in self.iter().enumerate() {
             for (addr, data) in subnet.iter_lhrs() {
                 let entry = lookup.entry(addr).or_default();
-                entry.consume_merge(data.clone());
+                entry.consume(i, data.clone());
                 addr_sets[i].insert(addr);
             }
         }

@@ -1,9 +1,9 @@
 use log::trace;
 
-use crate::analyse::{HitCount, LhrItem, WeirdItem};
+use crate::analyse::{HitCount, WeirdItem};
 use db_model::prefix_tree::PriorityClass;
 
-use super::subnet::Subnets;
+use super::subnet::{LhrDiff, Subnets};
 
 /// Changes in the split algorithm are versioned to allow us to invalidate results of an older version
 /// if we find out that it is flawed.
@@ -40,56 +40,97 @@ pub struct ReProbePriority {
 }
 
 pub fn recommend(subnets: &Subnets) -> SplitRecommendation {
-    use super::subnet::Diff::*;
-    use PriorityClass::*;
-    use SplitRecommendation::*;
+    use super::subnet::Diff as D;
+    use PriorityClass as P;
+    use SplitRecommendation as R;
 
     let diff = subnets.lhr_diff();
     trace!("LHR diff: {:?}", diff);
     match diff {
-        BothNone => recommend_without_lhr_data(subnets),
-        BothSameSingle { shared } => NoKeep {
+        D::BothNone => recommend_without_lhr_data(subnets),
+        D::BothSameSingle { shared } => R::NoKeep {
             priority: ReProbePriority {
-                class: MediumSameSingle,
-                supporting_observations: shared.hit_count,
+                class: P::MediumSameSingle,
+                supporting_observations: shared.total_hit_count(),
             },
         },
-        BothSameMultiple { shared } => YesSplit {
-            priority: ReProbePriority {
-                class: MediumSameMulti,
-                supporting_observations: sum_deranking_most_popular(shared), // supporting the observation that there is more than one LHR
-            },
-        },
-        OverlappingOrDisjoint { shared, distinct } => YesSplit {
+        D::BothSameMultiple { shared } => rate_same_multi(shared),
+        D::OverlappingOrDisjoint { shared, distinct } => R::YesSplit {
             priority: ReProbePriority {
                 class: if shared.is_empty() {
-                    HighDisjoint
+                    P::HighDisjoint
                 } else {
-                    HighOverlapping
+                    P::HighOverlapping
                 },
-                supporting_observations: sum_deranking_most_popular(shared) + sum_lhr_hits(distinct), // supporting the observation that there is more than one LHR a) where the overall set is the same and b) the sets are distinct
+                supporting_observations: sum_deranking_most_popular(shared)
+                    + sum_lhr_hits(distinct), // supporting the observation that there is more than one LHR a) where the overall set is the same and b) the sets are distinct
             },
         },
     }
 }
 
-fn sum_deranking_most_popular(lhrs: Vec<LhrItem>) -> HitCount {
-    let most_popular_hits = lhrs.iter().map(|it| it.hit_count).max().unwrap_or(0);
+fn rate_same_multi(shared: Vec<LhrDiff>) -> SplitRecommendation {
+    use PriorityClass as P;
+    use SplitRecommendation as R;
+
+    let mut ratio_is_same = true;
+
+    for diff in shared.iter() {
+        let [left, right] = diff.hit_counts;
+        let (lower, higher) = if left == right {
+            continue;
+        } else if left < right {
+            (left, right)
+        } else {
+            (right, left)
+        };
+        let bound_for_higher = lower.saturating_mul(105).div_euclid(100);
+        if higher > bound_for_higher {
+            ratio_is_same = false;
+            break;
+        }
+    }
+
+    if ratio_is_same {
+        R::NoKeep {
+            priority: ReProbePriority {
+                class: P::MediumSameRatio,
+                // supporting the observation that the ratio is the same
+                supporting_observations: sum_lhr_hits(shared),
+            },
+        }
+    } else {
+        R::YesSplit {
+            priority: ReProbePriority {
+                class: P::MediumSameMulti,
+                // supporting the observation that there is more than one LHR
+                supporting_observations: sum_deranking_most_popular(shared),
+            },
+        }
+    }
+}
+
+fn sum_deranking_most_popular(lhrs: Vec<LhrDiff>) -> HitCount {
+    let most_popular_hits = lhrs
+        .iter()
+        .map(|it| it.total_hit_count())
+        .max()
+        .unwrap_or(0);
     lhrs.into_iter()
         .map(|lhr| {
-            if lhr.hit_count == most_popular_hits {
+            if lhr.total_hit_count() == most_popular_hits {
                 // The most popular router counts less because if there were only hits to it, the
                 // conclusion would be that there should be no split
-                lhr.hit_count.div_euclid(2)
+                lhr.total_hit_count().div_euclid(2)
             } else {
-                lhr.hit_count
+                lhr.total_hit_count()
             }
         })
         .sum()
 }
 
-fn sum_lhr_hits(lhrs: Vec<LhrItem>) -> HitCount {
-    lhrs.into_iter().map(|it| it.hit_count).sum()
+fn sum_lhr_hits(lhrs: Vec<LhrDiff>) -> HitCount {
+    lhrs.into_iter().map(|it| it.total_hit_count()).sum()
 }
 
 fn recommend_without_lhr_data(subnets: &Subnets) -> SplitRecommendation {
@@ -140,7 +181,7 @@ fn sum_weird_hits(weirds: Vec<WeirdItem>) -> HitCount {
 mod tests {
     use assertor::{assert_that, EqualityAssertion};
 
-    use super::{*, PriorityClass::*, SplitRecommendation::*};
+    use super::{PriorityClass::*, SplitRecommendation::*, *};
     use crate::analyse::{split::subnet::Subnets, MeasurementTree};
     use db_model::test_utils::*;
 
@@ -169,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn same_multi_lhr() {
+    fn same_multi_lhr_different_ratio() {
         // given
         let mut measurements = vec![
             gen_tree_with_lhr_101(TREE_LEFT_NET, 2),
@@ -187,6 +228,52 @@ mod tests {
             priority: ReProbePriority {
                 class: MediumSameMulti,
                 supporting_observations: 9, // (2*4)/2 + (3+2)
+            },
+        })
+    }
+
+    #[test]
+    fn same_multi_lhr_same_ratio() {
+        // given
+        let mut measurements = vec![
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 100),
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 105),
+        ];
+        for measurement in &mut measurements {
+            gen_add_lhr_beef(measurement, 100);
+        }
+
+        // when
+        let rec = when_recommend(measurements);
+
+        // then
+        assert_that!(rec).is_equal_to(NoKeep {
+            priority: ReProbePriority {
+                class: MediumSameRatio,
+                supporting_observations: 405, // all
+            },
+        })
+    }
+
+    #[test]
+    fn same_multi_lhr_same_ratio_swapped() {
+        // given
+        let mut measurements = vec![
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 104),
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 100),
+        ];
+        for measurement in &mut measurements {
+            gen_add_lhr_beef(measurement, 100);
+        }
+
+        // when
+        let rec = when_recommend(measurements);
+
+        // then
+        assert_that!(rec).is_equal_to(NoKeep {
+            priority: ReProbePriority {
+                class: MediumSameRatio,
+                supporting_observations: 404, // all
             },
         })
     }

@@ -64,7 +64,11 @@ pub enum PriorityClass {
     HighFresh,
     HighOverlapping,
     HighDisjoint,
+    // same LHR set with multiple members (but different ratio)
     MediumSameMulti,
+    // same LHR set with multiple members and same ratio (within reasonable margin)
+    MediumSameRatio,
+    // same single LHR
     MediumSameSingle,
     MediumMultiWeird,
     LowWeird,

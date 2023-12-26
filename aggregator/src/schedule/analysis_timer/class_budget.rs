@@ -127,7 +127,8 @@ impl ClassBudgets {
 }
 
 fn allocation_ratio(class: &PriorityClass) -> u16 {
-    // function to ensure exhaustiveness
+    // Note: This doesn't need to sum to 100 (and also now doesn't).
+    // we need to sum up only the remaining classes anyways.
     use PriorityClass as P;
 
     match class {
@@ -135,6 +136,7 @@ fn allocation_ratio(class: &PriorityClass) -> u16 {
         P::HighOverlapping => 13,
         P::HighDisjoint => 12,
         P::MediumSameMulti => 23,
+        P::MediumSameRatio => 13,
         P::MediumSameSingle => 13,
         P::MediumMultiWeird => 10,
         P::LowWeird => 2,
