@@ -7,7 +7,7 @@ use super::subnet::{LhrDiff, Subnets};
 
 /// Changes in the split algorithm are versioned to allow us to invalidate results of an older version
 /// if we find out that it is flawed.
-pub const ALGO_VERSION: i32 = 102;
+pub const ALGO_VERSION: i32 = 103;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum SplitRecommendation {
@@ -73,10 +73,15 @@ fn rate_same_multi(shared: Vec<LhrDiff>) -> SplitRecommendation {
     use PriorityClass as P;
     use SplitRecommendation as R;
 
-    let mut ratio_is_same = true;
+    let sums: Vec<HitCount> = (0..2usize)
+        .map(|i| shared.iter().map(|it| it.hit_counts[i]).sum())
+        .collect();
 
+    let mut ratio_is_same = true;
     for diff in shared.iter() {
         let [left, right] = diff.hit_counts;
+        let (left, right) = (left * 100, right * 100);
+        let (left, right) = (left.div_euclid(sums[0]), right.div_euclid(sums[1]));
         let (lower, higher) = if left == right {
             continue;
         } else if left < right {
@@ -274,6 +279,29 @@ mod tests {
             priority: ReProbePriority {
                 class: MediumSameRatio,
                 supporting_observations: 404, // all
+            },
+        })
+    }
+
+    #[test]
+    fn same_multi_lhr_same_ratio_different_magnitude() {
+        // given
+        let mut measurements = vec![
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 211387),
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 229860),
+        ];
+        gen_add_lhr_beef(&mut measurements[0], 12576);
+        gen_add_lhr_beef(&mut measurements[1], 13342);
+        // note that these aren't in the 5% per absolute numbers, but in relative numbers
+
+        // when
+        let rec = when_recommend(measurements);
+
+        // then
+        assert_that!(rec).is_equal_to(NoKeep {
+            priority: ReProbePriority {
+                class: MediumSameRatio,
+                supporting_observations: 467165, // all
             },
         })
     }
