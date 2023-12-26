@@ -56,7 +56,7 @@ source ~/.bashrc
 rustup toolchain link system /usr
 ```
 
-If you for some reason wish to use your package manager's version of Rust, you can e.g. `cargop +system`.
+If you for some reason wish to use your package manager's version of Rust, you can e.g. `cargo +system`.
 Please note that the bare-metal `units` files expect a Rustup installation of Cargo, and you will need to modify them.
 
 Enable and start the services on the server:
@@ -74,7 +74,7 @@ The only persistent storage in the system are the infrastructure services (Rabbi
 These are configured to specific host-paths in the `/scans/` directory. If you want to start completely fresh,
 you need to create a new directory there and adjust the bind mounts in the systemd units.
 
-You also need to create the data directories (`postgresql-data`, `rabbitmq-data`) upfront, empty.
+You also need to create the data directories (`postgresql-data`, `rabbitmq-data`, `backup`) upfront, empty.
 
 The `--group-add=keep-groups` flag on the container command lines ensures that the container users are able to access
 the volume using the user's group on the host system, which must have r/w access to the directories.

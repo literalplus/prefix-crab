@@ -32,6 +32,7 @@ ExecStart=/usr/bin/podman run \
 	--env=POSTGRES_DB=prefix_crab \
 	--group-add=keep-groups \
 	--mount=type=bind,source=/scans/2023_12_prefix-crab-univie/postgresql-data,rw,destination=/var/lib/postgresql/data \
+	--mount=type=bind,source=/scans/2023_12_prefix-crab-univie/backup,rw,destination=/backup \
 	--tz=UTC docker.io/postgres:15.3-alpine
 ExecStop=/usr/bin/podman stop \
 	--ignore \
