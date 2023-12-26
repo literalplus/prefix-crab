@@ -177,3 +177,13 @@ ssh -L 17862:localhost:17862 pnowak@measurement-aim.etchosts.internal  # postgre
 ```
 
 http://localhost:17863
+
+# Taking a DB backup
+
+```bash
+podman exec -it prefix-crab-postgres /bin/bash
+psql -U postgres # for console if needed
+pg_dump -U postgres prefix_crab | gzip >/backup/name.sql.gz
+```
+
+For more info, see https://www.postgresql.org/docs/current/backup-dump.html
