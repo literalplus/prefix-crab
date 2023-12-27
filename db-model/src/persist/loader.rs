@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use diesel::{pg::Pg, sql_types::{SmallInt, Cidr}, prelude::*, deserialize::FromSql};
 use ipnet::{Ipv6Net, IpNet};
 
-use crate::analyse::{Confidence, MAX_CONFIDENCE};
+use crate::analyse::{Confidence, CONFIDENCE_THRESH};
 
 pub struct ConfidenceLoader(Confidence);
 
@@ -20,9 +20,9 @@ where
 
     fn build(row: i16) -> diesel::deserialize::Result<Self> {
         let val = row
-            .clamp(0, MAX_CONFIDENCE as i16)
+            .clamp(0, Confidence::MAX as i16)
             .try_into()
-            .expect("when 0 <= x <= 100, x to fit into u8");
+            .expect("when 0 <= x <= 255, x to fit into u8");
         Ok(ConfidenceLoader(val))
     }
 }

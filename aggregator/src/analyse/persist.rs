@@ -99,7 +99,7 @@ fn save_merging_into_existing(
     let num_trees = relevant_measurements.len();
     let mut remote_forest = MeasurementForest::with_untouched(relevant_measurements)?;
     trace!("Remote forest has {} trees: {}", num_trees, remote_forest);
-    for tree_from_result in local_forest.into_iter_touched() {
+    for tree_from_result in local_forest.into_iter() {
         remote_forest.insert(tree_from_result.tree)?
     }
     let obsolete_nets: Vec<&Ipv6Net> = remote_forest.obsolete_nets.iter().collect();
@@ -112,7 +112,7 @@ fn save_merging_into_existing(
     // Batching would be ideal, but Diesel doesn't seem to directly support that
     // ref: https://github.com/diesel-rs/diesel/issues/1517
     let mut inserts = vec![];
-    for updated_tree in remote_forest.into_iter_touched() {
+    for updated_tree in remote_forest.into_iter() {
         let ModifiableTree { tree, touched } = updated_tree;
         match touched {
             ModificationType::Untouched => {}

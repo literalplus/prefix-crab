@@ -1,5 +1,6 @@
 use anyhow::*;
 use diesel::dsl::{count, exists, not, now, IntervalDsl};
+use diesel::pg::Pg;
 use diesel::sql_types::Integer;
 use ipnet::{IpNet, Ipv6Net};
 use log::debug;
@@ -7,7 +8,7 @@ use prefix_crab::helpers::ip::ExpectAllV6;
 use rand::Rng;
 use std::collections::{btree_map, BTreeMap};
 
-use diesel::prelude::*;
+use diesel::{prelude::*, debug_query};
 use diesel::{PgConnection, QueryDsl};
 
 use crate::persist::DieselErrorFixCause;
@@ -62,7 +63,8 @@ macro_rules! leaf_where_no_analysis {
 
         let $var_name = prefix_tree
             .filter(not(exists(a_pending_analysis)))
-            .filter(merge_status.eq(MergeStatus::Leaf).or(merge_status.eq(MergeStatus::UnsplitRoot)));
+            .filter(merge_status.eq(MergeStatus::Leaf).or(merge_status.eq(MergeStatus::UnsplitRoot)))
+            .filter(not(confidence.eq(255)));
     };
 }
 
@@ -136,7 +138,7 @@ fn allocation_ratio(class: &PriorityClass) -> u16 {
         P::HighOverlapping => 13,
         P::HighDisjoint => 12,
         P::MediumSameMulti => 23,
-        P::MediumSameRatio => 13,
+        P::MediumSameRatio => 10,
         P::MediumSameSingle => 13,
         P::MediumMultiWeird => 10,
         P::LowWeird => 2,
@@ -188,11 +190,12 @@ impl ClassBudget {
     pub fn select_prefixes(&self, conn: &mut PgConnection) -> Result<Vec<Ipv6Net>> {
         leaf_where_no_analysis!(let base = it);
 
-        let raw_nets: Vec<IpNet> = base
+        let raw_nets = base
             .filter(priority_class.eq(self.class))
             .limit(self.allocated as i64)
-            .select(net)
-            .load(conn)
+            .select(net);
+        debug!("budget query = {}", debug_query::<Pg, _>(&raw_nets).to_string()); // TODO remove
+        let raw_nets: Vec<IpNet> = raw_nets.load(conn)
             .fix_cause()?;
 
         Ok(raw_nets.expect_all_v6())

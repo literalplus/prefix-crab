@@ -11,8 +11,9 @@ use self::subnet::Subnets;
 
 use super::{context, MeasurementTree, SplitAnalysisResult};
 
-pub use db_model::analyse::{Confidence, MAX_CONFIDENCE};
+pub use db_model::analyse::{Confidence, CONFIDENCE_THRESH};
 
+mod collapse;
 mod confidence;
 mod persist;
 mod recommend;
@@ -33,6 +34,8 @@ pub enum SplitError {
     PerformSplit { source: anyhow::Error },
     #[error("unable to apply blocked state to node (blocklist)")]
     MarkBlocked { source: anyhow::Error },
+    #[error("unable to collapse measurement tree at max confidence")]
+    CollapseMeasurements { source: anyhow::Error },
 }
 
 pub type SplitResult<T> = std::result::Result<T, SplitError>;
@@ -57,15 +60,15 @@ pub fn process(
             .map(|_| ())
             .map_err(|source| SplitError::MarkBlocked { source });
     }
-    
+
     let relevant_measurements = load_relevant_measurements(conn, &request.node().net)?;
-    let subnets = Subnets::new(request.node().net, relevant_measurements)
+    let subnets = Subnets::new(request.node().net, &relevant_measurements)
         .map_err(|source| SplitError::SplitSubnets { source })?;
     let rec = recommend::recommend(&subnets);
     let confidence = confidence::rate(request.node().net, &rec);
     persist::save_recommendation(conn, &request, &rec, confidence)
         .map_err(|source| SplitError::SaveRecommendation { source })?;
-    if confidence >= MAX_CONFIDENCE {
+    if confidence >= CONFIDENCE_THRESH {
         if rec.should_split() {
             info!(
                 "Splitting prefix {} due to recommendation {:?} at {}% confidence.",
@@ -75,13 +78,25 @@ pub fn process(
             );
             persist::perform_prefix_split(conn, request, subnets, blocklist)
                 .map_err(|source| SplitError::PerformSplit { source })?;
-        } else {
+        } else if confidence < Confidence::MAX {
             debug!(
                 "Keeping prefix {} due to recommendation {:?} at {}% confidence.",
                 request.log_id(),
                 rec,
                 confidence
             );
+        } else {
+            // If we reach 255% of the threshold without splitting (any doubt would immediately split at this point),
+            // optimise the measurement trees down to 16 (instead of one per /64 -> huge savings for bigger prefixes)
+            // and mark the prefix as "final" to reduce measurement budget going toward it
+            info!(
+                "Keeping prefix {} due to recommendation {:?} at max {}% confidence. Collapsing measurements.",
+                request.log_id(),
+                rec,
+                confidence
+            );
+            collapse::process(conn, request, relevant_measurements)
+                .map_err(|source| SplitError::CollapseMeasurements { source })?;
         }
     } else {
         debug!(

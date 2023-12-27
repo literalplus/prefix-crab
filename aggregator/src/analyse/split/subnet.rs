@@ -66,7 +66,7 @@ pub struct Subnets {
 }
 
 impl Subnets {
-    pub fn new(base_net: Ipv6Net, relevant_measurements: Vec<MeasurementTree>) -> Result<Self> {
+    pub fn new(base_net: Ipv6Net, relevant_measurements: &[MeasurementTree]) -> Result<Self> {
         let split = prefix_split::split(base_net).context("trying to split for split analysis")?;
         let mut splits: [Subnet; 2] = split.into_subnets().map(From::from);
         let split_nets: [IpNet; 2] = from_fn(|i| IpNet::V6(splits[i].subnet.network));
@@ -77,7 +77,7 @@ impl Subnets {
                 if split_nets[i].contains(tree_net) {
                     candidate_split
                         .synthetic_tree
-                        .consume_merge(unused_tree.take().expect("tree for merge"))?;
+                        .merge(unused_tree.take().expect("tree for merge"))?;
                     break;
                 }
             }
@@ -221,7 +221,7 @@ mod tests {
         let relevant_measurements = vec![];
 
         // when
-        let subnets = Subnets::new(base_net, relevant_measurements).unwrap();
+        let subnets = Subnets::new(base_net, &relevant_measurements).unwrap();
 
         // then
         assert_that!(subnets.iter()).has_length(2);
@@ -234,7 +234,7 @@ mod tests {
         let relevant_measurements = gen_measurements_complex();
 
         // when
-        let subnets = Subnets::new(base_net, relevant_measurements).unwrap();
+        let subnets = Subnets::new(base_net, &relevant_measurements).unwrap();
 
         // then
         let [left, right] = subnets.deref();
@@ -280,7 +280,7 @@ mod tests {
         ];
 
         // when
-        let subnets = Subnets::new(base_net, relevant_measurements).unwrap();
+        let subnets = Subnets::new(base_net, &relevant_measurements).unwrap();
 
         // then
         let [left, right] = subnets.deref();

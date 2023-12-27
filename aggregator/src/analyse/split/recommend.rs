@@ -211,7 +211,7 @@ mod tests {
     }
 
     fn when_recommend(measurements: Vec<MeasurementTree>) -> SplitRecommendation {
-        recommend(&Subnets::new(net(TREE_BASE_NET), measurements).unwrap())
+        recommend(&Subnets::new(net(TREE_BASE_NET), &measurements).unwrap())
     }
 
     #[test]

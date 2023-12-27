@@ -3,10 +3,12 @@ mod tree;
 pub mod map64;
 pub mod subnet;
 
-/// percent rating, i.e. between 0 and 100
+/// percent rating
+/// at least 0, not more than 255
+/// 100 means that we are sufficiently confident for some action to be taken
 pub type Confidence = u8;
 
-pub const MAX_CONFIDENCE: Confidence = 100;
+pub const CONFIDENCE_THRESH: Confidence = 100;
 
 pub type LhrAddr = Ipv6Addr;
 

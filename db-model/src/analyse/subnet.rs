@@ -70,7 +70,7 @@ impl Subnets {
                 if split_nets[i].contains(tree_net) {
                     candidate_split
                         .synthetic_tree
-                        .consume_merge(unused_tree.take().expect("tree for merge"))?;
+                        .merge(&unused_tree.take().expect("tree for merge"))?;
                     break;
                 }
             }

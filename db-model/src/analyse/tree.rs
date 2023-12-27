@@ -43,9 +43,13 @@ impl MeasurementTree {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.responsive_count == 0 && self.unresponsive_count == 0
+    }
+
     /// Merges `other` into `self`, consuming the value.
     /// Fails if `other`'s network is not a subnet or the same as `self`'s.
-    pub fn consume_merge(&mut self, other: Self) -> Result<()> {
+    pub fn merge(&mut self, other: &Self) -> Result<()> {
         if !self.target_net.contains(&other.target_net) {
             bail!(
                 "Cannot merge {:?} into {:?}, as the former is not a subnet-or-eq.",
@@ -58,17 +62,13 @@ impl MeasurementTree {
         self.unresponsive_count = self
             .unresponsive_count
             .saturating_add(other.unresponsive_count);
-        self.last_hop_routers.consume_merge(other.last_hop_routers);
-        self.weirdness.consume_merge(other.weirdness);
+        self.last_hop_routers
+            .consume_merge(other.last_hop_routers.clone());
+        self.weirdness.consume_merge(other.weirdness.clone());
         Ok(())
     }
 
-    pub fn add_lhr_no_sum(
-        &mut self,
-        addr: Ipv6Addr,
-        sources: HashSet<LhrSource>,
-        hits: HitCount,
-    ) {
+    pub fn add_lhr_no_sum(&mut self, addr: Ipv6Addr, sources: HashSet<LhrSource>, hits: HitCount) {
         self.last_hop_routers.items.insert(
             addr,
             LhrItem {
@@ -250,7 +250,7 @@ mod tests {
         sub_tree.unresponsive_count = 2;
 
         // when
-        parent_tree.consume_merge(sub_tree).unwrap();
+        parent_tree.merge(&sub_tree).unwrap();
 
         // then
         assert_that!(parent_tree.responsive_count).is_equal_to(11);
@@ -272,7 +272,7 @@ mod tests {
         );
 
         // when
-        parent_tree.consume_merge(sub_tree).unwrap();
+        parent_tree.merge(&sub_tree).unwrap();
 
         // then
         let expected_item = gen_lhr(
@@ -310,7 +310,7 @@ mod tests {
             .insert(WeirdType::TtlExceededForEcho, WeirdItem { hit_count: 2 });
 
         // when
-        parent_tree.consume_merge(sub_tree).unwrap();
+        parent_tree.merge(&sub_tree).unwrap();
 
         // then
         let expected_item = WeirdItem { hit_count: 9 };
@@ -334,7 +334,7 @@ mod tests {
             .insert(given_another_addr(), gen_lhr(5, &[]));
 
         // when
-        parent_tree.consume_merge(sub_tree).unwrap();
+        parent_tree.merge(&sub_tree).unwrap();
         // then
         assert_that!(parent_tree.last_hop_routers.items)
             .contains_entry(given_some_addr(), gen_lhr(4, &[]));
@@ -351,7 +351,7 @@ mod tests {
         sub_tree.target_net = Ipv6Net::from_str("2001:db9::/62").unwrap().into();
 
         // when
-        let result = parent_tree.consume_merge(sub_tree);
+        let result = parent_tree.merge(&sub_tree);
         // then
         assert_that!(result).is_err();
     }

@@ -25,15 +25,12 @@ fn rate_no(prio: &ReProbePriority, net: &Ipv6Net) -> Confidence {
 fn rate_with_thresh(prio: &ReProbePriority, thresh: u32) -> Confidence {
     debug_assert!(thresh > 0);
     let evidence = 0i32.max(prio.supporting_observations) as u32;
-    if evidence > thresh {
-        MAX_CONFIDENCE
-    } else {
-        evidence
-            .saturating_mul(MAX_CONFIDENCE as u32)
-            .div_euclid(thresh) // ^= discard remainder
-            .try_into()
-            .expect("division where a < b to be less than one (thus result < 100 < 255)")
-    }
+
+    evidence
+        .saturating_mul(CONFIDENCE_THRESH as u32)
+        .div_euclid(thresh) // ^= discard remainder
+        .try_into()
+        .unwrap_or(Confidence::MAX)
 }
 
 // /16
@@ -64,9 +61,9 @@ fn max_equivalent_responses_thresh(net: &Ipv6Net) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::*;
     use db_model::prefix_tree::PriorityClass::MediumSameMulti;
     use db_model::test_utils::*;
-    use anyhow::*;
 
     // "Google Sheet cases" are based on https://docs.google.com/spreadsheets/d/1rOlf3MNCSIj58b9yB1Ni-Dnr2sWrostZoqOcSjIm_To/edit#gid=164692237
 
