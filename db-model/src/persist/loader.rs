@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use diesel::{pg::Pg, sql_types::{SmallInt, Cidr}, prelude::*, deserialize::FromSql};
 use ipnet::{Ipv6Net, IpNet};
 
-use crate::analyse::{Confidence, CONFIDENCE_THRESH};
+use crate::analyse::Confidence;
 
 pub struct ConfidenceLoader(Confidence);
 
