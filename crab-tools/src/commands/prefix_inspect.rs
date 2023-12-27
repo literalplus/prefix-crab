@@ -101,6 +101,11 @@ fn print_prefix(net: &Ipv6Net) -> Result<String> {
         writeln!(&mut buf)?;
         writeln!(&mut buf, "▶ Subnet: {}", subnet.subnet.network)?;
 
+        if subnet.probe_count() == 0 {
+            writeln!(&mut buf, " No probes recorded.")?;
+            continue;
+        }
+
         let responsive_percent =
             (subnet.responsive_count() as i64 * 100i64).div_euclid(subnet.probe_count() as i64);
         writeln!(
