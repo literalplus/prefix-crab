@@ -194,7 +194,6 @@ impl ClassBudget {
             .filter(priority_class.eq(self.class))
             .limit(self.allocated as i64)
             .select(net);
-        debug!("budget query = {}", debug_query::<Pg, _>(&raw_nets).to_string()); // TODO remove
         let raw_nets: Vec<IpNet> = raw_nets.load(conn)
             .fix_cause()?;
 
