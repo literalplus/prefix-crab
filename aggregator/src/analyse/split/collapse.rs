@@ -46,7 +46,7 @@ fn delete_existing_save_merged(
         // ref: https://github.com/diesel-rs/diesel/issues/1517
         let inserts = forest
             .into_iter()
-            .filter(|it| it.tree.is_empty())
+            .filter(|it| !it.tree.is_empty())
             .map(|it| it.tree)
             .collect_vec();
         diesel::insert_into(measurement_tree)
