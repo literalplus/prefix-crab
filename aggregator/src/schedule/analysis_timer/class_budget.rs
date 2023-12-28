@@ -1,6 +1,5 @@
 use anyhow::*;
 use diesel::dsl::{count, exists, not, now, IntervalDsl};
-use diesel::pg::Pg;
 use diesel::sql_types::Integer;
 use ipnet::{IpNet, Ipv6Net};
 use log::debug;
@@ -8,7 +7,7 @@ use prefix_crab::helpers::ip::ExpectAllV6;
 use rand::Rng;
 use std::collections::{btree_map, BTreeMap};
 
-use diesel::{prelude::*, debug_query};
+use diesel::prelude::*;
 use diesel::{PgConnection, QueryDsl};
 
 use crate::persist::DieselErrorFixCause;

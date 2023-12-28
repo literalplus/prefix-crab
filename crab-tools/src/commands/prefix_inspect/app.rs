@@ -91,7 +91,7 @@ impl Update<Msg> for Model {
                 }
                 Msg::SetStatus(status) => {
                     let status = if status.is_empty() {
-                        "⬆⬇ Scroll  | ⬅➡ Descend  | 🏠 Ascend  | q Quit".to_string()
+                        "⬆⬇ Scroll | ↩ Select | ⌫  Up  | q Quit".to_string()
                     } else {
                         status
                     };
@@ -100,7 +100,7 @@ impl Update<Msg> for Model {
                         .expect("set status bar");
                     None
                 }
-                Msg::JustRedraw => None,
+                Msg::ResetStatus => Some(Msg::SetStatus("".to_string())),
             }
         } else {
             None
