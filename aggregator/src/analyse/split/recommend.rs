@@ -7,7 +7,7 @@ use super::subnet::{LhrDiff, Subnets};
 
 /// Changes in the split algorithm are versioned to allow us to invalidate results of an older version
 /// if we find out that it is flawed.
-pub const ALGO_VERSION: i32 = 105;
+pub const ALGO_VERSION: i32 = 106;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum SplitRecommendation {
@@ -73,24 +73,25 @@ fn rate_same_multi(shared: Vec<LhrDiff>) -> SplitRecommendation {
     use PriorityClass as P;
     use SplitRecommendation as R;
 
-    let sums: Vec<HitCount> = (0..2usize)
+    let total_per_subnet: Vec<HitCount> = (0..2usize)
         .map(|i| shared.iter().map(|it| it.hit_counts[i]).sum())
         .collect();
 
     let mut ratio_is_same = true;
     for diff in shared.iter() {
         let [left, right] = diff.hit_counts;
-        let (left, right) = (left * 100, right * 100);
-        let (left, right) = (left.div_euclid(sums[0]), right.div_euclid(sums[1]));
-        let (lower, higher) = if left == right {
-            continue;
-        } else if left < right {
-            (left, right)
+        let (left, right) = (left * 200, right * 200);
+        let (left, right) = (left.saturating_div(total_per_subnet[0]), right.saturating_div(total_per_subnet[1]));
+
+        let double_pct_diff = left.abs_diff(right);
+
+        let thresh= if total_per_subnet.iter().any(|sub_total| sub_total < &512) {
+            10 // if either of the subnets has < 512 hits, allow 5% difference (i.e. always at least 5 absolute hits)
         } else {
-            (right, left)
+            3 // for larger nets, allow 1.5% difference (incl. rounding error!)
         };
-        let bound_for_higher = lower.saturating_mul(105).div_euclid(100);
-        if higher > bound_for_higher {
+
+        if double_pct_diff > thresh {
             ratio_is_same = false;
             break;
         }
@@ -218,11 +219,11 @@ mod tests {
     fn same_multi_lhr_different_ratio() {
         // given
         let mut measurements = vec![
-            gen_tree_with_lhr_101(TREE_LEFT_NET, 2),
-            gen_tree_with_lhr_101(TREE_RIGHT_NET, 3),
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 2), // 20%
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 3), // 27%
         ];
         for measurement in &mut measurements {
-            gen_add_lhr_beef(measurement, 4);
+            gen_add_lhr_beef(measurement, 8);
         }
 
         // when
@@ -232,17 +233,39 @@ mod tests {
         assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
                 class: MediumSameMulti,
-                supporting_observations: 9, // (2*4)/2 + (3+2)
+                supporting_observations: 13, // (2*8)/2 + (3+2)
             },
         })
     }
 
     #[test]
-    fn same_multi_lhr_same_ratio() {
+    fn same_multi_lhr_same_ratio_few_hits_pos() {
         // given
         let mut measurements = vec![
-            gen_tree_with_lhr_101(TREE_LEFT_NET, 100),
-            gen_tree_with_lhr_101(TREE_RIGHT_NET, 105),
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 100), // 50%
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 126), // 54% (rounded down)
+        ];
+        gen_add_lhr_beef(&mut measurements[0], 100); // 50%
+        gen_add_lhr_beef(&mut measurements[1], 104); // 45%
+
+        // when
+        let rec = when_recommend(measurements);
+
+        // then
+        assert_that!(rec).is_equal_to(NoKeep {
+            priority: ReProbePriority {
+                class: MediumSameRatio,
+                supporting_observations: 430, // all
+            },
+        })
+    }
+
+    #[test]
+    fn same_multi_lhr_same_ratio_few_hits_neg() {
+        // given
+        let mut measurements = vec![
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 100), // 49% (rounded down)
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 127), // 55% (rounded down)
         ];
         for measurement in &mut measurements {
             gen_add_lhr_beef(measurement, 100);
@@ -252,10 +275,10 @@ mod tests {
         let rec = when_recommend(measurements);
 
         // then
-        assert_that!(rec).is_equal_to(NoKeep {
+        assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
-                class: MediumSameRatio,
-                supporting_observations: 405, // all
+                class: MediumSameMulti,
+                supporting_observations: 313, // 227/2 + 200
             },
         })
     }
@@ -284,14 +307,58 @@ mod tests {
     }
 
     #[test]
-    fn same_multi_lhr_same_ratio_different_magnitude() {
+    fn same_multi_lhr_same_ratio_many_hits_pos() {
         // given
         let mut measurements = vec![
-            gen_tree_with_lhr_101(TREE_LEFT_NET, 211387),
-            gen_tree_with_lhr_101(TREE_RIGHT_NET, 229860),
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 211387), // 94% (but 42.5% of prefix total)
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 259860), // 95.1% (but 52% of prefix total)
         ];
         gen_add_lhr_beef(&mut measurements[0], 12576);
         gen_add_lhr_beef(&mut measurements[1], 13342);
+
+        // when
+        let rec = when_recommend(measurements);
+
+        // then
+        assert_that!(rec).is_equal_to(NoKeep {
+            priority: ReProbePriority {
+                class: MediumSameRatio,
+                supporting_observations: 497165, // all
+            },
+        })
+    }
+
+    #[test]
+    fn same_multi_lhr_same_ratio_many_hits_neg() {
+        // given
+        let mut measurements = vec![
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 211387), // 94%
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 283860), // just over 95.5%
+        ];
+        gen_add_lhr_beef(&mut measurements[0], 12576);
+        gen_add_lhr_beef(&mut measurements[1], 13342);
+
+        // when
+        let rec = when_recommend(measurements);
+
+        // then
+        assert_that!(rec).is_equal_to(NoKeep {
+            priority: ReProbePriority {
+                class: MediumSameRatio,
+                supporting_observations: 521165, // all
+            },
+        })
+    }
+
+    #[test]
+    fn same_multi_lhr_same_ratio_abs_percent() {
+        // given
+        let mut measurements = vec![
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 151),
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 159),
+        ];
+        gen_add_lhr_beef(&mut measurements[0], 2672);
+        gen_add_lhr_beef(&mut measurements[1], 2834);
         // note that these aren't in the 5% per absolute numbers, but in relative numbers
 
         // when
@@ -301,7 +368,7 @@ mod tests {
         assert_that!(rec).is_equal_to(NoKeep {
             priority: ReProbePriority {
                 class: MediumSameRatio,
-                supporting_observations: 467165, // all
+                supporting_observations: 5816, // all
             },
         })
     }
