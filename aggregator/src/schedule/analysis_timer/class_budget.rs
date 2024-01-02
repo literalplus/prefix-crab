@@ -58,7 +58,7 @@ macro_rules! leaf_where_no_analysis {
             .select(0.into_sql::<Integer>())
             .filter(ana::tree_net.eq(net))
             .filter(ana::completed_at.is_null())
-            .filter(not(ana::created_at.lt(now - 2.days()))); // retry unfinished analyses
+            .filter(not(ana::created_at.lt(now - 4.hours()))); // retry unfinished analyses
 
         let $var_name = prefix_tree
             .filter(not(exists(a_pending_analysis)))
