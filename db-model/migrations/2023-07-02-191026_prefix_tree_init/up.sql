@@ -1,11 +1,10 @@
 CREATE TYPE prefix_merge_status AS ENUM (
-    'leaf', 'split_down', 'merged_up', 'unsplit_root', 'split_root'
+    'leaf', 'split_down', 'merged_up', 'unsplit_root', 'split_root', 'min_size_reached'
 );
 CREATE TYPE prefix_priority_class AS ENUM(
     'low_unknown', 'low_weird',
     'medium_multi_weird', 'medium_same_single', 'medium_same_multi',
-    'high_disjoint', 'high_overlapping', 'high_fresh',
-    'min_size_reached'
+    'high_disjoint', 'high_overlapping', 'high_fresh'
 );
 
 CREATE TABLE public.prefix_tree
