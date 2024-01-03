@@ -2,15 +2,17 @@ use std::time::Duration;
 
 use anyhow::Result;
 use ipnet::Ipv6Net;
-use tuirealm::event::NoUserEvent;
-use tuirealm::props::{Alignment, Color, TextModifiers};
+use tuirealm::event::{Key, KeyEvent, KeyModifiers, NoUserEvent};
 use tuirealm::terminal::TerminalBridge;
 use tuirealm::tui::layout::{Constraint, Direction, Layout};
-use tuirealm::{Application, AttrValue, Attribute, EventListenerCfg, Update};
+use tuirealm::{
+    Application, AttrValue, Attribute, EventListenerCfg, Sub, SubClause, SubEventClause, Update,
+};
 
 use crate::commands::prefix_inspect::components::status_bar::StatusBar;
 use crate::commands::prefix_inspect::components::viewport::Viewport;
 
+use super::components::status_bar::PLACEHOLDER_ATTR;
 use super::{Id, Msg};
 
 pub struct Model {
@@ -18,6 +20,21 @@ pub struct Model {
     pub quit: bool,
     pub redraw: bool,
     pub terminal: TerminalBridge,
+}
+
+macro_rules! add_keyboard_sub {
+    ($app:ident, $id: expr => $code: expr) => {
+        $app.subscribe(
+            &$id,
+            Sub::new(
+                SubEventClause::Keyboard(KeyEvent {
+                    code: $code,
+                    modifiers: KeyModifiers::NONE,
+                }),
+                SubClause::Always,
+            ),
+        )?;
+    };
 }
 
 impl Model {
@@ -37,23 +54,11 @@ impl Model {
                 .poll_timeout(Duration::from_millis(10))
                 .tick_interval(Duration::from_millis(100)),
         );
-        app.mount(
-            Id::StatusBar,
-            Box::new(
-                StatusBar::default()
-                    .text("Loading...")
-                    .alignment(Alignment::Left)
-                    .background(Color::Black)
-                    .foreground(Color::White)
-                    .modifiers(TextModifiers::BOLD),
-            ),
-            Vec::default(),
-        )?;
-        app.mount(
-            Id::Viewport,
-            Box::new(Viewport::new(&prefix)),
-            vec![],
-        )?;
+        app.mount(Id::StatusBar, Box::new(StatusBar::default()), vec![])?;
+        add_keyboard_sub!(app, Id::StatusBar => Key::Char('q'));
+        add_keyboard_sub!(app, Id::StatusBar => Key::Esc);
+
+        app.mount(Id::Viewport, Box::new(Viewport::new(&prefix)), vec![])?;
 
         app.active(&Id::Viewport)?;
 
@@ -90,17 +95,21 @@ impl Update<Msg> for Model {
                     None
                 }
                 Msg::SetStatus(status) => {
-                    let status = if status.is_empty() {
-                        "⬆⬇ Scroll | ↩ Select | ⌫  Up  | q Quit".to_string()
-                    } else {
-                        status
-                    };
                     self.app
                         .attr(&Id::StatusBar, Attribute::Text, AttrValue::String(status))
                         .expect("set status bar");
                     None
                 }
-                Msg::ResetStatus => Some(Msg::SetStatus("".to_string())),
+                Msg::SetStatusPlaceholder(placeholder) => {
+                    self.app
+                        .attr(
+                            &Id::StatusBar,
+                            PLACEHOLDER_ATTR,
+                            AttrValue::String(placeholder),
+                        )
+                        .expect("set status bar placeholder");
+                    None
+                }
             }
         } else {
             None

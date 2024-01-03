@@ -1,170 +1,185 @@
-use std::{
-    sync::{Arc, Mutex},
-    thread,
-};
+use std::ops::{Deref, DerefMut};
 
 use ipnet::Ipv6Net;
-use itertools::Itertools;
-use tui_realm_stdlib::{states::SpinnerStates, Textarea};
+use tui_realm_stdlib::states::SpinnerStates;
 use tuirealm::{
     command::{Cmd, CmdResult, Direction},
     event::{Key, KeyEvent},
-    props::{Alignment, BorderType, Borders, Color, PropPayload, PropValue, TextSpan},
+    props::Alignment,
     AttrValue, Attribute, Component, Event, MockComponent, NoUserEvent,
 };
 
-use crate::commands::prefix_inspect::{
-    business::{self, PrintedPrefix},
-    Msg,
-};
+use crate::commands::prefix_inspect::{detail::Detail, leaves::Leaves, Msg};
+
+pub enum PerformResult {
+    Refresh,
+    ShowPrefix(Ipv6Net),
+    Status(&'static str),
+    ClearStatus,
+    Loading,
+    Forward,
+    None,
+}
+
+pub trait ViewportChild {
+    //fn with_component<T>(&mut self, op: (&mut dyn MockComponent) -> T) -> T;
+    //fn component(&self) -> Rc<RefCell<dyn MockComponent>>;
+    fn load_for_prefix(&mut self, prefix: Ipv6Net);
+    fn perform(&mut self, cmd: Cmd, prefix: Ipv6Net) -> PerformResult;
+}
+
+enum ActiveChild {
+    Detail(Detail),
+    Leaves(Leaves),
+}
+
+impl ActiveChild {
+    fn component(&self) -> &dyn MockComponent {
+        match self {
+            ActiveChild::Detail(it) => &it.component,
+            ActiveChild::Leaves(it) => &it.component,
+        }
+    }
+
+    fn component_mut(&mut self) -> &mut dyn MockComponent {
+        match self {
+            ActiveChild::Detail(it) => &mut it.component,
+            ActiveChild::Leaves(it) => &mut it.component,
+        }
+    }
+
+    fn next(&self) -> Self {
+        match self {
+            Self::Detail(_) => Self::Leaves(Leaves::new()),
+            Self::Leaves(_) => Self::Detail(Detail::new()),
+        }
+    }
+
+    fn mode_emoji(&self) -> &'static str {
+        match self {
+            ActiveChild::Detail(_) => "🕵",
+            ActiveChild::Leaves(_) => "🍃",
+        }
+    }
+}
+
+impl Deref for ActiveChild {
+    type Target = dyn ViewportChild;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Detail(it) => it,
+            Self::Leaves(it) => it,
+        }
+    }
+}
+
+impl DerefMut for ActiveChild {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Detail(it) => it,
+            Self::Leaves(it) => it,
+        }
+    }
+}
+
+const CMD_PREFIX_UP: Cmd = Cmd::Custom("CMD_PREFIX_UP");
+const CMD_CYCLE_MODE: Cmd = Cmd::Custom("CMD_CYCLE_MODE");
+const RES_PREFIX_CHANGED_NAME: &'static str = "RES_PREFIX_CHANGED";
+const RES_PREFIX_CHANGED: CmdResult = CmdResult::Custom(RES_PREFIX_CHANGED_NAME);
+const RES_LOADING_NAME: &'static str = "RES_LOADING";
+const RES_LOADING: CmdResult = CmdResult::Custom(RES_LOADING_NAME);
 
 pub struct Viewport {
-    component: Textarea,
+    active_child: ActiveChild,
     current_prefix: Ipv6Net,
-    state: Arc<Mutex<ViewportState>>,
-    active: Option<PrintedPrefix>,
     spinner: SpinnerStates,
 }
 
-#[derive(Clone)]
-enum ViewportState {
-    Missing,
-    Loading,
-    Ready(business::Result),
-    Loaded,
+impl Viewport {
+    fn select_prefix(&mut self, prefix: Ipv6Net) -> CmdResult {
+        self.current_prefix = prefix;
+        self.active_child.load_for_prefix(prefix);
+        self.active_child.component_mut().attr(
+            Attribute::Title,
+            AttrValue::Title((format!("{:?}", prefix), Alignment::Center)),
+        );
+        RES_PREFIX_CHANGED
+    }
 }
 
 impl MockComponent for Viewport {
     fn view(&mut self, frame: &mut tuirealm::Frame, area: tuirealm::tui::prelude::Rect) {
-        self.component.view(frame, area)
+        self.active_child.component_mut().view(frame, area)
     }
 
     fn query(&self, attr: Attribute) -> Option<AttrValue> {
-        self.component.query(attr)
+        self.active_child.component().query(attr)
     }
 
     fn attr(&mut self, attr: Attribute, value: AttrValue) {
-        self.component.attr(attr, value)
+        self.active_child.component_mut().attr(attr, value)
     }
 
     fn state(&self) -> tuirealm::State {
-        self.component.state()
+        self.active_child.component().state()
     }
 
-    fn perform(&mut self, cmd: Cmd) -> tuirealm::command::CmdResult {
-        self.current_prefix = match cmd {
-            Cmd::Submit => {
-                if self.active.is_none() {
-                    return CmdResult::Custom("Not ready");
-                }
-                let it = self.active.as_ref().unwrap();
-                match it.find_subnet_from_line_index(self.component.states.list_index) {
-                    Some(idx) => {
-                        let mut iter = self
-                            .current_prefix
-                            .subnets(self.current_prefix.prefix_len() + 1)
-                            .expect("to not be max prefix");
-                        if idx == 0 {
-                            iter.next().unwrap()
-                        } else {
-                            iter.next().unwrap();
-                            iter.next().unwrap()
-                        }
-                    }
-                    _ => {
-                        return CmdResult::Custom(
-                            "Please select one of the subnets using the arrow keys",
-                        )
-                    }
-                }
-            }
-            Cmd::Delete => self
-                .current_prefix
-                .supernet()
-                .expect("to not be root prefix"),
-            Cmd::Tick => {
-                let locked = self.state.lock().expect("not poisoned");
-                let copy = locked.clone();
-                drop(locked);
+    fn perform(&mut self, cmd: Cmd) -> CmdResult {
+        use PerformResult as R;
 
-                return match copy {
-                    ViewportState::Loading => CmdResult::Custom("SPIN"),
-                    ViewportState::Missing => {
-                        self.trigger_recompute();
-                        CmdResult::Custom("Loading!")
-                    }
-                    ViewportState::Ready(ref res) => {
-                        self.display_result(res.clone());
-                        let mut locked = self.state.lock().expect("still not poisoned");
-                        *locked = ViewportState::Loaded;
-                        CmdResult::Custom("")
-                    }
-                    _ => CmdResult::None,
-                };
+        if let Some(res) = self.perform_internal(cmd) {
+            res
+        } else {
+            match self.active_child.perform(cmd, self.current_prefix) {
+                R::Refresh => self.select_prefix(self.current_prefix),
+                R::ShowPrefix(prefix) => {
+                    self.set_active(ActiveChild::Detail(Detail::new()), prefix)
+                }
+                R::Status(line) => CmdResult::Custom(line),
+                R::ClearStatus => CmdResult::Custom(""),
+                R::Loading => RES_LOADING,
+                R::Forward => {
+                    self.active_child.component_mut().perform(cmd);
+                    CmdResult::Custom("") // signal that view must be updated
+                }
+                R::None => CmdResult::None,
             }
-            _ => {
-                self.component.perform(cmd);
-                return CmdResult::Changed(self.state());
-            }
-        };
-        self.trigger_recompute();
-        CmdResult::None
+        }
     }
 }
 
 impl Viewport {
-    fn trigger_recompute(&mut self) {
-        let mut locked = self.state.lock().expect("mutex poisoned");
-        if matches!(*locked, ViewportState::Loading) {
-            return;
+    fn perform_internal(&mut self, cmd: Cmd) -> Option<CmdResult> {
+        match cmd {
+            CMD_PREFIX_UP => {
+                if let Some(supernet) = self.current_prefix.supernet() {
+                    Some(self.select_prefix(supernet))
+                } else {
+                    return Some(CmdResult::Custom("Already at the root prefix"));
+                }
+            }
+            CMD_CYCLE_MODE => Some(self.set_active(self.active_child.next(), self.current_prefix)),
+            _ => None,
         }
-        *locked = ViewportState::Loading;
-        drop(locked);
-
-        self.component.attr(
-            Attribute::Title,
-            AttrValue::Title((format!("{:?}", self.current_prefix), Alignment::Center)),
-        );
-
-        let prefix = self.current_prefix;
-        let mutex_ref = Arc::clone(&self.state);
-        thread::spawn(move || {
-            let res = business::print_prefix(&prefix);
-            let mut locked = (*mutex_ref).lock().expect("state mutex poisoned");
-            *locked = ViewportState::Ready(res);
-        });
     }
 
-    fn display_result(&mut self, res: business::Result) {
-        let lines = match &res {
-            Ok(printed) => printed
-                .lines
-                .iter()
-                .map(|line| PropValue::TextSpan(TextSpan::from(line)))
-                .collect_vec(),
-            Err(e) => vec![PropValue::TextSpan(TextSpan::from(format!("{}", e)).fg(Color::Red))],
-        };
-
-        self.component
-            .attr(Attribute::Text, AttrValue::Payload(PropPayload::Vec(lines)));
-
-        self.active = res.ok();
+    fn set_active(&mut self, value: ActiveChild, prefix: Ipv6Net) -> CmdResult {
+        self.active_child = value;
+        self.active_child
+            .component_mut()
+            .attr(Attribute::Focus, AttrValue::Flag(true));
+        self.select_prefix(prefix)
     }
+}
 
+impl Viewport {
     pub fn new(prefix: &Ipv6Net) -> Self {
         let mut spinner = SpinnerStates::default();
         spinner.sequence = "⣾⣽⣻⢿⡿⣟⣯⣷".chars().collect();
         Self {
-            component: Textarea::default()
-                .borders(
-                    Borders::default()
-                        .modifiers(BorderType::Thick)
-                        .color(Color::Yellow),
-                )
-                .highlighted_str("👉"),
+            active_child: ActiveChild::Detail(Detail::new()),
             current_prefix: *prefix,
-            state: Mutex::new(ViewportState::Missing).into(),
-            active: None,
             spinner,
         }
     }
@@ -172,54 +187,31 @@ impl Viewport {
 
 impl Component<Msg, NoUserEvent> for Viewport {
     fn on(&mut self, ev: Event<NoUserEvent>) -> Option<Msg> {
-        return match ev {
-            Event::Tick => match self.perform(Cmd::Tick) {
-                CmdResult::Custom("SPIN") => {
-                    Some(Msg::SetStatus(format!("Loading {}", self.spinner.step())))
-                }
-                CmdResult::Custom(msg) => Some(Msg::SetStatus(msg.to_string())),
-                _ => None,
+        let cmd = match ev {
+            Event::Tick => Cmd::Tick,
+            Event::Keyboard(KeyEvent { code, .. }) => match code {
+                Key::Backspace => CMD_PREFIX_UP,
+                Key::Enter => Cmd::Submit,
+                Key::Up => Cmd::Move(Direction::Up),
+                Key::Down => Cmd::Move(Direction::Down),
+                Key::PageUp => Cmd::Scroll(Direction::Down),
+                Key::PageDown => Cmd::Scroll(Direction::Down),
+                Key::Tab => CMD_CYCLE_MODE,
+                _ => return None,
             },
-            Event::Keyboard(KeyEvent {
-                code: Key::Backspace,
-                ..
-            }) => {
-                if self.current_prefix.supernet().is_some() {
-                    self.perform(Cmd::Delete);
-                    Some(Msg::ResetStatus)
-                } else {
-                    Some(Msg::SetStatus("Already at root".to_string()))
-                }
-            }
-            Event::Keyboard(KeyEvent {
-                code: Key::Enter, ..
-            }) => {
-                if self.current_prefix.prefix_len() >= 64 {
-                    Some(Msg::SetStatus("Already at /64".to_string()))
-                } else {
-                    let msg = match self.perform(Cmd::Submit) {
-                        CmdResult::Custom(msg) => msg,
-                        _ => "Something unexpected happened.",
-                    };
-                    Some(Msg::SetStatus(msg.to_string()))
-                }
-            }
-            Event::Keyboard(KeyEvent { code: Key::Up, .. }) => {
-                self.perform(Cmd::Move(Direction::Up));
-                Some(Msg::ResetStatus)
-            }
-            Event::Keyboard(KeyEvent {
-                code: Key::Down, ..
-            }) => {
-                self.perform(Cmd::Move(Direction::Down));
-                Some(Msg::ResetStatus)
-            }
-            Event::Keyboard(KeyEvent { code: Key::Esc, .. }) => Some(Msg::AppClose),
-            Event::Keyboard(KeyEvent {
-                code: Key::Char('q'),
-                ..
-            }) => Some(Msg::AppClose),
-            _ => None,
+            _ => return None,
         };
+
+        match self.perform(cmd) {
+            CmdResult::Custom(RES_LOADING_NAME) => {
+                Some(Msg::SetStatus(format!("Loading {}", self.spinner.step())))
+            }
+            CmdResult::Custom(RES_PREFIX_CHANGED_NAME) => Some(Msg::SetStatusPlaceholder(format!(
+                "{} | ⬆⬇ Scroll | ↩ Select | ⌫  Up | ↹ Mode",
+                self.active_child.mode_emoji()
+            ))),
+            CmdResult::Custom(msg) => Some(Msg::SetStatus(msg.to_string())),
+            _ => None,
+        }
     }
 }

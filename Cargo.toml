@@ -14,7 +14,7 @@ members = [
     edition      = "2021"
     authors      = ["Philipp Nowak <prefixcrab@phnowak.eu>"]
     license      = "MIT"
-    rust-version = "1.59.0"                                  # flexi_logger
+    rust-version = "1.67.1"                                  # flexi_logger
 
     [workspace.dependencies]
     amqprs = { version = "1.2.0", features = ["traces", "urispec"] }
@@ -22,7 +22,7 @@ members = [
     anyhow = { version = "1.0.68", features = ["backtrace"] }
     clap = { version = "4.2", features = ["derive", "unicode", "env"] }
     clap-verbosity-flag = "2.0.0"
-    flexi_logger = { version = "0.26.0", features = ["specfile", "async"] }
+    flexi_logger = { version = "0.27.3", features = ["specfile", "async"] }
     human-panic = "1.1.0"
     serde = { version = "1.0.159", features = ["derive"] }
     log = "0.4.17"
@@ -46,7 +46,7 @@ members = [
     ] }
     diesel_migrations = { version = "2.1.0", features = ["postgres"] }
     diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
-    itertools = "0.11.0"
+    itertools = "0.12.0"
     thiserror = "1.0.50"
 
 [package]

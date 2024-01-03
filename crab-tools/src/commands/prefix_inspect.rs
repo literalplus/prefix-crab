@@ -8,7 +8,8 @@ use tuirealm::{AttrValue, Attribute, PollStrategy, Update};
 use self::app::Model;
 
 mod app;
-pub mod business;
+pub mod detail;
+pub mod leaves;
 mod components;
 
 #[derive(Args, Clone)]
@@ -75,7 +76,7 @@ fn do_run(model: &mut Model) -> Result<()> {
 pub enum Msg {
     AppClose,
     SetStatus(String),
-    ResetStatus,
+    SetStatusPlaceholder(String),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
