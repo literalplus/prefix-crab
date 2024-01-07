@@ -3,6 +3,7 @@ use std::{
     thread,
 };
 
+use db_model::prefix_tree::PriorityClass;
 use ipnet::Ipv6Net;
 use itertools::Itertools;
 use tui_realm_stdlib::Table;
@@ -142,15 +143,27 @@ fn net_to_row(net: &LeafNet, own_prefix_len: u8) -> Vec<TextSpan> {
     let len_diff = len_diff.clamp(0, available_space);
     let indent = " ".repeat(len_diff as usize);
 
-    let prio_color = if net.redundant {
-        Color::Red
+    let prio_suffix = if net.redundant {
+        " 🍂"
     } else {
-        Color::Reset
+        ""
     };
 
     vec![
         TextSpan::from(format!("{}{}", indent, net.net)),
-        TextSpan::from(format!("{:?}", net.priority_class)).fg(prio_color),
+        TextSpan::from(format!("{:?}{}", net.priority_class, prio_suffix)).fg(prio_color(net.priority_class)),
         TextSpan::from(format!("{}%", net.confidence)),
     ]
+}
+
+fn prio_color(prio: PriorityClass) -> Color {
+    use PriorityClass as P;
+
+    match prio {
+        P::MediumSameRatio => Color::Gray,
+        P::MediumSameSingle => Color::DarkGray,
+        P::HighDisjoint => Color::Magenta,
+        P::HighFresh => Color::LightGreen,
+        _ => Color::Reset,
+    }
 }
