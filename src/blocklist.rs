@@ -37,7 +37,7 @@ pub struct PrefixBlocklist {
 
 impl PrefixBlocklist {
     pub fn new(entries: Vec<Ipv6Net>) -> Self {
-        return Self { entries };
+        Self { entries }
     }
 
     pub fn is_blocked(&self, query: &Ipv6Addr) -> bool {
@@ -117,7 +117,7 @@ fn read_from(path: PathBuf) -> BlocklistReadResult {
     let file = File::open(path.clone()).map_err(|source| E::FailedOpen { path, source })?;
     let lines = BufReader::new(file)
         .lines()
-        .filter_ok(|line| !line.starts_with("#") && !line.is_empty());
+        .filter_ok(|line| !line.starts_with('#') && !line.is_empty());
 
     for line_res in lines {
         match line_res {

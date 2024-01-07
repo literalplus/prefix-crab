@@ -46,6 +46,7 @@ impl MergeStatus {
 }
 
 #[derive(
+    Default,
     diesel_derive_enum::DbEnum,
     Debug,
     Eq,
@@ -61,6 +62,8 @@ impl MergeStatus {
 #[ExistingTypePath = "crate::sql_types::PrefixPriorityClass"]
 pub enum PriorityClass {
     // Important: Used in the database, do not change incompatibly!
+
+    #[default]
     HighFresh,
     HighOverlapping,
     HighDisjoint,
@@ -73,12 +76,6 @@ pub enum PriorityClass {
     MediumMultiWeird,
     LowWeird,
     LowUnknown,
-}
-
-impl Default for PriorityClass {
-    fn default() -> Self {
-        PriorityClass::HighFresh
-    }
 }
 
 #[derive(Queryable, Debug, Copy, Clone, PartialEq, Eq)]

@@ -54,7 +54,7 @@ impl Model {
                 .poll_timeout(Duration::from_millis(10))
                 .tick_interval(Duration::from_millis(100)),
         );
-        app.mount(Id::StatusBar, Box::new(StatusBar::default()), vec![])?;
+        app.mount(Id::StatusBar, Box::<StatusBar>::default(), vec![])?;
         add_keyboard_sub!(app, Id::StatusBar => Key::Char('q'));
         add_keyboard_sub!(app, Id::StatusBar => Key::Esc);
 

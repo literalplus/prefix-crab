@@ -8,7 +8,7 @@ use itertools::Itertools;
 use tui_realm_stdlib::Table;
 use tuirealm::{
     command::Cmd,
-    props::{BorderType, Borders, Color, TableBuilder, TextSpan},
+    props::{BorderType, Borders, Color, TableBuilder, TextSpan, Alignment},
     AttrValue, Attribute, MockComponent,
 };
 
@@ -18,6 +18,7 @@ use super::model::{self, LeafNet};
 
 pub struct Leaves {
     pub component: Table,
+    pub prefix: Ipv6Net, // should not change during lifetime
     state: Arc<Mutex<State>>,
     active: Option<Vec<LeafNet>>,
 }
@@ -33,7 +34,7 @@ enum State {
 const NET_ROW_WIDTH: u16 = 50;
 
 impl Leaves {
-    pub fn new() -> Self {
+    pub fn new(prefix: Ipv6Net) -> Self {
         let component = Table::default()
             .borders(
                 Borders::default()
@@ -43,9 +44,11 @@ impl Leaves {
             .highlighted_color(Color::DarkGray)
             .scroll(true)
             .headers(&["🎋", "💰", "💪"])
-            .widths(&[NET_ROW_WIDTH, 20, 15]);
+            .widths(&[NET_ROW_WIDTH, 20, 15])
+            .title(format!("{:?}", prefix), Alignment::Center);
         Self {
             component,
+            prefix,
             state: Mutex::new(State::Missing).into(),
             active: None,
         }
@@ -53,15 +56,15 @@ impl Leaves {
 }
 
 impl ViewportChild for Leaves {
-    fn perform(&mut self, cmd: Cmd, prefix: Ipv6Net) -> PerformResult {
+    fn perform(&mut self, cmd: Cmd) -> PerformResult {
         match cmd {
             Cmd::Submit => self.on_submit(),
-            Cmd::Tick => self.on_tick(prefix.prefix_len()),
-            _ => return PerformResult::Forward,
+            Cmd::Tick => self.on_tick(),
+            _ => PerformResult::Forward,
         }
     }
 
-    fn load_for_prefix(&mut self, prefix: Ipv6Net) {
+    fn load(&mut self) {
         let mut locked = self.state.lock().expect("mutex poisoned");
         if matches!(*locked, State::Loading) {
             return;
@@ -70,8 +73,9 @@ impl ViewportChild for Leaves {
         drop(locked);
 
         let mutex_ref = Arc::clone(&self.state);
+        let prefix_clone = self.prefix;
         thread::spawn(move || {
-            let res = super::find_leaves(&prefix);
+            let res = super::find_leaves(prefix_clone);
             let mut locked = (*mutex_ref).lock().expect("state mutex poisoned");
             *locked = State::Ready(res);
         });
@@ -87,10 +91,10 @@ impl Leaves {
             Some(it) => it,
         };
         let index = self.component.states.list_index;
-        R::ShowPrefix(active[index].net)
+        R::NextPrefix(active[index].net)
     }
 
-    fn on_tick(&mut self, own_prefix_len: u8) -> PerformResult {
+    fn on_tick(&mut self) -> PerformResult {
         let locked = self.state.lock().expect("not poisoned");
         let copy = locked.clone();
         drop(locked);
@@ -99,7 +103,7 @@ impl Leaves {
             State::Loading => PerformResult::Loading,
             State::Missing => PerformResult::Refresh,
             State::Ready(ref res) => {
-                self.display_result(res.clone(), own_prefix_len);
+                self.display_result(res.clone());
                 let mut locked = self.state.lock().expect("still not poisoned");
                 *locked = State::Loaded;
                 PerformResult::ClearStatus
@@ -108,10 +112,11 @@ impl Leaves {
         };
     }
 
-    fn display_result(&mut self, res: model::Result, own_prefix_len: u8) {
+    fn display_result(&mut self, res: model::Result) {
+        let own_prefix_len = self.prefix.prefix_len();
         let table = match &res {
             Ok(nets) => nets
-                .into_iter()
+                .iter()
                 .map(|net| net_to_row(net, own_prefix_len))
                 .collect_vec(),
             Err(e) => TableBuilder::default()

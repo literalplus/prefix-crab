@@ -133,15 +133,20 @@ impl MeasurementForest {
     }
 }
 
-type IntoIter = Chain<vec::IntoIter<ModifiableTree>, map64::IntoIterValues<ModifiableTree>>;
 type IterNets<'a> = Map<Chain<slice::Iter<'a, ModifiableTree>, map64::IterValues<'a, ModifiableTree>>, fn(&ModifiableTree) -> Ipv6Net>;
 
-impl<'a> MeasurementForest {
-    pub fn into_iter(self) -> IntoIter {
+impl IntoIterator for MeasurementForest {
+    type Item = ModifiableTree;
+
+    type IntoIter = Chain<vec::IntoIter<Self::Item>, map64::IntoIterValues<Self::Item>>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.merged_trees.into_iter()
             .chain(self.trees64.into_iter_values())
     }
+}
 
+impl<'a> MeasurementForest {
     pub fn to_iter_all_nets(&'a self) -> IterNets<'a> {
         self.merged_trees.iter()
             .chain(self.trees64.iter_values())

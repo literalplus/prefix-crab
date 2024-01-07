@@ -20,10 +20,10 @@ macro_rules! deterr {
 mod component;
 mod model;
 
-pub fn find_leaves(net: &Ipv6Net) -> Result {
+pub fn find_leaves(net: Ipv6Net) -> Result {
     let mut conn = persist::connect().map_err(deterr!(DbConnect))?;
 
-    let mut leaves = load_leaves(&mut conn, net)?
+    let mut leaves = load_leaves(&mut conn, &net)?
         .into_iter()
         .map_into()
         .collect_vec();

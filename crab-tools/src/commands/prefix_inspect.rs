@@ -52,7 +52,7 @@ fn do_run(model: &mut Model) -> Result<()> {
                     )
                     .unwrap();
             }
-            Result::Ok(messages) if messages.len() > 0 => {
+            Result::Ok(messages) if !messages.is_empty() => {
                 model.redraw = true;
                 for msg in messages.into_iter() {
                     let mut msg = Some(msg);

@@ -5,7 +5,6 @@ use tui_realm_stdlib::states::SpinnerStates;
 use tuirealm::{
     command::{Cmd, CmdResult, Direction},
     event::{Key, KeyEvent},
-    props::Alignment,
     AttrValue, Attribute, Component, Event, MockComponent, NoUserEvent,
 };
 
@@ -13,7 +12,7 @@ use crate::commands::prefix_inspect::{detail::Detail, leaves::Leaves, Msg};
 
 pub enum PerformResult {
     Refresh,
-    ShowPrefix(Ipv6Net),
+    NextPrefix(Ipv6Net), // pushes self to history
     Status(&'static str),
     ClearStatus,
     Loading,
@@ -22,10 +21,8 @@ pub enum PerformResult {
 }
 
 pub trait ViewportChild {
-    //fn with_component<T>(&mut self, op: (&mut dyn MockComponent) -> T) -> T;
-    //fn component(&self) -> Rc<RefCell<dyn MockComponent>>;
-    fn load_for_prefix(&mut self, prefix: Ipv6Net);
-    fn perform(&mut self, cmd: Cmd, prefix: Ipv6Net) -> PerformResult;
+    fn load(&mut self);
+    fn perform(&mut self, cmd: Cmd) -> PerformResult;
 }
 
 enum ActiveChild {
@@ -48,10 +45,24 @@ impl ActiveChild {
         }
     }
 
-    fn next(&self) -> Self {
+    fn prefix(&self) -> Ipv6Net {
         match self {
-            Self::Detail(_) => Self::Leaves(Leaves::new()),
-            Self::Leaves(_) => Self::Detail(Detail::new()),
+            ActiveChild::Detail(it) => it.prefix,
+            ActiveChild::Leaves(it) => it.prefix,
+        }
+    }
+
+    fn cycle_mode(&self) -> Self {
+        match self {
+            Self::Detail(it) => Self::Leaves(Leaves::new(it.prefix)),
+            Self::Leaves(it) => Self::Detail(Detail::new(it.prefix)),
+        }
+    }
+
+    fn clone_with_prefix(&self, prefix: Ipv6Net) -> Self {
+        match self {
+            Self::Detail(_) => Self::Detail(Detail::new(prefix)),
+            Self::Leaves(_) => Self::Leaves(Leaves::new(prefix)),
         }
     }
 
@@ -84,26 +95,61 @@ impl DerefMut for ActiveChild {
 }
 
 const CMD_PREFIX_UP: Cmd = Cmd::Custom("CMD_PREFIX_UP");
+const CMD_HISTORY_BACK: Cmd = Cmd::Custom("CMD_HISTORY_BACK");
 const CMD_CYCLE_MODE: Cmd = Cmd::Custom("CMD_CYCLE_MODE");
-const RES_PREFIX_CHANGED_NAME: &'static str = "RES_PREFIX_CHANGED";
+const RES_PREFIX_CHANGED_NAME: &str = "RES_PREFIX_CHANGED";
 const RES_PREFIX_CHANGED: CmdResult = CmdResult::Custom(RES_PREFIX_CHANGED_NAME);
-const RES_LOADING_NAME: &'static str = "RES_LOADING";
+const RES_LOADING_NAME: &str = "RES_LOADING";
 const RES_LOADING: CmdResult = CmdResult::Custom(RES_LOADING_NAME);
 
 pub struct Viewport {
     active_child: ActiveChild,
-    current_prefix: Ipv6Net,
+    history: Vec<ActiveChild>,
     spinner: SpinnerStates,
 }
 
 impl Viewport {
-    fn select_prefix(&mut self, prefix: Ipv6Net) -> CmdResult {
-        self.current_prefix = prefix;
-        self.active_child.load_for_prefix(prefix);
-        self.active_child.component_mut().attr(
-            Attribute::Title,
-            AttrValue::Title((format!("{:?}", prefix), Alignment::Center)),
-        );
+    pub fn new(prefix: &Ipv6Net) -> Self {
+        Self {
+            active_child: ActiveChild::Detail(Detail::new(*prefix)),
+            history: vec![],
+            spinner: SpinnerStates {
+                sequence: "⣾⣽⣻⢿⡿⣟⣯⣷".chars().collect(),
+                ..Default::default()
+            },
+        }
+    }
+
+    fn history_restore(&mut self, state: ActiveChild) -> CmdResult {
+        self.active_child = state; // focus flag is retained when pushing to history
+        RES_PREFIX_CHANGED
+    }
+
+    fn push_details(&mut self, next_prefix: Ipv6Net) -> CmdResult {
+        self.swap_active_to_history(ActiveChild::Detail(Detail::new(next_prefix)))
+    }
+
+    /// In contrast to push_details(), this retains the mode
+    fn push_next_prefix(&mut self, next_prefix: Ipv6Net) -> CmdResult {
+        self.swap_active_to_history(self.active_child.clone_with_prefix(next_prefix))
+    }
+
+    fn push_mode_cycle(&mut self) -> CmdResult {
+        self.swap_active_to_history(self.active_child.cycle_mode())
+    }
+
+    fn swap_active_to_history(&mut self, mut new_active: ActiveChild) -> CmdResult {
+        new_active
+            .component_mut()
+            .attr(Attribute::Focus, AttrValue::Flag(true));
+        let previous = std::mem::replace(&mut self.active_child, new_active);
+        // no really necessary to de-focus the history state, since we only ever use it to set it active again...
+        self.history.push(previous);
+        self.trigger_load()
+    }
+
+    fn trigger_load(&mut self) -> CmdResult {
+        self.active_child.load();
         RES_PREFIX_CHANGED
     }
 }
@@ -131,11 +177,9 @@ impl MockComponent for Viewport {
         if let Some(res) = self.perform_internal(cmd) {
             res
         } else {
-            match self.active_child.perform(cmd, self.current_prefix) {
-                R::Refresh => self.select_prefix(self.current_prefix),
-                R::ShowPrefix(prefix) => {
-                    self.set_active(ActiveChild::Detail(Detail::new()), prefix)
-                }
+            match self.active_child.perform(cmd) {
+                R::Refresh => self.trigger_load(),
+                R::NextPrefix(prefix) => self.push_details(prefix),
                 R::Status(line) => CmdResult::Custom(line),
                 R::ClearStatus => CmdResult::Custom(""),
                 R::Loading => RES_LOADING,
@@ -151,37 +195,25 @@ impl MockComponent for Viewport {
 
 impl Viewport {
     fn perform_internal(&mut self, cmd: Cmd) -> Option<CmdResult> {
-        match cmd {
+        let res = match cmd {
             CMD_PREFIX_UP => {
-                if let Some(supernet) = self.current_prefix.supernet() {
-                    Some(self.select_prefix(supernet))
+                if let Some(supernet) = self.active_child.prefix().supernet() {
+                    self.push_next_prefix(supernet)
                 } else {
-                    return Some(CmdResult::Custom("Already at the root prefix"));
+                    CmdResult::Custom("Already at the root prefix")
                 }
             }
-            CMD_CYCLE_MODE => Some(self.set_active(self.active_child.next(), self.current_prefix)),
-            _ => None,
-        }
-    }
-
-    fn set_active(&mut self, value: ActiveChild, prefix: Ipv6Net) -> CmdResult {
-        self.active_child = value;
-        self.active_child
-            .component_mut()
-            .attr(Attribute::Focus, AttrValue::Flag(true));
-        self.select_prefix(prefix)
-    }
-}
-
-impl Viewport {
-    pub fn new(prefix: &Ipv6Net) -> Self {
-        let mut spinner = SpinnerStates::default();
-        spinner.sequence = "⣾⣽⣻⢿⡿⣟⣯⣷".chars().collect();
-        Self {
-            active_child: ActiveChild::Detail(Detail::new()),
-            current_prefix: *prefix,
-            spinner,
-        }
+            CMD_HISTORY_BACK => {
+                if let Some(state) = self.history.pop() {
+                    self.history_restore(state)
+                } else {
+                    CmdResult::Custom("Already at the root prefix")
+                }
+            }
+            CMD_CYCLE_MODE => self.push_mode_cycle(),
+            _ => return None,
+        };
+        Some(res)
     }
 }
 
@@ -190,7 +222,8 @@ impl Component<Msg, NoUserEvent> for Viewport {
         let cmd = match ev {
             Event::Tick => Cmd::Tick,
             Event::Keyboard(KeyEvent { code, .. }) => match code {
-                Key::Backspace => CMD_PREFIX_UP,
+                Key::Char('w') => CMD_PREFIX_UP,
+                Key::Backspace => CMD_HISTORY_BACK,
                 Key::Enter => Cmd::Submit,
                 Key::Up => Cmd::Move(Direction::Up),
                 Key::Down => Cmd::Move(Direction::Down),
@@ -207,8 +240,14 @@ impl Component<Msg, NoUserEvent> for Viewport {
                 Some(Msg::SetStatus(format!("Loading {}", self.spinner.step())))
             }
             CmdResult::Custom(RES_PREFIX_CHANGED_NAME) => Some(Msg::SetStatusPlaceholder(format!(
-                "{} | ⬆⬇ Scroll | ↩ Select | ⌫  Up | ↹ Mode",
-                self.active_child.mode_emoji()
+                // Note that "down" on its own makes little sense as there are two children
+                "{} | ⬆⬇ Scroll | ↩ Select{} | w Up | ↹ Mode",
+                self.active_child.mode_emoji(),
+                if self.history.is_empty() {
+                    "".to_string()
+                } else {
+                    format!(" | ⌫  Back ({})", self.history.len())
+                },
             ))),
             CmdResult::Custom(msg) => Some(Msg::SetStatus(msg.to_string())),
             _ => None,

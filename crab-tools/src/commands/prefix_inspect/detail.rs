@@ -30,11 +30,11 @@ macro_rules! writepfx {
 mod model;
 mod component;
 
-pub fn print_prefix(net: &Ipv6Net) -> Result {
+pub fn print_prefix(net: Ipv6Net) -> Result {
     let mut buf = PrintedPrefixBuilder::default();
     let mut conn = persist::connect().map_err(pfxerr!(DbConnect))?;
 
-    let tree = load_tree(&mut conn, net)?;
+    let tree = load_tree(&mut conn, &net)?;
     writepfx!(
         &mut buf,
         "🌳 Tree data: {} 🍃{:?} 💰{:?} 💪{}%",
@@ -45,7 +45,7 @@ pub fn print_prefix(net: &Ipv6Net) -> Result {
     );
 
     let load_start = Instant::now();
-    let measurements = load_relevant_measurements(&mut conn, net)?;
+    let measurements = load_relevant_measurements(&mut conn, &net)?;
     writepfx!(
         &mut buf,
         "👀 {} /64 prefixes probed in this prefix (loaded from DB in {:?})",
@@ -55,7 +55,7 @@ pub fn print_prefix(net: &Ipv6Net) -> Result {
 
     buf = buf.flush_section()?;
 
-    let subnets = Subnets::new(*net, measurements).map_err(pfxerr!(SubnetSplit))?;
+    let subnets = Subnets::new(net, measurements).map_err(pfxerr!(SubnetSplit))?;
     for subnet in subnets.iter() {
         writepfx!(&mut buf,);
         writepfx!(&mut buf, "▶ Subnet: {}", subnet.subnet.network);
