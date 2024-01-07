@@ -194,7 +194,7 @@ impl Component<Msg, NoUserEvent> for Viewport {
                 Key::Enter => Cmd::Submit,
                 Key::Up => Cmd::Move(Direction::Up),
                 Key::Down => Cmd::Move(Direction::Down),
-                Key::PageUp => Cmd::Scroll(Direction::Down),
+                Key::PageUp => Cmd::Scroll(Direction::Up),
                 Key::PageDown => Cmd::Scroll(Direction::Down),
                 Key::Tab => CMD_CYCLE_MODE,
                 _ => return None,

@@ -29,6 +29,7 @@ pub fn find_leaves(net: &Ipv6Net) -> Result {
         .collect_vec();
 
     leaves.sort_by_key(|pfx: &LeafNet| pfx.net);
+    mark_redundant_neighbors(&mut leaves);
 
     Ok(leaves)
 }
@@ -45,4 +46,25 @@ fn load_leaves(conn: &mut PgConnection, supernet: &Ipv6Net) -> StdResult<Vec<Pre
         .load(conn)
         .fix_cause()
         .map_err(deterr!(LoadTree))
+}
+
+fn mark_redundant_neighbors(leaves: &mut Vec<LeafNet>) {
+    // Check for all possible adjacent pairs if they are redundant neighbours
+    for left_idx in 0..(leaves.len() - 1) {
+        let right_idx = left_idx + 1;
+        let (left, right) = (&leaves[left_idx], &leaves[right_idx]);
+        if !are_neighbors(&left.net, &right.net) {
+            continue;
+        }
+        if left.priority_class == right.priority_class {
+            // Note that this isn't 100% accurate as we would need to compare the LHRs & ratios,
+            // but it can at least provide an indication where to look for flase-positive merges
+            leaves[left_idx].redundant = true;
+            leaves[right_idx].redundant = true;
+        }
+    }
+}
+
+fn are_neighbors(left: &Ipv6Net, right: &Ipv6Net) -> bool {
+    left.prefix_len() == right.prefix_len() && left.supernet() == right.supernet()
 }

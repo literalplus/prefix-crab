@@ -136,9 +136,16 @@ fn net_to_row(net: &LeafNet, own_prefix_len: u8) -> Vec<TextSpan> {
     let len_diff = own_prefix_len.abs_diff(net.net.prefix_len()) as u16;
     let len_diff = len_diff.clamp(0, available_space);
     let indent = " ".repeat(len_diff as usize);
+
+    let prio_color = if net.redundant {
+        Color::Red
+    } else {
+        Color::Reset
+    };
+
     vec![
         TextSpan::from(format!("{}{}", indent, net.net)),
-        TextSpan::from(format!("{:?}", net.priority_class)),
+        TextSpan::from(format!("{:?}", net.priority_class)).fg(prio_color),
         TextSpan::from(format!("{}%", net.confidence)),
     ]
 }

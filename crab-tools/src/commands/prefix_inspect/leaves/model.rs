@@ -7,6 +7,7 @@ pub struct LeafNet {
     pub net: Ipv6Net,
     pub priority_class: PriorityClass,
     pub confidence: Confidence,
+    pub redundant: bool,
 }
 
 impl From<PrefixTree> for LeafNet {
@@ -15,6 +16,7 @@ impl From<PrefixTree> for LeafNet {
             net: value.net,
             priority_class: value.priority_class,
             confidence: value.confidence,
+            redundant: false,
         }
     }
 }
