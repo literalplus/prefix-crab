@@ -76,7 +76,10 @@ fn load_relevant_measurements(
     conn: &mut PgConnection,
     analysis: &SplitAnalysis,
     forest: &MeasurementForest,
-) -> Result<Vec<MeasurementTree>> {
+) -> Result<Vec<MeasurementTree>> { // TODO can this be called without filters?
+    if forest.is_empty() {
+        return Ok(vec![]);
+    }
     let mut query = measurement_tree.into_boxed();
     for net in forest.to_iter_all_nets() {
         query = query.or_filter(target_net.supernet_or_eq6(&net));

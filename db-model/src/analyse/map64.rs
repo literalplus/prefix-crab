@@ -152,6 +152,10 @@ impl<V> Index<&Ipv6Addr> for Net64Map<V> {
 }
 
 impl<V> Net64Map<V> {
+    pub fn is_empty(&self) -> bool {
+        self.per_net.is_empty()
+    }
+
     fn entry_by_net(&mut self, net: &Ipv6Net) -> hash_map::Entry<'_, u64, V> {
         self.per_net.entry(to_key(net))
     }

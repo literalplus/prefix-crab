@@ -62,6 +62,10 @@ fn expect_ipv6_net(&self) -> Ipv6Net {
 }
 
 impl MeasurementForest {
+    pub fn is_empty(&self) -> bool {
+        self.trees64.is_empty() && self.merged_trees.is_empty()
+    }
+
     pub fn with_untouched(trees: Vec<MeasurementTree>) -> Result<Self> {
         let mut me = Self::default();
         for tree in trees {
