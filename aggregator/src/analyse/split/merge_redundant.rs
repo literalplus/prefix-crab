@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use db_model::{
     persist::dsl::CidrMethods,
     persist::DieselErrorFixCause,
-    prefix_tree::{ContextOps, MergeStatus, PrefixTree},
+    prefix_tree::{ContextOps, MergeStatus, PrefixTree, PriorityClass},
 };
 use diesel::{dsl::sql, prelude::*, BoolExpressionMethods, ExpressionMethods, PgConnection};
 use ipnet::Ipv6Net;
@@ -91,9 +91,13 @@ pub fn merge(conn: &mut PgConnection, request: &Context) -> Result<()> {
         }
         let n_updated_parent = diesel::update(prefix_tree)
             .filter(net.eq6(&nets.parent))
-            .set(merge_status.eq(sql(
+            .set((
+                merge_status.eq(sql(
                 "CASE WHEN merge_status = 'split_root' THEN 'unsplit_root'::prefix_merge_status ELSE 'leaf' END",
-            )))
+                )), 
+                priority_class.eq(PriorityClass::HighFresh), // ensure that the merged net gets analysed soon
+                confidence.eq(41), // chosen by fair dice roll, guaranteed to be random
+            ))
             .execute(conn)
             .fix_cause()?;
         let _ = MergeStatus::UnsplitRoot.split(); // indicator that this logic is also implemented in the raw SQL above
