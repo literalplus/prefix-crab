@@ -38,10 +38,11 @@ fn load_leaves(conn: &mut PgConnection, supernet: &Ipv6Net) -> StdResult<Vec<Pre
     use db_model::schema::prefix_tree::dsl::*;
 
     prefix_tree
-        .filter(
-            net.subnet_or_eq6(supernet)
-                .and(merge_status.eq_any(&[MergeStatus::Leaf, MergeStatus::UnsplitRoot])),
-        )
+        .filter(net.subnet_or_eq6(supernet).and(merge_status.eq_any(&[
+            MergeStatus::Leaf,
+            MergeStatus::UnsplitRoot,
+            MergeStatus::MinSizeReached,
+        ])))
         .select(PrefixTree::as_select())
         .load(conn)
         .fix_cause()
@@ -53,9 +54,12 @@ fn mark_redundant_neighbors(leaves: &mut Vec<LeafNet>) {
     for left_idx in 0..(leaves.len() - 1) {
         let right_idx = left_idx + 1;
         let (left, right) = (&leaves[left_idx], &leaves[right_idx]);
-        if !are_neighbors(&left.net, &right.net) {
+
+        // Skip /64s since we don't perform split analyses on them
+        if !are_neighbors(&left.net, &right.net) && left.net.prefix_len() < 64 {
             continue;
         }
+
         if left.priority_class == right.priority_class {
             // Note that this isn't 100% accurate as we would need to compare the LHRs & ratios,
             // but it can at least provide an indication where to look for flase-positive merges

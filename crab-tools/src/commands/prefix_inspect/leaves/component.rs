@@ -149,10 +149,16 @@ fn net_to_row(net: &LeafNet, own_prefix_len: u8) -> Vec<TextSpan> {
         ""
     };
 
+    let confidence = if net.net.prefix_len() >= 64 {
+        "--".to_string()
+    } else {
+        format!("{}%", net.confidence)
+    };
+
     vec![
         TextSpan::from(format!("{}{}", indent, net.net)),
         TextSpan::from(format!("{:?}{}", net.priority_class, prio_suffix)).fg(prio_color(net.priority_class)),
-        TextSpan::from(format!("{}%", net.confidence)),
+        TextSpan::from(confidence),
     ]
 }
 
