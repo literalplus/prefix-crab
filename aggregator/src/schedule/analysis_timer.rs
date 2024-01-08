@@ -51,7 +51,7 @@ impl Timer {
     }
 
     async fn do_tick(&mut self) -> Result<()> {
-        let mut conn = crate::persist::connect()?;
+        let mut conn = crate::persist::connect("aggregator - analysis timer")?;
         let budgets = class_budget::allocate(&mut conn, self.params.analysis_timer_prefix_budget)?;
 
         if budgets.is_empty() {

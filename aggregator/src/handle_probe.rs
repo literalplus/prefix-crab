@@ -40,7 +40,7 @@ pub async fn run(
     follow_up_tx: Sender<FollowUpRequest>,
     params: Params,
 ) -> Result<()> {
-    let conn = crate::persist::connect()?;
+    let conn = crate::persist::connect("aggregator - probe handler")?;
     let blocklist = blocklist::read(params.blocklist)?;
     let handler = ProbeHandler {
         conn,

@@ -32,7 +32,7 @@ mod component;
 
 pub fn print_prefix(net: Ipv6Net) -> Result {
     let mut buf = PrintedPrefixBuilder::default();
-    let mut conn = persist::connect().map_err(pfxerr!(DbConnect))?;
+    let mut conn = persist::connect("tools - detail").map_err(pfxerr!(DbConnect))?;
 
     let tree = load_tree(&mut conn, &net)?;
     writepfx!(

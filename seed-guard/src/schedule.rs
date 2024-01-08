@@ -70,7 +70,7 @@ fn tick(params: &Params, as_dir: &Path) {
 }
 
 fn do_tick(params: &Params, as_dir: &Path) -> Result<()> {
-    let mut conn = crate::persist::connect()?;
+    let mut conn = crate::persist::connect("guard - scheduler")?;
     let start = Instant::now();
 
     let filter = as_filter_list::fetch(&mut conn, params.asn_filter_is_deny_list)
