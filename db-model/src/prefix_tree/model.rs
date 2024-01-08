@@ -27,6 +27,8 @@ impl MergeStatus {
     }
 
     pub fn split(&self) -> MergeStatus {
+        // NOTE - merge() logic is implemented in raw SQL in merge_redundant
+
         if matches!(self, MergeStatus::UnsplitRoot | MergeStatus::SplitRoot) {
             MergeStatus::SplitRoot
         } else if self == &MergeStatus::Blocked {
