@@ -1,9 +1,13 @@
 use db_model::{
-    analyse::{subnet::Subnets, MeasurementTree},
+    analyse::{
+        subnet::{Subnet, Subnets},
+        MeasurementTree,
+    },
     persist::{self, dsl::CidrMethods, DieselErrorFixCause},
     prefix_tree::PrefixTree,
 };
 use diesel::{PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
+use prefix_crab::prefix_split::{NetIndex, SplitSubnet};
 use std::io::Write;
 use std::time::Instant;
 
@@ -27,8 +31,8 @@ macro_rules! writepfx {
     };
 }
 
-mod model;
 mod component;
+mod model;
 
 pub fn print_prefix(net: Ipv6Net) -> Result {
     let mut buf = PrintedPrefixBuilder::default();
@@ -46,57 +50,87 @@ pub fn print_prefix(net: Ipv6Net) -> Result {
 
     let load_start = Instant::now();
     let measurements = load_relevant_measurements(&mut conn, &net)?;
+
+    let all_are_64s = measurements
+        .iter()
+        .all(|it| it.target_net.prefix_len() == 64);
+    let size_desc = if all_are_64s {
+        "/64 prefixes"
+    } else {
+        "merged prefixes"
+    };
     writepfx!(
         &mut buf,
-        "👀 {} /64 prefixes probed in this prefix (loaded from DB in {:?})",
+        "👀 {} {} probed in this prefix (loaded from DB in {:?})",
         measurements.len(),
+        size_desc,
         load_start.elapsed(),
     );
 
     buf = buf.flush_section()?;
 
-    let subnets = Subnets::new(net, measurements).map_err(pfxerr!(SubnetSplit))?;
-    for subnet in subnets.iter() {
-        writepfx!(&mut buf,);
-        writepfx!(&mut buf, "▶ Subnet: {}", subnet.subnet.network);
-
-        if subnet.probe_count() == 0 {
-            writepfx!(&mut buf, " No probes recorded.");
-            continue;
+    if net.prefix_len() >= 64 {
+        let mut fake_subnet: Subnet = SplitSubnet {
+            index: NetIndex::try_from(0u8).map_err(pfxerr!(SubnetSplit))?,
+            network: net,
         }
-
-        let responsive_percent =
-            (subnet.responsive_count() as i64 * 100i64).div_euclid(subnet.probe_count() as i64);
-        writepfx!(
-            &mut buf,
-            " {} Probes, of these: (🔊{} 🔇{}) => {}% responsive",
-            subnet.probe_count(),
-            subnet.responsive_count(),
-            subnet.unresponsive_count(),
-            responsive_percent,
-        );
-
-        writepfx!(&mut buf, " Last-Hop Routers:");
-        for (addr, item) in subnet.iter_lhrs() {
-            let percent =
-                (item.hit_count as i64 * 100i64).div_euclid(subnet.responsive_count() as i64);
-            writepfx!(
-                &mut buf,
-                "  🚏 {} - {} hits ({}%)",
-                addr,
-                item.hit_count,
-                percent
-            );
+        .into();
+        for measurement in measurements {
+            fake_subnet
+                .consume_merge(&measurement)
+                .map_err(pfxerr!(SubnetSplit))?;
         }
-        writepfx!(&mut buf, " Weirdness:");
-        for (typ, item) in subnet.iter_weirds() {
-            writepfx!(&mut buf, "  🌪 {:?} - {} hits", typ, item.hit_count);
+        buf = print_subnet(buf, &fake_subnet)?;
+    } else {
+        let subnets = Subnets::new(net, measurements).map_err(pfxerr!(SubnetSplit))?;
+        for subnet in subnets.iter() {
+            buf = print_subnet(buf, subnet)?;
         }
-
-        buf = buf.flush_section()?;
     }
 
     Ok(buf.into())
+}
+
+fn print_subnet(
+    mut buf: PrintedPrefixBuilder,
+    subnet: &Subnet,
+) -> StdResult<PrintedPrefixBuilder, Error> {
+    writepfx!(&mut buf,);
+    writepfx!(&mut buf, "▶ Subnet: {}", subnet.subnet.network);
+
+    if subnet.probe_count() == 0 {
+        writepfx!(&mut buf, " No probes recorded.");
+        return Ok(buf);
+    }
+
+    let responsive_percent =
+        (subnet.responsive_count() as i64 * 100i64).div_euclid(subnet.probe_count() as i64);
+    writepfx!(
+        &mut buf,
+        " {} Probes, of these: (🔊{} 🔇{}) => {}% responsive",
+        subnet.probe_count(),
+        subnet.responsive_count(),
+        subnet.unresponsive_count(),
+        responsive_percent,
+    );
+
+    writepfx!(&mut buf, " Last-Hop Routers:");
+    for (addr, item) in subnet.iter_lhrs() {
+        let percent = (item.hit_count as i64 * 100i64).div_euclid(subnet.responsive_count() as i64);
+        writepfx!(
+            &mut buf,
+            "  🚏 {} - {} hits ({}%)",
+            addr,
+            item.hit_count,
+            percent
+        );
+    }
+    writepfx!(&mut buf, " Weirdness:");
+    for (typ, item) in subnet.iter_weirds() {
+        writepfx!(&mut buf, "  🌪 {:?} - {} hits", typ, item.hit_count);
+    }
+
+    Ok(buf.flush_section()?)
 }
 
 fn load_tree(conn: &mut PgConnection, target: &Ipv6Net) -> StdResult<PrefixTree, Error> {
@@ -123,4 +157,3 @@ fn load_relevant_measurements(
         .fix_cause()
         .map_err(pfxerr!(LoadMeasurements))
 }
-

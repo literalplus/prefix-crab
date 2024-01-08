@@ -41,6 +41,10 @@ impl Subnet {
     pub fn responsive_count(&self) -> i32 {
         self.synthetic_tree.responsive_count
     }
+
+    pub fn consume_merge(&mut self, other: &MeasurementTree) -> Result<()> {
+        self.synthetic_tree.merge(&other)
+    }
 }
 
 impl From<SplitSubnet> for Subnet {
@@ -68,9 +72,7 @@ impl Subnets {
             for (i, candidate_split) in splits.iter_mut().enumerate() {
                 let tree_net = &unused_tree.as_ref().expect("tree for net").target_net;
                 if split_nets[i].contains(tree_net) {
-                    candidate_split
-                        .synthetic_tree
-                        .merge(&unused_tree.take().expect("tree for merge"))?;
+                    candidate_split.consume_merge(&unused_tree.take().expect("tree for merge"))?;
                     break;
                 }
             }
@@ -201,7 +203,7 @@ impl<I> Diff<I> {
 mod tests {
     use std::collections::{HashMap, HashSet};
 
-    use assertor::{assert_that, EqualityAssertion, MapAssertion, IteratorAssertion};
+    use assertor::{assert_that, EqualityAssertion, IteratorAssertion, MapAssertion};
 
     use super::*;
     use crate::analyse::LhrSource;

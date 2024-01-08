@@ -96,7 +96,7 @@ pub fn merge(conn: &mut PgConnection, request: &Context) -> Result<()> {
                 "CASE WHEN merge_status = 'split_root' THEN 'unsplit_root'::prefix_merge_status ELSE 'leaf' END",
                 )), 
                 priority_class.eq(PriorityClass::HighFresh), // ensure that the merged net gets analysed soon
-                confidence.eq(41), // chosen by fair dice roll, guaranteed to be random
+                confidence.eq(4), // chosen by fair dice roll, guaranteed to be random
             ))
             .execute(conn)
             .fix_cause()?;
