@@ -39,5 +39,10 @@ pub fn connect(app_name: &str) -> Result<PgConnection> {
     url.query_pairs_mut()
         .append_pair("application_name", app_name);
 
+    // Postgres expects queries percent-encoded, but url encodes them as application/x-form-www-urlencoded
+    // The subtle difference is that spaces are encoded as + in the latter and %20 in the former
+    let query_percent_encoded = url.query().unwrap_or("").replace("+", "%20");
+    url.set_query(Some(&query_percent_encoded));
+
     PgConnection::establish(url.as_str()).with_context(|| "while connecting to Postgres")
 }
