@@ -7,7 +7,7 @@ use super::subnet::{LhrDiff, Subnets};
 
 /// Changes in the split algorithm are versioned to allow us to invalidate results of an older version
 /// if we find out that it is flawed.
-pub const ALGO_VERSION: i32 = 106;
+pub const ALGO_VERSION: i32 = 110;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum SplitRecommendation {
@@ -77,21 +77,28 @@ fn rate_same_multi(shared: Vec<LhrDiff>) -> SplitRecommendation {
         .map(|i| shared.iter().map(|it| it.hit_counts[i]).sum())
         .collect();
 
+    // We allow more leeway for the percent difference if there are fewer total hits.
+    // Experience shows that nets smaller than ~/40 tend to be split wrongly/too early,
+    // because the percentages haven't converged yet.
+    // Another solution might be to somehow persist the last few percentages and somehow
+    // detect convergence, but that seems much more complicated.
+    // Rejecting a split isn't a huge problem since we can split later (but not cleanly revert the split).
+    let min_subnet_hits = total_per_subnet.iter().min().unwrap_or(&0);
+    let doubled_thresh = match min_subnet_hits {
+        0..=255 => 15, // Allow 7.5% difference if either subnet has < 255 hits
+        256..=1023 => 10,
+        1024..=2047 => 5,
+        _ => 3, // Don't lower this => Rounding error might occur on both sides, making a split impossible with 0.5%
+    };
+
     let mut ratio_is_same = true;
     for diff in shared.iter() {
         let [left, right] = diff.hit_counts;
         let (left, right) = (left * 200, right * 200);
         let (left, right) = (left.saturating_div(total_per_subnet[0]), right.saturating_div(total_per_subnet[1]));
 
-        let double_pct_diff = left.abs_diff(right);
-
-        let thresh= if total_per_subnet.iter().any(|sub_total| sub_total < &512) {
-            10 // if either of the subnets has < 512 hits, allow 5% difference (i.e. always at least 5 absolute hits)
-        } else {
-            3 // for larger nets, allow 1.5% difference (incl. rounding error!)
-        };
-
-        if double_pct_diff > thresh {
+        let doubled_pct_diff = left.abs_diff(right);
+        if doubled_pct_diff > doubled_thresh {
             ratio_is_same = false;
             break;
         }
@@ -219,8 +226,8 @@ mod tests {
     fn same_multi_lhr_different_ratio() {
         // given
         let mut measurements = vec![
-            gen_tree_with_lhr_101(TREE_LEFT_NET, 2), // 20%
-            gen_tree_with_lhr_101(TREE_RIGHT_NET, 3), // 27%
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 20), // 71.4%
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 31), // 79.4%
         ];
         for measurement in &mut measurements {
             gen_add_lhr_beef(measurement, 8);
@@ -233,7 +240,7 @@ mod tests {
         assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
                 class: MediumSameMulti,
-                supporting_observations: 13, // (2*8)/2 + (3+2)
+                supporting_observations: 41, // (20+31)/2 + 2*8
             },
         })
     }
@@ -243,10 +250,10 @@ mod tests {
         // given
         let mut measurements = vec![
             gen_tree_with_lhr_101(TREE_LEFT_NET, 100), // 50%
-            gen_tree_with_lhr_101(TREE_RIGHT_NET, 126), // 54% (rounded down)
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 126), // 57.5%
         ];
         gen_add_lhr_beef(&mut measurements[0], 100); // 50%
-        gen_add_lhr_beef(&mut measurements[1], 104); // 45%
+        gen_add_lhr_beef(&mut measurements[1], 104); // 42%
 
         // when
         let rec = when_recommend(measurements);
@@ -265,7 +272,7 @@ mod tests {
         // given
         let mut measurements = vec![
             gen_tree_with_lhr_101(TREE_LEFT_NET, 100), // 49% (rounded down)
-            gen_tree_with_lhr_101(TREE_RIGHT_NET, 127), // 55% (rounded down)
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 136), // 55% (rounded down)
         ];
         for measurement in &mut measurements {
             gen_add_lhr_beef(measurement, 100);
@@ -278,7 +285,7 @@ mod tests {
         assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
                 class: MediumSameMulti,
-                supporting_observations: 313, // 227/2 + 200
+                supporting_observations: 318, // 236/2 + 200
             },
         })
     }

@@ -38,7 +38,10 @@ const MIN_REALISTIC_AGGREGATE: u8 = 16;
 
 // chosen based on the number of rounds needed to reach the threshold
 // for a /64 and scaling exp. for larger nets
-const THRESH_FOR_64_CONST: u32 = (prefix_split::SAMPLES_PER_SUBNET as u32) * 4u32;
+const THRESH_FOR_64_KEEP: u32 = (prefix_split::SAMPLES_PER_SUBNET as u32) * 4u32;
+
+// higher since a split is not reversible atm, but using less aggressive exponential growth
+const THRESH_FOR_64_SPLIT: u32 = (prefix_split::SAMPLES_PER_SUBNET as u32) * 16u32;
 
 fn min_equivalent_responses_thresh(net: &Ipv6Net) -> u32 {
     // https://docs.google.com/spreadsheets/d/1rOlf3MNCSIj58b9yB1Ni-Dnr2sWrostZoqOcSjIm_To/edit#gid=0
@@ -46,16 +49,16 @@ fn min_equivalent_responses_thresh(net: &Ipv6Net) -> u32 {
     let height = 64u8.saturating_sub(prefix_len_capped);
     let min_response_exp = 2f64.powf(height as f64 / 4f64);
     debug_assert!(min_response_exp >= 1.0);
-    (min_response_exp * (THRESH_FOR_64_CONST as f64)).trunc() as u32
+    (min_response_exp * (THRESH_FOR_64_KEEP as f64)).trunc() as u32
 }
 
 fn max_equivalent_responses_thresh(net: &Ipv6Net) -> u32 {
     // https://docs.google.com/spreadsheets/d/1rOlf3MNCSIj58b9yB1Ni-Dnr2sWrostZoqOcSjIm_To/edit#gid=0
     let prefix_len_capped = MIN_REALISTIC_AGGREGATE.max(net.prefix_len());
     let height = 64u8.saturating_sub(prefix_len_capped);
-    let min_response_exp = 1.5f64.powf(height as f64 / 4f64);
+    let min_response_exp = 1.4f64.powf(height as f64 / 4f64);
     debug_assert!(min_response_exp >= 1.0);
-    (min_response_exp * (THRESH_FOR_64_CONST as f64)).trunc() as u32
+    (min_response_exp * (THRESH_FOR_64_SPLIT as f64)).trunc() as u32
 }
 
 #[cfg(test)]
@@ -100,13 +103,13 @@ mod tests {
     fn max_responses_google_sheet_cases() -> Result<()> {
         // given
         let cases = [
-            (64, 64),
-            (63, 70),
-            (62, 78),
-            (61, 86),
-            (60, 96),
-            (16, 8303),
-            (12, 8303),
+            (64, 256),
+            (63, 278),
+            (62, 302),
+            (61, 329),
+            (60, 358),
+            (16, 14513),
+            (12, 14513),
         ];
 
         // when, then
@@ -132,7 +135,7 @@ mod tests {
             (64, 4, 6),
             (64, 32, 50),
             (64, 64, 100),
-            (64, 678123, 100),
+            (64, 678123, 255),
             (24, 32768, 50),
         ];
 
