@@ -13,7 +13,7 @@ use crate::analyse::context::Context;
 
 pub fn process(
     conn: &mut PgConnection,
-    request: Context,
+    request: &Context,
     relevant_measurements: Vec<MeasurementTree>,
 ) -> Result<()> {
     let base_net = request.node().net;

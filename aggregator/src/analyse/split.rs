@@ -79,29 +79,32 @@ pub fn process(
             );
             persist::perform_prefix_split(conn, request, subnets, blocklist)
                 .map_err(|source| SplitError::PerformSplit { source })?;
-        } else if confidence < Confidence::MAX {
+        } else {
+            if confidence < Confidence::MAX {
+                debug!(
+                    "Keeping prefix {} due to recommendation {:?} at {}% confidence.",
+                    request.log_id(),
+                    rec,
+                    confidence
+                );
+            } else {
+                // If we reach 255% of the threshold without splitting (any doubt would immediately split at this point),
+                // optimise the measurement trees down to 16 (instead of one per /64 -> huge savings for bigger prefixes)
+                info!(
+                    "Keeping prefix {} due to recommendation {:?} at max {}% confidence. Collapsing measurements.",
+                    request.log_id(),
+                    rec,
+                    confidence
+                );
+                collapse::process(conn, &request, relevant_measurements)
+                    .map_err(|source| SplitError::CollapseMeasurements { source })?;
+            }
+
             if confidence > 200 {
                 if let Err(e) = merge_redundant::process(conn, &request) {
                     warn!("Failed to process redundancy check for {} - {:?}", request.log_id(), e)
                 }
             }
-            debug!(
-                "Keeping prefix {} due to recommendation {:?} at {}% confidence.",
-                request.log_id(),
-                rec,
-                confidence
-            );
-        } else {
-            // If we reach 255% of the threshold without splitting (any doubt would immediately split at this point),
-            // optimise the measurement trees down to 16 (instead of one per /64 -> huge savings for bigger prefixes)
-            info!(
-                "Keeping prefix {} due to recommendation {:?} at max {}% confidence. Collapsing measurements.",
-                request.log_id(),
-                rec,
-                confidence
-            );
-            collapse::process(conn, request, relevant_measurements)
-                .map_err(|source| SplitError::CollapseMeasurements { source })?;
         }
     } else {
         debug!(
