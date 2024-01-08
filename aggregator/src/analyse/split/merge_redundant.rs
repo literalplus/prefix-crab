@@ -92,7 +92,7 @@ pub fn merge(conn: &mut PgConnection, request: &Context) -> Result<()> {
         let n_updated_parent = diesel::update(prefix_tree)
             .filter(net.eq6(&nets.parent))
             .set(merge_status.eq(sql(
-                "CASE WHEN merge_status = 'split_root' THEN 'unsplit_root' ELSE 'leaf' END",
+                "CASE WHEN merge_status = 'split_root' THEN 'unsplit_root'::prefix_merge_status ELSE 'leaf' END",
             )))
             .execute(conn)
             .fix_cause()?;
