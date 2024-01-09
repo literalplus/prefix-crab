@@ -60,7 +60,7 @@ fn mark_redundant_neighbors(leaves: &mut Vec<LeafNet>) {
             continue;
         }
 
-        if left.priority_class == right.priority_class {
+        if left.priority_class == right.priority_class && left.hash_short == right.hash_short {
             // Note that this isn't 100% accurate as we would need to compare the LHRs & ratios,
             // but it can at least provide an indication where to look for flase-positive merges
             leaves[left_idx].redundant = true;
