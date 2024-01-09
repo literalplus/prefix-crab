@@ -38,16 +38,18 @@ members = [
     assertor = "0.0.2"
     type-safe-id = { version = "0.2.1", features = ["serde"] }
     chrono = { version = "0.4.29" }
-    diesel = { version = "2.1.0", features = [
+    diesel = { version = "2.1.4", features = [
         "postgres",
         "serde_json",
         "chrono",
         "ipnet-address",
+        "uuid",
     ] }
     diesel_migrations = { version = "2.1.0", features = ["postgres"] }
     diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
     itertools = "0.12.0"
     thiserror = "1.0.50"
+    uuid = "1.6.1" # note that this must be kept in sync with Diesel's uuid dependency
 
 [package]
 name                   = "prefix-crab"

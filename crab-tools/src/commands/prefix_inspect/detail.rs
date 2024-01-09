@@ -130,7 +130,7 @@ fn print_subnet(
         writepfx!(&mut buf, "  🌪 {:?} - {} hits", typ, item.hit_count);
     }
 
-    Ok(buf.flush_section()?)
+    buf.flush_section()
 }
 
 fn load_tree(conn: &mut PgConnection, target: &Ipv6Net) -> StdResult<PrefixTree, Error> {

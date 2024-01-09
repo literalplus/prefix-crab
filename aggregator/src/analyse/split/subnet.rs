@@ -6,7 +6,10 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use db_model::analyse::LhrSource;
+use db_model::{
+    analyse::LhrSource,
+    prefix_tree::{LhrSetHash, PrefixTree},
+};
 use ipnet::{IpNet, Ipv6Net};
 use log::warn;
 use prefix_crab::prefix_split::{self, SplitSubnet};
@@ -22,12 +25,19 @@ pub struct Subnet {
     synthetic_tree: MeasurementTree,
 }
 
+type IterLhrs<'a> = std::collections::hash_map::Iter<'a, LhrAddr, LhrItem>;
+type IterWeirds<'a> = std::collections::hash_map::Iter<'a, WeirdType, WeirdItem>;
+
 impl Subnet {
-    fn iter_lhrs(&self) -> std::collections::hash_map::Iter<'_, LhrAddr, LhrItem> {
+    pub fn lhr_set_hash(&self) -> LhrSetHash {
+        self.synthetic_tree.lhr_set_hash()
+    }
+    
+    fn iter_lhrs(&self) -> IterLhrs<'_> {
         self.synthetic_tree.last_hop_routers.items.iter()
     }
 
-    fn iter_weirds(&self) -> std::collections::hash_map::Iter<'_, WeirdType, WeirdItem> {
+    fn iter_weirds(&self) -> IterWeirds<'_> {
         self.synthetic_tree.weirdness.items.iter()
     }
 }
@@ -127,6 +137,14 @@ impl Subnets {
         }
         result
     }
+
+    pub fn combined_lhr_set_hash(&self) -> LhrSetHash {
+        let combined = self
+            .iter()
+            .flat_map(|subnet| subnet.iter_lhrs())
+            .map(|(addr, _)| *addr);
+        PrefixTree::hash_lhrs(combined)
+    }
 }
 
 impl Deref for Subnets {
@@ -208,7 +226,7 @@ impl<I> Diff<I> {
 mod tests {
     use std::collections::{HashMap, HashSet};
 
-    use assertor::{assert_that, EqualityAssertion, MapAssertion, IteratorAssertion};
+    use assertor::{assert_that, EqualityAssertion, IteratorAssertion, MapAssertion};
 
     use super::*;
     use crate::analyse::LhrSource;

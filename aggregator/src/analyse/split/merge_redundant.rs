@@ -27,12 +27,15 @@ pub fn is_redundant(conn: &mut PgConnection, request: &Context) -> Result<bool> 
 
     let nets = AdjacentNets::try_from(request.node().net)?;
 
+    let my_lhr_set_hash = request.node().lhr_set_hash;
+    
     let found_adjacents: Vec<PrefixTree> = prefix_tree
         .or_filter(
             net.eq6(&nets.sibling)
                 .and(priority_class.eq(request.node().priority_class))
                 .and(confidence.ge(100))
-                .and(merge_status.eq(MergeStatus::Leaf)),
+                .and(merge_status.eq(MergeStatus::Leaf)
+                .and(lhr_set_hash.eq(my_lhr_set_hash))),
         )
         .or_filter(
             net.eq6(&nets.parent)

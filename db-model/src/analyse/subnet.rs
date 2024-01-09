@@ -43,7 +43,7 @@ impl Subnet {
     }
 
     pub fn consume_merge(&mut self, other: &MeasurementTree) -> Result<()> {
-        self.synthetic_tree.merge(&other)
+        self.synthetic_tree.merge(other)
     }
 }
 

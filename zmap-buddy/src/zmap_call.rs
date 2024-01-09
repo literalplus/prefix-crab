@@ -57,7 +57,7 @@ impl Params {
             self.sudo_path.to_string(), self.bin_path.to_string(),
         );
         debug!("Using zmap caller: {:?}", caller);
-        caller.setup(&self)?;
+        caller.setup(self)?;
         Ok(caller)
     }
 

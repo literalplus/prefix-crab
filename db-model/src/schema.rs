@@ -50,6 +50,7 @@ diesel::table! {
         merge_status -> PrefixMergeStatus,
         priority_class -> PrefixPriorityClass,
         confidence -> Int2,
+        lhr_set_hash -> Uuid,
     }
 }
 

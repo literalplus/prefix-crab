@@ -1,6 +1,11 @@
 use anyhow::anyhow;
-use diesel::{pg::Pg, sql_types::{SmallInt, Cidr}, prelude::*, deserialize::FromSql};
-use ipnet::{Ipv6Net, IpNet};
+use diesel::{
+    deserialize::FromSql,
+    pg::Pg,
+    prelude::*,
+    sql_types::{Cidr, SmallInt},
+};
+use ipnet::{IpNet, Ipv6Net};
 
 use crate::analyse::Confidence;
 

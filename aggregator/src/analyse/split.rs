@@ -15,10 +15,10 @@ pub use db_model::analyse::{Confidence, CONFIDENCE_THRESH};
 
 mod collapse;
 mod confidence;
+mod merge_redundant;
 mod persist;
 mod recommend;
 mod subnet;
-mod merge_redundant;
 
 #[derive(Error, Debug)]
 pub enum SplitError {
@@ -65,10 +65,14 @@ pub fn process(
     let relevant_measurements = load_relevant_measurements(conn, &request.node().net)?;
     let subnets = Subnets::new(request.node().net, &relevant_measurements)
         .map_err(|source| SplitError::SplitSubnets { source })?;
+
     let rec = recommend::recommend(&subnets);
     let confidence = confidence::rate(request.node().net, &rec);
-    persist::save_recommendation(conn, &request, &rec, confidence)
+    let hash = subnets.combined_lhr_set_hash();
+
+    persist::save_recommendation(conn, &request, &rec, confidence, hash)
         .map_err(|source| SplitError::SaveRecommendation { source })?;
+
     if confidence >= CONFIDENCE_THRESH {
         if rec.should_split() {
             info!(
@@ -102,7 +106,11 @@ pub fn process(
 
             if confidence > 200 {
                 if let Err(e) = merge_redundant::process(conn, &request) {
-                    warn!("Failed to process redundancy check for {} - {:?}", request.log_id(), e)
+                    warn!(
+                        "Failed to process redundancy check for {} - {:?}",
+                        request.log_id(),
+                        e
+                    )
                 }
             }
         }

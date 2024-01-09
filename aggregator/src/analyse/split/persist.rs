@@ -9,7 +9,7 @@ use crate::analyse::split::subnet::Subnet;
 use crate::analyse::SplitAnalysis;
 use crate::persist::dsl::CidrMethods;
 use crate::persist::DieselErrorFixCause;
-use db_model::prefix_tree::{ContextOps, MergeStatus, PrefixTree, PriorityClass};
+use db_model::prefix_tree::{ContextOps, LhrSetHash, MergeStatus, PrefixTree, PriorityClass};
 
 use super::recommend::{self, ReProbePriority, SplitRecommendation};
 
@@ -21,11 +21,13 @@ pub fn save_recommendation(
     context: &context::Context,
     recommendation: &SplitRecommendation,
     confidence: Confidence,
+    lhr_set_hash: LhrSetHash,
 ) -> Result<()> {
     SaveRecommendation {
         context,
         recommendation,
         confidence,
+        lhr_set_hash,
     }
     .save(conn)
 }
@@ -34,6 +36,7 @@ struct SaveRecommendation<'a, 'b> {
     pub context: &'a context::Context,
     pub recommendation: &'b SplitRecommendation,
     pub confidence: Confidence,
+    lhr_set_hash: LhrSetHash,
 }
 
 impl<'a, 'b> SaveRecommendation<'a, 'b> {
@@ -96,6 +99,7 @@ impl<'a, 'b> SaveRecommendation<'a, 'b> {
         PrefixRecommendationChangeset {
             priority_class: self.recommendation.priority().class,
             confidence: self.confidence as i16,
+            lhr_set_hash: self.lhr_set_hash,
         }
     }
 }
@@ -105,6 +109,7 @@ impl<'a, 'b> SaveRecommendation<'a, 'b> {
 struct PrefixRecommendationChangeset {
     pub priority_class: PriorityClass,
     pub confidence: i16,
+    pub lhr_set_hash: LhrSetHash,
 }
 
 impl From<&SplitRecommendation> for SplitAnalysisResult {
@@ -154,7 +159,11 @@ fn insert_split_subnets(
         } else {
             base_merge
         };
-        (net.eq6(&it.subnet.network), merge_status.eq(merge))
+        (
+            net.eq6(&it.subnet.network),
+            merge_status.eq(merge),
+            lhr_set_hash.eq(it.lhr_set_hash()),
+        )
     };
     let tuples = subnets.iter().map(to_tuple).collect_vec();
 
@@ -162,6 +171,7 @@ fn insert_split_subnets(
         // if already exists, it shouldn't be blocked, and if it is, we'd realise with the next split attempt
         merge_status.eq(base_merge),
         priority_class.eq(PriorityClass::HighFresh),
+        // we can't set hash here (it's different for each subnet), but it will be computed with the next analysis
     );
 
     diesel::insert_into(prefix_tree)

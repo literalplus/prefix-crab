@@ -11,7 +11,10 @@ use ipnet::{IpNet, Ipv6Net};
 use queue_models::probe_response::DestUnreachKind;
 use serde::{Deserialize, Serialize};
 
-use crate::analyse::map64::Net64Map;
+use crate::{
+    analyse::map64::Net64Map,
+    prefix_tree::{LhrSetHash, PrefixTree},
+};
 
 pub type HitCount = i32;
 
@@ -45,6 +48,10 @@ impl MeasurementTree {
 
     pub fn is_empty(&self) -> bool {
         self.responsive_count == 0 && self.unresponsive_count == 0
+    }
+
+    pub fn lhr_set_hash(&self) -> LhrSetHash {
+        PrefixTree::hash_lhrs(self.last_hop_routers.items.keys())
     }
 
     /// Merges `other` into `self`, consuming the value.
