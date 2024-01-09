@@ -62,7 +62,7 @@ macro_rules! leaf_where_no_analysis {
 
         let $var_name = prefix_tree
             .filter(not(exists(a_pending_analysis)))
-            .filter(merge_status.eq_any(&[MergeStatus::Leaf, MergeStatus::UnsplitRoot, MergeStatus::MergedUp]))
+            .filter(merge_status.eq_any(&[MergeStatus::Leaf, MergeStatus::UnsplitRoot]))
             .filter(not(confidence.eq(255)));
     };
 }
