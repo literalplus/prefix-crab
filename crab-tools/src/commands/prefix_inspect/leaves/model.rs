@@ -1,4 +1,7 @@
-use db_model::{analyse::Confidence, prefix_tree::{PriorityClass, PrefixTree}};
+use db_model::{
+    analyse::Confidence,
+    prefix_tree::{PrefixTree, PriorityClass},
+};
 use ipnet::Ipv6Net;
 use thiserror::Error;
 
@@ -8,6 +11,7 @@ pub struct LeafNet {
     pub priority_class: PriorityClass,
     pub confidence: Confidence,
     pub redundant: bool,
+    pub hash_short: String,
 }
 
 impl From<PrefixTree> for LeafNet {
@@ -17,6 +21,7 @@ impl From<PrefixTree> for LeafNet {
             priority_class: value.priority_class,
             confidence: value.confidence,
             redundant: false,
+            hash_short: value.lhr_set_hash.to_string()[0..4].to_string(),
         }
     }
 }

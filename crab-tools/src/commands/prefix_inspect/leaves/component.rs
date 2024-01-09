@@ -9,7 +9,7 @@ use itertools::Itertools;
 use tui_realm_stdlib::Table;
 use tuirealm::{
     command::Cmd,
-    props::{BorderType, Borders, Color, TableBuilder, TextSpan, Alignment},
+    props::{Alignment, BorderType, Borders, Color, TableBuilder, TextSpan},
     AttrValue, Attribute, MockComponent,
 };
 
@@ -44,8 +44,8 @@ impl Leaves {
             )
             .highlighted_color(Color::DarkGray)
             .scroll(true)
-            .headers(&["🎋", "💰", "💪"])
-            .widths(&[NET_ROW_WIDTH, 20, 15])
+            .headers(&["🎋", "👣", "💰", "💪"])
+            .widths(&[NET_ROW_WIDTH, 5, 20, 4])
             .title(format!("{:?}", prefix), Alignment::Center);
         Self {
             component,
@@ -124,6 +124,7 @@ impl Leaves {
                 .add_col(TextSpan::from(format!("{}", e)).fg(Color::Red))
                 .add_col(TextSpan::from("❌"))
                 .add_col(TextSpan::from("❌"))
+                .add_col(TextSpan::from("❌"))
                 .build(),
         };
 
@@ -143,11 +144,7 @@ fn net_to_row(net: &LeafNet, own_prefix_len: u8) -> Vec<TextSpan> {
     let len_diff = len_diff.clamp(0, available_space);
     let indent = " ".repeat(len_diff as usize);
 
-    let prio_suffix = if net.redundant {
-        " 🍂"
-    } else {
-        ""
-    };
+    let prio_suffix = if net.redundant { " 🍂" } else { "" };
 
     let confidence = if net.net.prefix_len() >= 64 {
         "--".to_string()
@@ -157,7 +154,9 @@ fn net_to_row(net: &LeafNet, own_prefix_len: u8) -> Vec<TextSpan> {
 
     vec![
         TextSpan::from(format!("{}{}", indent, net.net)),
-        TextSpan::from(format!("{:?}{}", net.priority_class, prio_suffix)).fg(prio_color(net.priority_class)),
+        TextSpan::from(&net.hash_short),
+        TextSpan::from(format!("{:?}{}", net.priority_class, prio_suffix))
+            .fg(prio_color(net.priority_class)),
         TextSpan::from(confidence),
     ]
 }
