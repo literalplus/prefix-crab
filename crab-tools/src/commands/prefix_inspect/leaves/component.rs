@@ -131,6 +131,15 @@ impl Leaves {
         self.component
             .attr(Attribute::Content, AttrValue::Table(table));
 
+        let found_nets = res.as_ref().map(|it| it.len()).unwrap_or(0);
+        self.component.attr(
+            Attribute::Title,
+            AttrValue::Title((
+                format!("{} ({})", self.prefix, found_nets),
+                Alignment::Center,
+            )),
+        );
+
         self.active = res.ok();
     }
 }
