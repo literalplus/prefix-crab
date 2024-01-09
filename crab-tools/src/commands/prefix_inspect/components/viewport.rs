@@ -97,6 +97,7 @@ impl DerefMut for ActiveChild {
 const CMD_PREFIX_UP: Cmd = Cmd::Custom("CMD_PREFIX_UP");
 const CMD_HISTORY_BACK: Cmd = Cmd::Custom("CMD_HISTORY_BACK");
 const CMD_CYCLE_MODE: Cmd = Cmd::Custom("CMD_CYCLE_MODE");
+const CMD_REFRESH: Cmd = Cmd::Custom("CMD_REFRESH");
 const RES_PREFIX_CHANGED_NAME: &str = "RES_PREFIX_CHANGED";
 const RES_PREFIX_CHANGED: CmdResult = CmdResult::Custom(RES_PREFIX_CHANGED_NAME);
 const RES_LOADING_NAME: &str = "RES_LOADING";
@@ -211,6 +212,7 @@ impl Viewport {
                 }
             }
             CMD_CYCLE_MODE => self.push_mode_cycle(),
+            CMD_REFRESH => self.trigger_load(),
             _ => return None,
         };
         Some(res)
@@ -223,6 +225,7 @@ impl Component<Msg, NoUserEvent> for Viewport {
             Event::Tick => Cmd::Tick,
             Event::Keyboard(KeyEvent { code, .. }) => match code {
                 Key::Char('w') => CMD_PREFIX_UP,
+                Key::Char('r') => CMD_REFRESH,
                 Key::Backspace => CMD_HISTORY_BACK,
                 Key::Enter => Cmd::Submit,
                 Key::Up => Cmd::Move(Direction::Up),
