@@ -1,4 +1,5 @@
 use std::{
+    fmt::Display,
     sync::{Arc, Mutex},
     thread,
 };
@@ -81,6 +82,15 @@ impl ViewportChild for Leaves {
             *locked = State::Ready(res);
         });
     }
+
+    fn copy_text(&self) -> String {
+        let own_prefix_len = self.prefix.prefix_len();
+        if let Some(ref nets) = self.active {
+            nets.iter().map(|net| DisplayNet::format(net, own_prefix_len)).join("\n")
+        } else {
+            " ??? No text ??? ".to_owned()
+        }
+    }
 }
 
 impl Leaves {
@@ -118,7 +128,7 @@ impl Leaves {
         let table = match &res {
             Ok(nets) => nets
                 .iter()
-                .map(|net| net_to_row(net, own_prefix_len))
+                .map(|net| DisplayNet::format(net, own_prefix_len).into())
                 .collect_vec(),
             Err(e) => TableBuilder::default()
                 .add_col(TextSpan::from(format!("{}", e)).fg(Color::Red))
@@ -144,30 +154,64 @@ impl Leaves {
     }
 }
 
-fn net_to_row(net: &LeafNet, own_prefix_len: u8) -> Vec<TextSpan> {
-    let net_format_len = format!("{}", net.net).len();
-    let net_format_len = net_format_len.try_into().unwrap_or(u16::MAX);
-    let available_space = NET_ROW_WIDTH.saturating_sub(net_format_len);
+struct DisplayNet {
+    indented_net: String,
+    hash_short: String,
+    prio_class_and_suffix: String,
+    confidence_formatted: String,
+    prio_color: Color,
+}
 
-    let len_diff = own_prefix_len.abs_diff(net.net.prefix_len()) as u16;
-    let len_diff = len_diff.clamp(0, available_space);
-    let indent = " ".repeat(len_diff as usize);
+impl DisplayNet {
+    fn format(net: &LeafNet, own_prefix_len: u8) -> Self {
+        let net_format_len = format!("{}", net.net).len();
+        let net_format_len = net_format_len.try_into().unwrap_or(u16::MAX);
+        let available_space = NET_ROW_WIDTH.saturating_sub(net_format_len);
 
-    let prio_suffix = if net.redundant { " 🍂" } else { "" };
+        let len_diff = own_prefix_len.abs_diff(net.net.prefix_len()) as u16;
+        let len_diff = len_diff.clamp(0, available_space);
+        let indent = " ".repeat(len_diff as usize);
 
-    let confidence = if net.net.prefix_len() >= 64 {
-        "--".to_string()
-    } else {
-        format!("{}%", net.confidence)
-    };
+        let prio_suffix = if net.redundant { " 🍂" } else { "" };
 
-    vec![
-        TextSpan::from(format!("{}{}", indent, net.net)),
-        TextSpan::from(&net.hash_short),
-        TextSpan::from(format!("{:?}{}", net.priority_class, prio_suffix))
-            .fg(prio_color(net.priority_class)),
-        TextSpan::from(confidence),
-    ]
+        let confidence = if net.net.prefix_len() >= 64 {
+            "--".to_string()
+        } else {
+            format!("{}%", net.confidence)
+        };
+
+        Self {
+            indented_net: format!("{}{}", indent, net.net),
+            hash_short: net.hash_short.to_owned(),
+            prio_class_and_suffix: format!("{:?}{}", net.priority_class, prio_suffix),
+            prio_color: prio_color(net.priority_class),
+            confidence_formatted: confidence,
+        }
+    }
+}
+
+impl From<DisplayNet> for Vec<TextSpan> {
+    fn from(value: DisplayNet) -> Self {
+        vec![
+            TextSpan::from(value.indented_net),
+            TextSpan::from(value.hash_short),
+            TextSpan::from(value.prio_class_and_suffix).fg(value.prio_color),
+            TextSpan::from(value.confidence_formatted),
+        ]
+    }
+}
+
+impl Display for DisplayNet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} - {} {}[{}]",
+            self.indented_net,
+            self.confidence_formatted,
+            self.prio_class_and_suffix,
+            self.hash_short
+        )
+    }
 }
 
 fn prio_color(prio: PriorityClass) -> Color {

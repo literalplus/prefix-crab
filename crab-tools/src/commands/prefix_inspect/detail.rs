@@ -7,6 +7,7 @@ use db_model::{
     prefix_tree::PrefixTree,
 };
 use diesel::{PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
+use itertools::Itertools;
 use prefix_crab::prefix_split::{NetIndex, SplitSubnet};
 use std::io::Write;
 use std::time::Instant;
@@ -115,7 +116,7 @@ fn print_subnet(
     );
 
     writepfx!(&mut buf, " Last-Hop Routers:");
-    for (addr, item) in subnet.iter_lhrs() {
+    for (addr, item) in subnet.iter_lhrs().sorted_by_key(|(addr, _)| *addr) {
         let percent = (item.hit_count as i64 * 100i64).div_euclid(subnet.responsive_count() as i64);
         writepfx!(
             &mut buf,

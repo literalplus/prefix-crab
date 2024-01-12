@@ -8,7 +8,7 @@ use itertools::Itertools;
 use tui_realm_stdlib::Textarea;
 use tuirealm::{
     command::Cmd,
-    props::{BorderType, Borders, Color, PropPayload, PropValue, TextSpan, Alignment},
+    props::{Alignment, BorderType, Borders, Color, PropPayload, PropValue, TextSpan},
     AttrValue, Attribute, MockComponent,
 };
 
@@ -77,6 +77,14 @@ impl ViewportChild for Detail {
             let mut locked = (*mutex_ref).lock().expect("state mutex poisoned");
             *locked = State::Ready(res);
         });
+    }
+
+    fn copy_text(&self) -> String {
+        if let Some(ref printed) = self.active {
+            printed.lines.join("\n")
+        } else {
+            "<< missing >>".to_owned()
+        }
     }
 }
 

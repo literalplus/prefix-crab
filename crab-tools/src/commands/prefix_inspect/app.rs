@@ -1,3 +1,4 @@
+use std::io::{self, Read};
 use std::time::Duration;
 
 use anyhow::Result;
@@ -109,6 +110,24 @@ impl Update<Msg> for Model {
                         )
                         .expect("set status bar placeholder");
                     None
+                }
+                Msg::CopyText(text) => {
+                    let _ = self.terminal.disable_raw_mode();
+                    let _ = self.terminal.leave_alternate_screen();
+
+                    let width = self.terminal.raw().size().unwrap_or_default().width - 6;
+
+                    println!(" - ✂ {} ", "-".repeat(width.into()));
+                    println!("{}", text);
+                    println!(" - ✂ {} ", "-".repeat(width.into()));
+                    println!(" 👉 Press any key to continue...");
+
+                    let _ = io::stdin().read(&mut [0u8]).unwrap();
+                    let _ = self.terminal.clear_screen();
+                    let _ = self.terminal.enter_alternate_screen();
+                    let _ = self.terminal.enable_raw_mode();
+
+                    Some(Msg::SetStatus("".to_owned()))
                 }
             }
         } else {

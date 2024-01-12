@@ -5,7 +5,7 @@ use tui_realm_stdlib::states::SpinnerStates;
 use tuirealm::{
     command::{Cmd, CmdResult, Direction},
     event::{Key, KeyEvent},
-    AttrValue, Attribute, Component, Event, MockComponent, NoUserEvent,
+    AttrValue, Attribute, Component, Event, MockComponent, NoUserEvent, State, StateValue,
 };
 
 use crate::commands::prefix_inspect::{detail::Detail, leaves::Leaves, Msg};
@@ -23,6 +23,7 @@ pub enum PerformResult {
 pub trait ViewportChild {
     fn load(&mut self);
     fn perform(&mut self, cmd: Cmd) -> PerformResult;
+    fn copy_text(&self) -> String;
 }
 
 enum ActiveChild {
@@ -98,6 +99,7 @@ const CMD_PREFIX_UP: Cmd = Cmd::Custom("CMD_PREFIX_UP");
 const CMD_HISTORY_BACK: Cmd = Cmd::Custom("CMD_HISTORY_BACK");
 const CMD_CYCLE_MODE: Cmd = Cmd::Custom("CMD_CYCLE_MODE");
 const CMD_REFRESH: Cmd = Cmd::Custom("CMD_REFRESH");
+const CMD_COPY: Cmd = Cmd::Custom("CMD_COPY");
 const RES_PREFIX_CHANGED_NAME: &str = "RES_PREFIX_CHANGED";
 const RES_PREFIX_CHANGED: CmdResult = CmdResult::Custom(RES_PREFIX_CHANGED_NAME);
 const RES_LOADING_NAME: &str = "RES_LOADING";
@@ -213,6 +215,9 @@ impl Viewport {
             }
             CMD_CYCLE_MODE => self.push_mode_cycle(),
             CMD_REFRESH => self.trigger_load(),
+            CMD_COPY => CmdResult::Changed(State::One(StateValue::String(
+                self.active_child.copy_text(),
+            ))),
             _ => return None,
         };
         Some(res)
@@ -226,6 +231,7 @@ impl Component<Msg, NoUserEvent> for Viewport {
             Event::Keyboard(KeyEvent { code, .. }) => match code {
                 Key::Char('w') => CMD_PREFIX_UP,
                 Key::Char('r') => CMD_REFRESH,
+                Key::Char('c') => CMD_COPY,
                 Key::Backspace => CMD_HISTORY_BACK,
                 Key::Enter => Cmd::Submit,
                 Key::Up => Cmd::Move(Direction::Up),
@@ -244,7 +250,7 @@ impl Component<Msg, NoUserEvent> for Viewport {
             }
             CmdResult::Custom(RES_PREFIX_CHANGED_NAME) => Some(Msg::SetStatusPlaceholder(format!(
                 // Note that "down" on its own makes little sense as there are two children
-                "{} | ⬆⬇ Scroll | ↩ Select{} | w Up | ↹ Mode",
+                "{} | ⬆⬇ Scroll | ↩ Select{} | w Up | c Copy | ↹ Mode",
                 self.active_child.mode_emoji(),
                 if self.history.is_empty() {
                     "".to_string()
@@ -253,6 +259,9 @@ impl Component<Msg, NoUserEvent> for Viewport {
                 },
             ))),
             CmdResult::Custom(msg) => Some(Msg::SetStatus(msg.to_string())),
+            CmdResult::Changed(State::One(StateValue::String(text_to_copy))) => {
+                Some(Msg::CopyText(text_to_copy))
+            }
             _ => None,
         }
     }

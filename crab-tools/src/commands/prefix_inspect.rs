@@ -77,6 +77,7 @@ pub enum Msg {
     AppClose,
     SetStatus(String),
     SetStatusPlaceholder(String),
+    CopyText(String),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
