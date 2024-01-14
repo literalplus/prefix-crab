@@ -34,7 +34,7 @@ ExecStart=/usr/bin/podman run \
 	--secret=prefix-crab-rmq-password,type=env,target=RABBITMQ_DEFAULT_PASS \
 	--env=RABBITMQ_DEFAULT_USER=rabbit \
 	--group-add=keep-groups \
-	--mount=type=bind,source=/scans/2023_12_prefix-crab-univie/rabbitmq-data,rw,destination=/var/lib/rabbitmq \
+	--mount=type=bind,source=/scans/2024_01_prefix-crab-austria/rabbitmq-data,rw,destination=/var/lib/rabbitmq \
 	--mount=type=bind,source=/home/%u/prefix-crab/deploy/rabbitmq.conf,ro,destination=/etc/rabbitmq/conf.d/20-prefix-crab-bind-mount.conf \
 	--tz=UTC docker.io/rabbitmq:3-management-alpine
 ExecStop=/usr/bin/podman stop \

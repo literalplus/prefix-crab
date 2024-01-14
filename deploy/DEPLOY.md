@@ -76,6 +76,12 @@ you need to create a new directory there and adjust the bind mounts in the syste
 
 You also need to create the data directories (`postgresql-data`, `rabbitmq-data`, `backup`) upfront, empty.
 
+For `asn-ip`, check out the Git repo directly:
+
+```bash
+git clone https://github.com/ipverse/asn-ip
+```
+
 The `--group-add=keep-groups` flag on the container command lines ensures that the container users are able to access
 the volume using the user's group on the host system, which must have r/w access to the directories.
 
@@ -96,6 +102,7 @@ We bind this to the hosts file via `localhost.containers.internal:10.0.2.2`.
 Host Ports:
  - 17861 RabbitMQ
  - 17862 Postgres `ssh -L 17862:localhost:17862 pnowak@measurement-aim.etchosts.internal`
+ - 17863 RabbitMQ UI `ssh -L 17863:localhost:17863 pnowak@measurement-aim.etchosts.internal`
 
 Do not use spaces in the passwords !
 
