@@ -1,0 +1,290 @@
+country,asn,description,num_ipv6s
+AT,679,"All AS from AT - TUNET-AS - Technische Universitat Wien, AT",4294967296
+AT,1120,"All AS from AT - ACOnet_Services - ACONET, AT",131072
+AT,1205,"All AS from AT - JKU-LINZ-AS - University Linz, AT",65536
+AT,1764,"All AS from AT - NEXTLAYER-AS - Next Layer Telekommunikationsdienstleistungs- und Beratungs GmbH, AT",244813332480
+AT,1853,"All AS from AT - ACOnet, AT",34359803904
+AT,1921,"All AS from AT - RCODEZERO-ANYCAST-SEC1-TLD - ipcom GmbH, AT",1048576
+AT,2488,"All AS from AT - IIASA-NET - International Institute for Applied Systems Analysis, AT",65536
+AT,2494,"All AS from AT - MUWNET - MUWNET Autonomous System, AT",65536
+AT,3190,"All AS from AT - DREI-S-AS - 3-S-IT Dienstleistungen GmbH, AT",4294967296
+AT,3330,"All AS from AT - PROFINET-AT - eww ag, AT",8590065664
+AT,5385,"All AS from AT - RUSSMEDIA-IT - Russmedia IT GmbH, AT",8589934592
+AT,5403,"All AS from AT - AS5403 - APA-IT Informations Technologie G.m.b.H, AT",34359738368
+AT,5404,"All AS from AT - conova-as - conova communications GmbH, AT",4294967296
+AT,6720,"All AS from AT - MAGWIEN - Magistrat der Stadt Wien, Magistratsabteilung 01, AT",327680
+AT,6798,"All AS from AT - NET4YOU-AS - Net4You Internet GmbH, AT",4294967296
+AT,6883,"All AS from AT - Parlamentsdirektion, AT",4294967296
+AT,8245,"All AS from AT - VIDEOBROADCAST-AS - Video-Broadcast GmbH, AT",4294967296
+AT,8339,"All AS from AT - KABSI-AS - kabelplus GmbH, AT",21474902016
+AT,8387,"All AS from AT - T-SYSTEMS-AT - Deutsche Telekom Global Business Solutions GmbH, AT",38654771200
+AT,8412,"All AS from AT - TMA - T-Mobile Austria GmbH, AT",94489280512
+AT,8437,"All AS from AT - UTA-AS - Hutchison Drei Austria GmbH, AT",12884901888
+AT,8445,"All AS from AT - SALZBURG-AG-AS - SALZBURG AG fur Energie, Verkehr und Telekommunikation, AT",4295032832
+AT,8447,"All AS from AT - A1TELEKOM-AT - A1 Telekom Austria AG, AT",137439412224
+AT,8540,"All AS from AT - AMANET-AS - AMA netwoRX GmbH, AT",103079215104
+AT,8562,"All AS from AT - LICPLUS-AS - A1 Telekom Austria AG, AT",1073741824
+AT,8596,"All AS from AT - HOTZE-AS - hotze.com GmbH, AT",4294967296
+AT,8666,"All AS from AT - FIBERLINK-AS - FiberLink GmbH, AT",262144
+AT,8692,"All AS from AT - BRZ - Bundesrechenzentrum GmbH, AT",4294967296
+AT,8787,"All AS from AT - AMARISTECH - Amaris Technologies GmbH, AT",4294967296
+AT,9023,"All AS from AT - LOTTERIEN-AS - Oesterreichische Lotterien GmbH, AT",65536
+AT,12401,"All AS from AT - INTERNIC-AS12401 - internic Datenkommunikations GmbH, AT",4294967296
+AT,12453,"All AS from AT - KRAFTCOM-AS - KraftCom Service GmbH, AT",34359738368
+AT,12577,"All AS from AT - MMC-AT-AS - mmc kommunikationstechnologie gmbh, AT",34359738368
+AT,12605,"All AS from AT - LIWEST-AT - LIWEST Kabelmedien GmbH, AT",4294967296
+AT,12635,"All AS from AT - AS12635 - Hutchison Drei Austria GmbH, AT",21474836480
+AT,12762,"All AS from AT - VTG-AT - Vorarlberger Informatik- und Telekommunikationsdienstleistungsgesellschaft mbH, AT",8589934592
+AT,12895,"All AS from AT - IT-AUSTRIA - Erste Digital GmbH, AT",4294967296
+AT,12930,"All AS from AT - CARDCOMPLETE-AS - card complete Service Bank AG, AT",4294967296
+AT,12991,"All AS from AT - Land-OOE - Amt der Ooe. Landesregierung, AT",131072
+AT,13008,"All AS from AT - BETANDWIN-AS - Entain Services Austria GmbH, AT",65536
+AT,13042,"All AS from AT - ASN-OENB-AT - Oesterreichische Nationalbank, AT",65536
+AT,13105,"All AS from AT - LUKOIL-INFORM-AS - LUKOIL Technology Services GmbH, AT",4294967296
+AT,15498,"All AS from AT - RTCnow - RTCnow Streaming Services GmbH, AT",4294967296
+AT,15733,"All AS from AT - ZUMTOBEL-AS - Zumtobel Group AG, AT",4294967296
+AT,16099,"All AS from AT - SOZVERS-NET - Hauptverband der oesterreichischen Sozialversicherungstraeger, AT",65536
+AT,21013,"All AS from AT - ITANDTEL-AS - eww ag, AT",38654771200
+AT,21079,"All AS from AT - OEKB-AS - Oesterreichische Kontrollbank Aktiengesellschaft, AT",65536
+AT,21360,"All AS from AT - Empirion - Empirion Telekommunikations Services GmbH, AT",4294967296
+AT,21406,"All AS from AT - SWAROVSKI-AS - D. Swarovski KG, AT",131072
+AT,24708,"All AS from AT - GRZ-AT - GRZ IT Center GmbH, AT",65536
+AT,24824,"All AS from AT - WEISS-ASN - Gebrueder-Weiss GmbH, AT",4294967296
+AT,24864,"All AS from AT - R-IT-AS - Raiffeisen Informatik GmbH & Co KG, AT",4294967296
+AT,24953,"All AS from AT - ASN-NETPLANET - NETPLANET GmbH, AT",47244640256
+AT,24992,"All AS from AT - DIC-AS - DIC - Online Wolf & Co. KG, AT",4294967296
+AT,25126,"All AS from AT - TIWAG-GROUP-NET-AS - TIWAG-Tiroler Wasserkraft AG, AT",65536
+AT,25255,"All AS from AT - H3G-Austria-AS - Hutchison Drei Austria GmbH, AT",68719476736
+AT,25447,"All AS from AT - JM-DATA - JM-DATA GmbH, AT",34359738368
+AT,25522,"All AS from AT - TRAVELPORT-AUSTRIA-AS - Travelport Austria GmbH, AT",65536
+AT,25575,"All AS from AT - DOMAINTECHNIK - Ledl.net GmbH, AT",4294967296
+AT,28760,"All AS from AT - INFOTECH-AT-AS - Infotech EDV-Systeme GmbH, AT",34359738368
+AT,28771,"All AS from AT - VIE-AS - Flughafen Wien Aktiengesellschaft, AT",34359803904
+AT,28839,"All AS from AT - ASN-UNOV - United Nations Office at Vienna, AT",65536
+AT,28848,"All AS from AT - UNIDO-AS - United Nations Industrial Development Organization, AT",65536
+AT,28857,"All AS from AT - CSC-AS - DXC Technology Austria GmbH, AT",4294967296
+AT,28919,"All AS from AT - STWKUFSTEIN-AS - Stadtwerke Kufstein GmbH, AT",38654705664
+AT,29056,"All AS from AT - GSTW-AS - Citycom Telekommunikation GmbH, AT",4294967296
+AT,29081,"All AS from AT - WVNET-AT-AS - WVNET Information und Kommunikation GmbH, AT",34359738368
+AT,29287,"All AS from AT - AT-WZN-AS - Wien Energie GmbH, AT",4294967296
+AT,29330,"All AS from AT - ISP-NETWORK - Next Layer Telekommunikationsdienstleistungs- und Beratungs GmbH, AT",65536
+AT,29545,"All AS from AT - IPLACE - iPlace Internet & Network Services GmbH, AT",4294967296
+AT,29560,"All AS from AT - ILL-AS - Industrie-Logistik-Linz GmbH, AT",262144
+AT,30971,"All AS from AT - NICAT-CORE-AS - nic.at GmbH, AT",2097152
+AT,31152,"All AS from AT - ENGEL-AS - Engel Austria GmbH, AT",65536
+AT,31382,"All AS from AT - KAPSCH-AS - K-Businesscom AG, AT",34359803904
+AT,31473,"All AS from AT - BEARINGPOINT-MANAGED-AS - BearingPoint GmbH, AT",65536
+AT,31510,"All AS from AT - IKB-AS - Innsbrucker Kommunalbetriebe AG, AT",4294967296
+AT,31543,"All AS from AT - MYNET-AS - myNet GmbH, AT",111669149696
+AT,34183,"All AS from AT - BMG - Bundesministerium f. Gesundheit, AT",34359738368
+AT,34347,"All AS from AT - CITYNET-AT-AS - HALLAG Kommunal GmbH, AT",4294967296
+AT,34694,"All AS from AT - STWW-AS - Stadtwerke Woergl GmbH, AT",34359738368
+AT,34767,"All AS from AT - STONERICH-AS - Otto M. Steinmann e.U., AT",4294967296
+AT,34785,"All AS from AT - STW-AS - Stadtwerke Klagenfurt AG, AT",4294967296
+AT,34798,"All AS from AT - willhaben - willhaben internet service GmbH & Co KG, AT",65536
+AT,34883,"All AS from AT - FH-JOANNEUM - FH JOANNEUM Gesellschaft mbH, AT",65536
+AT,34964,"All AS from AT - RIPE-AT-AS - Ripe-NetWorks e.U., AT",65536
+AT,35052,"All AS from AT - AS_AT_TLD_SERVICES - ACONET, AT",131072
+AT,35339,"All AS from AT - CZ-AS - AtNOC GmbH, AT",4295032832
+AT,35369,"All AS from AT - LINZAG-TELEKOM-AS - LINZ STROM GAS WAERME GmbH fuer Energiedienstleistungen und Telekommunikation, AT",4294967296
+AT,35370,"All AS from AT - AINET-AS - Ainet Telekommunikations-Netzwerk Betriebs GmbH, AT",34359738368
+AT,35492,"All AS from AT - FUNKFEUER - FunkFeuer Wien - Verein zur Foerderung freier Netze, AT",34359738368
+AT,35579,"All AS from AT - KELAG1 - KELAG-Karntner Elektrizitats - Aktiengesellschaft, AT",34359738368
+AT,35609,"All AS from AT - ITP-AT - Smart Force e.U., AT",65536
+AT,38955,"All AS from AT - WORLD4YOU - World4You Internet Services GmbH, AT",38654705664
+AT,39057,"All AS from AT - TIROLERLANDESREGIERUNG-AS - DVT-Daten-Verarbeitung-Tirol GmbH, AT",65536
+AT,39285,"All AS from AT - GARTNER-AS - Gartner KG, AT",65536
+AT,39409,"All AS from AT - SWG-MyRootPW - Sebastian-Wilhelm Graf, AT",268763136
+AT,39508,"All AS from AT - C07-AS - AXIANS ICT Austria GmbH, AT",65536
+AT,39555,"All AS from AT - STW-SCHWAZ-AS - Stadtwerke Schwaz GmbH, AT",4294967296
+AT,39560,"All AS from AT - KT-NET - KT-NET Communications GmbH, AT",4294967296
+AT,39837,"All AS from AT - MUR - mur.at - Verein zur Foerderung von Netzwerkkunst, AT",4294967296
+AT,39878,"All AS from AT - RAUTER-AS - Peter Rauter GmbH, AT",34359738368
+AT,39879,"All AS from AT - SVC-AS - Sozialversicherungs-Chipkarten Betriebs- und Errichtungsgesellschaft m.b.H - SVC, AT",65536
+AT,39912,"All AS from AT - i3B-AS - oja.at GmbH, AT",12884901888
+AT,40980,"All AS from AT - TELEMATICA - ANEXIA Internetdienstleistungs GmbH, AT",393216
+AT,40994,"All AS from AT - Alwyzon - Hohl IT e.U., AT",4295032832
+AT,41437,"All AS from AT - KNAPP-AS - KNAPP AG, AT",4294967296
+AT,41817,"All AS from AT - VFNK - Rocket NG GmbH, AT",34359738368
+AT,42060,"All AS from AT - FERATEL-AS - feratel media technologies AG, AT",65536
+AT,42061,"All AS from AT - LINZAG-AS - LINZ STROM GAS WAERME GmbH fuer Energiedienstleistungen und Telekommunikation, AT",4295032832
+AT,42354,"All AS from AT - ANX-CUSTOMER - ANEXIA Internetdienstleistungs GmbH, AT",131072
+AT,42360,"All AS from AT - SSP-EUROPE - ANEXIA Internetdienstleistungs GmbH, AT",65536
+AT,42378,"All AS from AT - RTR-AS - Rundfunk und Telekom Regulierungs-GmbH, AT",131072
+AT,42388,"All AS from AT - ANX-CLOUDDNS - ANEXIA Internetdienstleistungs GmbH, AT",393216
+AT,42473,"All AS from AT - AS-ANEXIA - ANEXIA Internetdienstleistungs GmbH, AT",4319019008
+AT,42557,"All AS from AT - Xidras - Xidras GmbH, AT",34359738368
+AT,42572,"All AS from AT - ABATON-AS - abaton EDV-Dienstleistungs GmbH, AT",4294967296
+AT,42685,"All AS from AT - BKA - Bundeskanzleramt, AT",4294967296
+AT,42858,"All AS from AT - WeTi-AS - Limberger Handelsgesellschaft m.b.H., AT",34359738368
+AT,42882,"All AS from AT - SYSUP-AT - SysUP OG, AT",4294967296
+AT,43771,"All AS from AT - MUKI-AS - MuKi Versicherungsverein auf Gegenseitigkeit VVaG, AT",4294967296
+AT,43957,"All AS from AT - ASN-WNTNEWMEDIA - WNT Telecommunication GmbH, AT",8589934592
+AT,44133,"All AS from AT - IPAX-AS - IPAX GmbH, AT",68719476736
+AT,44329,"All AS from AT - NTS-AS - NTS Netzwerk Telekom Service AG, AT",65536
+AT,44385,"All AS from AT - NA-NET-AS - NA-NET Communications GmbH, AT",34359738368
+AT,44399,"All AS from AT - FHOOE-AS - FH OOe Studienbetriebs GmbH, AT",34359738368
+AT,44453,"All AS from AT - internex-as - interneX GmbH, AT",536870912
+AT,44462,"All AS from AT - muerznet-AS - Stadtwerke Muerzzuschlag GmbH, AT",34359738368
+AT,44753,"All AS from AT - BACHER-AS - Bacher Systems EDV GmbH, AT",65536
+AT,44865,"All AS from AT - DERSTANDARD-AS - STANDARD Verlagsgesellschaft m.b.H., AT",65536
+AT,47132,"All AS from AT - INNONET-AS - Innonet ICT-Services GmbH, AT",68719542272
+AT,47147,"All AS from AT - AS-ANX - ANEXIA Internetdienstleistungs GmbH, AT",196608
+AT,47251,"All AS from AT - VLBGIT-AS - Fabian Friesenecker trading as VLBGIT Friesenecker e.U., AT",65536
+AT,47373,"All AS from AT - GETZNER-AS - Getzner Werkstoffe GmbH, AT",34359738368
+AT,47477,"All AS from AT - REWEA-AS - REWE International Dienstleistungs GmbH, AT",8590327808
+AT,47515,"All AS from AT - BMI-GOVIX - Bundesministerium fuer Inneres, Sektion IV, AT",65536
+AT,47576,"All AS from AT - NETZWARE-AS - Netzware Handels- und IT-Dienstleistungs GmbH, AT",8589934592
+AT,47692,"All AS from AT - NESSUS - Nessus GmbH, AT",34360066048
+AT,48151,"All AS from AT - REDBULL-AS - Red Bull GmbH, AT",131072
+AT,48339,"All AS from AT - RRZ_Sued_AS - Raiffeisen Rechenzentrum GmbH, AT",4294967296
+AT,48362,"All AS from AT - TKSWF-AS - Stadtwerke Feldkirch, AT",4294967296
+AT,48943,"All AS from AT - KAPPERNET - KAPPER NETWORK-COMMUNICATIONS GmbH, AT",38654705664
+AT,49014,"All AS from AT - WKO-AS - Wirtschaftskammer Oesterreich, AT",65536
+AT,49322,"All AS from AT - VIM-AS - ViM Internetdienstleistungen GmbH, AT",4294967296
+AT,49432,"All AS from AT - SCHALLERT-AS - Dominic Schallert trading as schallert.com e.U., AT",4294967296
+AT,49488,"All AS from AT - AS_AT_TLD_SERVICES - nic.at GmbH, AT",65536
+AT,49808,"All AS from AT - POWERSPEED-AS - Energie AG Oberoesterreich Telekom GmbH, AT",8589934592
+AT,49864,"All AS from AT - ECSNET-AS - ECS Rockenschaub GmbH, AT",34359803904
+AT,50180,"All AS from AT - MED-EL-AS - Med-El Elektromedizinische Geraete GmbH., AT",65536
+AT,50226,"All AS from AT - NETCOMPANY1-AS - NETcompany Internet Provider - NC GmbH, AT",34359738368
+AT,50782,"All AS from AT - COSYS - COSYS DATA GmbH, AT",103079215104
+AT,51066,"All AS from AT - AUSTROCONTROL-AS - Austro Control Oesterreichische Gesellschaft fuer Zivilluftfahrt mit beschraenkter Haftung, AT",65536
+AT,51184,"All AS from AT - FONIRA - Fonira Telekom GmbH, AT",111669936128
+AT,51265,"All AS from AT - MASSRESPONSE-AS2 - Mass Response Service GmbH, AT",34359738368
+AT,51350,"All AS from AT - TECHNIKUM-WIEN-AS - Fachhochschule Technikum Wien, AT",65536
+AT,51413,"All AS from AT - WK-KAERNTEN - Wirtschaftskammer Kaernten, AT",65536
+AT,51454,"All AS from AT - CRIF-AS - CRIF GmbH, AT",65536
+AT,51560,"All AS from AT - GRESCHITZ - Greschitz Management GmbH, AT",34359738368
+AT,51658,"All AS from AT - LUCESEM-AS - Patrick Janesch trading as Lucesem, AT",65536
+AT,51890,"All AS from AT - MAYR-MELNHOF - MM Service GmbH, AT",34359738368
+AT,56672,"All AS from AT - ENERGIEAG-AT-AS - Energie AG Oberoesterreich Telekom GmbH, AT",4294967296
+AT,56963,"All AS from AT - SKIDATA-AG-AS - Skidata AG, AT",65536
+AT,57057,"All AS from AT - AVALON-AS - AVALON Computersystem Ges.m.b.H., AT",65536
+AT,57169,"All AS from AT - EDIS-AS-EU - EDIS GmbH, AT",786432
+AT,57470,"All AS from AT - Dragon - Erik Herburger, AT",131072
+AT,57763,"All AS from AT - SELFNET-AS - SelfNet Internet Ges.m.b.H., AT",42949869568
+AT,57878,"All AS from AT - Prager-IT - Prager Connect GmbH, AT",231937015808
+AT,58160,"All AS from AT - CSONET - CSO.net Internet Services GmbH, AT",4294967296
+AT,59456,"All AS from AT - CLOUDBROKERS-AS - Cloud-Brokers IT-Services GmbH, AT",4294967296
+AT,59779,"All AS from AT - IXOLIT-AS - IXOPAY GmbH, AT",4294967296
+AT,59789,"All AS from AT - atcismogmbh - CISMO Clearing Integrated Services and Market Operations Gmb, AT",65536
+AT,59890,"All AS from AT - Kabel-TV-Lampert - Kabel-TV Lampert GmbH & Co KG, AT",34359738368
+AT,59909,"All AS from AT - TELE-TEC-AS - Tele-Tec GmbH, AT",107374182400
+AT,60517,"All AS from AT - AS-CABLEVISION - Noehmer GmbH, AT",34359738368
+AT,60587,"All AS from AT - XINON-CARRIER-AS - XINON GmbH, AT",65536
+AT,60823,"All AS from AT - IFORCE - IForce IT GmbH, AT",34359738368
+AT,61155,"All AS from AT - CUBIT-AS - CUBiT IT Solutions GmbH, AT",34359738368
+AT,61201,"All AS from AT - HTBLA-KLU-AS - Hohere technische Bundeslehranstalt Klagenfurt, AT",65536
+AT,61438,"All AS from AT - IP-IT-AS - ip-it consult GmbH, AT",34359738368
+AT,62149,"All AS from AT - KTVGERLOS-AS - Verein Kabel-TV Gerlos, AT",4294967296
+AT,62156,"All AS from AT - HXS - HXS GmbH, AT",131072
+AT,62239,"All AS from AT - Plan-B - Next Layer Telekommunikationsdienstleistungs- und Beratungs GmbH, AT",4294967296
+AT,62363,"All AS from AT - EGW-AS - Ertl & Gross GmbH & Co OG, AT",4294967296
+AT,62373,"All AS from AT - SINGERL-AS - futurenet.gmbH, AT",4294967296
+AT,62391,"All AS from AT - COMM-IT - Comm-IT EDV DienstleistungsgmbH, AT",34359738368
+AT,64457,"All AS from AT - MATTLAB-AS - Matteo Fruhwald, AT",33554432
+AT,197634,"All AS from AT - ALECH - Alec Hoefler, AT",272629760
+AT,197917,"All AS from AT - EWF - Elektrizitaetswerke Frastanz GmbH, AT",4294967296
+AT,197964,"All AS from AT - BLUMNET - Julius Blum GmbH, AT",4295032832
+AT,197999,"All AS from AT - klarinet-as - Michael Gamsjaeger, AT",4294967296
+AT,198211,"All AS from AT - EGGER-AS - Martin Reinberger trading as FRITZ EGGER GmbH & Co. OG, AT",34359738368
+AT,198638,"All AS from AT - flexbit-at-as - Juergen Bachinger, AT",65536
+AT,198650,"All AS from AT - ACAT-AS - APPLIED CHEMICALS Handels-GmbH, AT",65536
+AT,198656,"All AS from AT - MUEHLBOECK-AT-AS - MUEHLBOECK Holztrocknungsanlagen GmbH, AT",65536
+AT,198950,"All AS from AT - OAB-AF - Telenet Systems GmbH, AT",34359738368
+AT,199015,"All AS from AT - FREQUENTIS-AS - Frequentis AG, AT",65536
+AT,199159,"All AS from AT - DATASIX - ANEXIA Internetdienstleistungs GmbH, AT",131072
+AT,199216,"All AS from AT - COMPASS-AS - Compass-Verlag GmbH, AT",34359803904
+AT,199236,"All AS from AT - EMARSYS-AS - EMARSYS eMarketing Systems GmbH, AT",4294967296
+AT,200026,"All AS from AT - SJON-AS - Ortswaerme St. Johann in Tirol GmbH, AT",4294967296
+AT,200273,"All AS from AT - pNET - Peter Kowalsky, AT",65536
+AT,200727,"All AS from AT - KBRINN - Kommunalbetriebe Rinn GmbH, AT",4294967296
+AT,200849,"All AS from AT - fassma_net-AS - Martin Fassl trading as fassma.net e.U., AT",1376256
+AT,200970,"All AS from AT - RIEPERT - Riepert Informationstechnologie GmbH, AT",34359738368
+AT,200986,"All AS from AT - SWAROVSKITOURISM-AS - D Swarovski Tourism Service GmbH, AT",131072
+AT,201239,"All AS from AT - Logispin-AS - Logispin Austria GmbH, AT",4294967296
+AT,201240,"All AS from AT - OpenIoT - Rocket NG GmbH, AT",34359738368
+AT,201248,"All AS from AT - SCC-AS - SCC EDV-Beratung AG, AT",34359738368
+AT,201470,"All AS from AT - CITYNET-AT-2-AS - HALLAG Kommunal GmbH, AT",4294967296
+AT,201612,"All AS from AT - NICAT-MINICAST-AS - nic.at GmbH, AT",131072
+AT,201760,"All AS from AT - ANDREAS-AS - Andreas Pleschutznig, AT",65536
+AT,202516,"All AS from AT - web-crossing - web-crossing GmbH, AT",4294967296
+AT,202559,"All AS from AT - MATT-AS - Matteo Fruhwald, AT",1048576
+AT,202616,"All AS from AT - WE-FTTH-AS - Wien Energie GmbH, AT",8589934592
+AT,202718,"All AS from AT - sigmacloud - sigmavista it consulting gmbh, AT",4294967296
+AT,202745,"All AS from AT - linkedin - LinkedIn Austria GmbH, AT",65536
+AT,202928,"All AS from AT - Z-IX-AS - Armin Fisslthaler, AT",1114112
+AT,203358,"All AS from AT - INCOS-Stueckler - Guenther Stueckler, AT",34359738368
+AT,203541,"All AS from AT - ATKTVPILLERSEE - Kabelfernsehen Pillersee GmbH, AT",34359738368
+AT,204081,"All AS from AT - imendo - IMENDO GmbH, AT",34359738368
+AT,204136,"All AS from AT - SILENT-GHOST-AS - Kevin Holly trading as Silent Ghost e.U., AT",131072
+AT,204410,"All AS from AT - feistritzwerke-steweag - Feistritzwerke-STEWEAG GmbH, AT",8589934592
+AT,204419,"All AS from AT - ITNS - ITNS GmbH, AT",4294967296
+AT,204560,"All AS from AT - LENZEDER-AS - Lenzeder Gesellschaft m.b.H & Co KG, AT",34359738368
+AT,204659,"All AS from AT - ANLX-AS - Antares-NetlogiX Netzwerkberatung GmbH, AT",4294967296
+AT,205202,"All AS from AT - CLOUDFLIGHT - Cloudflight Austria GmbH, AT",327680
+AT,205243,"All AS from AT - CLOUDNOW-AS - CloudNow GmbH, AT",103079215104
+AT,205584,"All AS from AT - CASHPOINT-AS - CASHPOINT Solutions GmbH, AT",34359738368
+AT,205600,"All AS from AT - ARGONET-AS - ArgoNET GmbH, AT",34359738368
+AT,205728,"All AS from AT - at-cf-it - AVAFIN IT GmbH, AT",34359738368
+AT,205965,"All AS from AT - Jason-Ruhittel - Jason Ruhittel, AT",38600704
+AT,205989,"All AS from AT - RELAXT - relaxt Webdienstleistungsagentur GmbH, AT",65536
+AT,206021,"All AS from AT - WKSTMK - Wirtschaftskammer Steiermark, AT",34359738368
+AT,206055,"All AS from AT - Specure - Specure GmbH, AT",4295032832
+AT,206128,"All AS from AT - Dioezesane-IT - Dioezese Linz - Katholische Kirche in Oberoesterreich, AT",65536
+AT,206159,"All AS from AT - VAO-AS - Verkehrsauskunft Oesterreich VAO GmbH, AT",65536
+AT,206228,"All AS from AT - ANDRITZ01 - Andritz AG, AT",327680
+AT,206298,"All AS from AT - RKM-AS - RKM Regional Kabel TV Moelltal und Telekommunikation GmbH, AT",34359738368
+AT,206672,"All AS from AT - Logispin-AS - Logispin Austria GmbH, AT",4294967296
+AT,207021,"All AS from AT - RCODEZERO-ANYCAST-SEC2 - ipcom GmbH, AT",720896
+AT,207203,"All AS from AT - TIMEWARP-AS - TIMEWARP IT Consulting GmbH, AT",68719476736
+AT,207299,"All AS from AT - PETOE - Michael Petoe, AT",65536
+AT,207426,"All AS from AT - GSS - GSS Media Services GmbH, AT",4294967296
+AT,207760,"All AS from AT - AS_INTICHAR - Mag. phil. Lorenz Intichar, AT",65536
+AT,207791,"All AS from AT - NTBS-AS - NTB SOLUTIONS GmbH, AT",65536
+AT,207869,"All AS from AT - GANZRUND-AT-AS - GANZRUND Informatik GmbH, AT",65536
+AT,207962,"All AS from AT - AS5586 - Kroell Bernhard, AT",34359738368
+AT,208094,"All AS from AT - EDV-SCHERER - Christoph Scherer trading as EDV-SCHERER, AT",65536
+AT,208185,"All AS from AT - HKS-AS - Mathias Muehlbacher, AT",16777216
+AT,208245,"All AS from AT - BECHTLE-AT - Bechtle Austria GmbH, AT",38654705664
+AT,208315,"All AS from AT - frauscher - Frauscher Sensor Technology Group GmbH, AT",34359738368
+AT,208323,"All AS from AT - APPLIEDPRIVACY-AS - Foundation for Applied Privacy, AT",65536
+AT,208419,"All AS from AT - EISENBERGER - E+H Rechtsanwaelte GmbH, AT",34359738368
+AT,208441,"All AS from AT - LAND-SALZBURG-AS - Amt der Salzburger Landesregierung, AT",65536
+AT,208689,"All AS from AT - HELLOLY - helloly GmbH, AT",34359738368
+AT,208740,"All AS from AT - AT-BMEIA - Bundesministerium fuer europaeische und internationale Angelegenheiten, AT",34359738368
+AT,208794,"All AS from AT - BRANDST-AS - Wolfgang Michael Brandstaetter, AT",34359738368
+AT,209050,"All AS from AT - DIGIMAGICAL - Digimagical GmbH, AT",34359738368
+AT,209934,"All AS from AT - ZLINE - WIERER GmbH & Co KG, AT",34359738368
+AT,210305,"All AS from AT - ARTNER-AS - Erwin Artner, AT",65536
+AT,210543,"All AS from AT - KAGES - Steiermaerkische Krankenanstaltengesellschaft mbH, AT",65536
+AT,210623,"All AS from AT - NOBAQ - Nikolaus Hammler, AT",327680
+AT,210626,"All AS from AT - LIPICER-AS - Lipicer KG, AT",34359738368
+AT,210775,"All AS from AT - niceshops - Niceshops GmbH, AT",393216
+AT,210863,"All AS from AT - VELARTIS - Velartis GmbH, AT",34359738368
+AT,210918,"All AS from AT - KERNSTOCK - Patrik Kernstock, AT",65536
+AT,210947,"All AS from AT - ZUGSPITZNET-AS - ZugspitzNet GmbH, AT",34359738368
+AT,211060,"All AS from AT - VERKEHRSVERBUND-OST-REGION - VERKEHRSVERBUND OST REGION (VOR) GESMBH, AT",65536
+AT,211071,"All AS from AT - BAHA-AS - baha GmbH, AT",65536
+AT,211099,"All AS from AT - MDRI-AS - Raiffeisen Informatik GmbH & Co KG, AT",1048576
+AT,211151,"All AS from AT - STRAUSS-AS - Markus Strauss, AT",67174400
+AT,211196,"All AS from AT - MTEL-AS - Mtel Austria GmbH, AT",67371008
+AT,211510,"All AS from AT - RDI-AT - Roman Franz Dissauer trading as RDI Solutions e.U., AT",34359738368
+AT,211582,"All AS from AT - ecomDATA-AS - ecomDATA GmbH, AT",262144
+AT,211629,"All AS from AT - WOB-AS - WOB Beteiligungs Gmbh, AT",34359738368
+AT,211666,"All AS from AT - EBSWIEN-AS - ebswien klaeranlage & tierservice Ges.m.b.H, AT",34359738368
+AT,211763,"All AS from AT - CPS-IT - CPS - IT GmbH, AT",65536
+AT,212131,"All AS from AT - ASPSMEDIA - PSMEDIA LTD&CoKG, AT",34359738368
+AT,212640,"All AS from AT - NEO-IT-AS - neo-it GmbH, AT",34359738368
+AT,212704,"All AS from AT - AS-DXLD - Daniel Groeber, AT",1114112
+AT,212774,"All AS from AT - ASMEINL - Meinl Internet Commerce GmbH, AT",131072
+AT,212796,"All AS from AT - SmartFiber-AS - SmartFiber GmbH, AT",34359738368
+AT,212813,"All AS from AT - Lindner - Lindner-Recyclingtech GmbH, AT",34359738368
+AT,212828,"All AS from AT - TWOPEAKS - Tom Hatzer trading as twopeaks digital e.U., AT",33816576
+AT,213080,"All AS from AT - GESPAG - Oberoesterreichische Gesundheitsholding GmbH, AT",65536
+AT,215788,"All AS from AT - MADH - Dohnal Markus, AT",65536
+AT,216258,"All AS from AT - eox-faster - EOX IT Services GmbH, AT",327680
+AT,216369,"All AS from AT - jkdev - Jakob Kampichler, AT",33554432
+AT,216441,"All AS from AT - PLABS - Jakob Riepler, AT",65536
+AT,216457,"All AS from AT - IPK - Patrick Kaltenboeck trading as IPK IT-Solutions e.U., AT",196608

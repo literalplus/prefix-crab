@@ -1,0 +1,274 @@
+asn;description
+679;science - All AS from AT - TUNET-AS - Technische Universitat Wien, AT
+1120;science - All AS from AT - ACOnet_Services - ACONET, AT
+1205;science - All AS from AT - JKU-LINZ-AS - University Linz, AT
+1853;government - All AS from AT - ACOnet, AT
+1921;domains - All AS from AT - RCODEZERO-ANYCAST-SEC1-TLD - ipcom GmbH, AT
+2488;science - All AS from AT - IIASA-NET - International Institute for Applied Systems Analysis, AT
+2494;science - All AS from AT - MUWNET - MUWNET Autonomous System, AT
+3190;it services - All AS from AT - DREI-S-AS - 3-S-IT Dienstleistungen GmbH, AT
+3330;power grid - All AS from AT - PROFINET-AT - eww ag, AT
+5385;media - All AS from AT - RUSSMEDIA-IT - Russmedia IT GmbH, AT
+5403;media - All AS from AT - AS5403 - APA-IT Informations Technologie G.m.b.H, AT
+5404;it services - All AS from AT - conova-as - conova communications GmbH, AT
+6720;government - All AS from AT - MAGWIEN - Magistrat der Stadt Wien, Magistratsabteilung 01, AT
+6798;it services - All AS from AT - NET4YOU-AS - Net4You Internet GmbH, AT
+6883;government - All AS from AT - Parlamentsdirektion, AT
+8245;small-telco - All AS from AT - VIDEOBROADCAST-AS - Video-Broadcast GmbH, AT
+8339;small-telco - All AS from AT - KABSI-AS - kabelplus GmbH, AT
+8387;it services - All AS from AT - T-SYSTEMS-AT - Deutsche Telekom Global Business Solutions GmbH, AT
+8412;big-telco - All AS from AT - TMA - T-Mobile Austria GmbH, AT
+8437;big-telco - All AS from AT - UTA-AS - Hutchison Drei Austria GmbH, AT
+8445;government - All AS from AT - SALZBURG-AG-AS - SALZBURG AG fur Energie, Verkehr und Telekommunikation, AT
+8447;big-telco - All AS from AT - A1TELEKOM-AT - A1 Telekom Austria AG, AT
+8540;small-telco - All AS from AT - AMANET-AS - AMA netwoRX GmbH, AT
+8562;big-telco - All AS from AT - LICPLUS-AS - A1 Telekom Austria AG, AT
+8596;it services - All AS from AT - HOTZE-AS - hotze.com GmbH, AT
+8666;it services - All AS from AT - FIBERLINK-AS - FiberLink GmbH, AT
+8692;government - All AS from AT - BRZ - Bundesrechenzentrum GmbH, AT
+8787;it services - All AS from AT - AMARISTECH - Amaris Technologies GmbH, AT
+9023;business - All AS from AT - LOTTERIEN-AS - Oesterreichische Lotterien GmbH, AT
+12401;domains - All AS from AT - INTERNIC-AS12401 - internic Datenkommunikations GmbH, AT
+12453;small-telco - All AS from AT - KRAFTCOM-AS - KraftCom Service GmbH, AT
+12577;small-telco - All AS from AT - MMC-AT-AS - mmc kommunikationstechnologie gmbh, AT
+12605;local-telco - All AS from AT - LIWEST-AT - LIWEST Kabelmedien GmbH, AT
+12635;big-telco - All AS from AT - AS12635 - Hutchison Drei Austria GmbH, AT
+12762;government - All AS from AT - VTG-AT - Vorarlberger Informatik- und Telekommunikationsdienstleistungsgesellschaft mbH, AT
+12895;banking - All AS from AT - IT-AUSTRIA - Erste Digital GmbH, AT
+12930;banking - All AS from AT - CARDCOMPLETE-AS - card complete Service Bank AG, AT
+12991;government - All AS from AT - Land-OOE - Amt der Ooe. Landesregierung, AT
+13008;business - All AS from AT - BETANDWIN-AS - Entain Services Austria GmbH, AT
+13042;banking - All AS from AT - ASN-OENB-AT - Oesterreichische Nationalbank, AT
+15498;media - All AS from AT - RTCnow - RTCnow Streaming Services GmbH, AT
+15733;manufacturing - All AS from AT - ZUMTOBEL-AS - Zumtobel Group AG, AT
+16099;government - All AS from AT - SOZVERS-NET - Hauptverband der oesterreichischen Sozialversicherungstraeger, AT
+21013;hosting - All AS from AT - ITANDTEL-AS - eww ag, AT
+21079;government - All AS from AT - OEKB-AS - Oesterreichische Kontrollbank Aktiengesellschaft, AT
+21360;small-telco - All AS from AT - Empirion - Empirion Telekommunikations Services GmbH, AT
+21406;business - All AS from AT - SWAROVSKI-AS - D. Swarovski KG, AT
+24708;banking - All AS from AT - GRZ-AT - GRZ IT Center GmbH, AT
+24824;transportation - All AS from AT - WEISS-ASN - Gebrueder-Weiss GmbH, AT
+24864;banking - All AS from AT - R-IT-AS - Raiffeisen Informatik GmbH & Co KG, AT
+24953;small-telco - All AS from AT - ASN-NETPLANET - NETPLANET GmbH, AT
+24992;small-telco - All AS from AT - DIC-AS - DIC - Online Wolf & Co. KG, AT
+25255;big-telco - All AS from AT - H3G-Austria-AS - Hutchison Drei Austria GmbH, AT
+25447;small-telco - All AS from AT - JM-DATA - JM-DATA GmbH, AT
+25522;it services - All AS from AT - TRAVELPORT-AUSTRIA-AS - Travelport Austria GmbH, AT
+25575;hosting - All AS from AT - DOMAINTECHNIK - Ledl.net GmbH, AT
+28760;small-telco - All AS from AT - INFOTECH-AT-AS - Infotech EDV-Systeme GmbH, AT
+28771;aviation - All AS from AT - VIE-AS - Flughafen Wien Aktiengesellschaft, AT
+28857;it services - All AS from AT - CSC-AS - DXC Technology Austria GmbH, AT
+28919;local-telco - All AS from AT - STWKUFSTEIN-AS - Stadtwerke Kufstein GmbH, AT
+29056;small-telco - All AS from AT - GSTW-AS - Citycom Telekommunikation GmbH, AT
+29081;small-telco - All AS from AT - WVNET-AT-AS - WVNET Information und Kommunikation GmbH, AT
+29545;small-telco - All AS from AT - IPLACE - iPlace Internet & Network Services GmbH, AT
+29560;transportation - All AS from AT - ILL-AS - Industrie-Logistik-Linz GmbH, AT
+30971;domains - All AS from AT - NICAT-CORE-AS - nic.at GmbH, AT
+31152;manufacturing - All AS from AT - ENGEL-AS - Engel Austria GmbH, AT
+31382;it services - All AS from AT - KAPSCH-AS - K-Businesscom AG, AT
+31473;it services - All AS from AT - BEARINGPOINT-MANAGED-AS - BearingPoint GmbH, AT
+31510;local-telco - All AS from AT - IKB-AS - Innsbrucker Kommunalbetriebe AG, AT
+31543;small-telco - All AS from AT - MYNET-AS - myNet GmbH, AT
+34183;government - All AS from AT - BMG - Bundesministerium f. Gesundheit, AT
+34347;local-telco - All AS from AT - CITYNET-AT-AS - HALLAG Kommunal GmbH, AT
+34694;local-telco - All AS from AT - STWW-AS - Stadtwerke Woergl GmbH, AT
+34767;small-telco - All AS from AT - STONERICH-AS - Otto M. Steinmann e.U., AT
+34785;local-telco - All AS from AT - STW-AS - Stadtwerke Klagenfurt AG, AT
+34798;business - All AS from AT - willhaben - willhaben internet service GmbH & Co KG, AT
+34883;science - All AS from AT - FH-JOANNEUM - FH JOANNEUM Gesellschaft mbH, AT
+34964;small-telco - All AS from AT - RIPE-AT-AS - Ripe-NetWorks e.U., AT
+35052;government - All AS from AT - AS_AT_TLD_SERVICES - ACONET, AT
+35339;it services - All AS from AT - CZ-AS - AtNOC GmbH, AT
+35369;local-telco - All AS from AT - LINZAG-TELEKOM-AS - LINZ STROM GAS WAERME GmbH fuer Energiedienstleistungen und Telekommunikation, AT
+35370;small-telco - All AS from AT - AINET-AS - Ainet Telekommunikations-Netzwerk Betriebs GmbH, AT
+35492;other - All AS from AT - FUNKFEUER - FunkFeuer Wien - Verein zur Foerderung freier Netze, AT
+35579;local-telco - All AS from AT - KELAG1 - KELAG-Karntner Elektrizitats - Aktiengesellschaft, AT
+35609;it services - All AS from AT - ITP-AT - Smart Force e.U., AT
+38955;hosting - All AS from AT - WORLD4YOU - World4You Internet Services GmbH, AT
+39057;government - All AS from AT - TIROLERLANDESREGIERUNG-AS - DVT-Daten-Verarbeitung-Tirol GmbH, AT
+39285;transportation - All AS from AT - GARTNER-AS - Gartner KG, AT
+39409;hosting - All AS from AT - SWG-MyRootPW - Sebastian-Wilhelm Graf, AT
+39508;it services - All AS from AT - C07-AS - AXIANS ICT Austria GmbH, AT
+39555;local-telco - All AS from AT - STW-SCHWAZ-AS - Stadtwerke Schwaz GmbH, AT
+39560;small-telco - All AS from AT - KT-NET - KT-NET Communications GmbH, AT
+39837;other - All AS from AT - MUR - mur.at - Verein zur Foerderung von Netzwerkkunst, AT
+39878;small-telco - All AS from AT - RAUTER-AS - Peter Rauter GmbH, AT
+39912;small-telco - All AS from AT - i3B-AS - oja.at GmbH, AT
+40980;it services - All AS from AT - TELEMATICA - ANEXIA Internetdienstleistungs GmbH, AT
+40994;it services - All AS from AT - Alwyzon - Hohl IT e.U., AT
+41437;transportation - All AS from AT - KNAPP-AS - KNAPP AG, AT
+41817;it services - All AS from AT - VFNK - Rocket NG GmbH, AT
+42060;media - All AS from AT - FERATEL-AS - feratel media technologies AG, AT
+42061;local-telco - All AS from AT - LINZAG-AS - LINZ STROM GAS WAERME GmbH fuer Energiedienstleistungen und Telekommunikation, AT
+42354;it services - All AS from AT - ANX-CUSTOMER - ANEXIA Internetdienstleistungs GmbH, AT
+42360;it services - All AS from AT - SSP-EUROPE - ANEXIA Internetdienstleistungs GmbH, AT
+42378;government - All AS from AT - RTR-AS - Rundfunk und Telekom Regulierungs-GmbH, AT
+42388;it services - All AS from AT - ANX-CLOUDDNS - ANEXIA Internetdienstleistungs GmbH, AT
+42473;it services - All AS from AT - AS-ANEXIA - ANEXIA Internetdienstleistungs GmbH, AT
+42557;it services - All AS from AT - Xidras - Xidras GmbH, AT
+42572;hosting - All AS from AT - ABATON-AS - abaton EDV-Dienstleistungs GmbH, AT
+42685;government - All AS from AT - BKA - Bundeskanzleramt, AT
+42858;small-telco - All AS from AT - WeTi-AS - Limberger Handelsgesellschaft m.b.H., AT
+42882;hosting - All AS from AT - SYSUP-AT - SysUP OG, AT
+43771;business - All AS from AT - MUKI-AS - MuKi Versicherungsverein auf Gegenseitigkeit VVaG, AT
+43957;small-telco - All AS from AT - ASN-WNTNEWMEDIA - WNT Telecommunication GmbH, AT
+44133;hosting - All AS from AT - IPAX-AS - IPAX GmbH, AT
+44329;it services - All AS from AT - NTS-AS - NTS Netzwerk Telekom Service AG, AT
+44385;telco - All AS from AT - NA-NET-AS - NA-NET Communications GmbH, AT
+44399;science - All AS from AT - FHOOE-AS - FH OOe Studienbetriebs GmbH, AT
+44453;hosting - All AS from AT - internex-as - interneX GmbH, AT
+44462;local-telco - All AS from AT - muerznet-AS - Stadtwerke Muerzzuschlag GmbH, AT
+44753;it services - All AS from AT - BACHER-AS - Bacher Systems EDV GmbH, AT
+44865;media - All AS from AT - DERSTANDARD-AS - STANDARD Verlagsgesellschaft m.b.H., AT
+47132;telco - All AS from AT - INNONET-AS - Innonet ICT-Services GmbH, AT
+47147;it services - All AS from AT - AS-ANX - ANEXIA Internetdienstleistungs GmbH, AT
+47251;it services - All AS from AT - VLBGIT-AS - Fabian Friesenecker trading as VLBGIT Friesenecker e.U., AT
+47373;manufacturing - All AS from AT - GETZNER-AS - Getzner Werkstoffe GmbH, AT
+47477;business - All AS from AT - REWEA-AS - REWE International Dienstleistungs GmbH, AT
+47515;government - All AS from AT - BMI-GOVIX - Bundesministerium fuer Inneres, Sektion IV, AT
+47576;it services - All AS from AT - NETZWARE-AS - Netzware Handels- und IT-Dienstleistungs GmbH, AT
+47692;telco - All AS from AT - NESSUS - Nessus GmbH, AT
+48151;business - All AS from AT - REDBULL-AS - Red Bull GmbH, AT
+48339;banking - All AS from AT - RRZ_Sued_AS - Raiffeisen Rechenzentrum GmbH, AT
+48362;local-telco - All AS from AT - TKSWF-AS - Stadtwerke Feldkirch, AT
+48943;telco - All AS from AT - KAPPERNET - KAPPER NETWORK-COMMUNICATIONS GmbH, AT
+49014;business - All AS from AT - WKO-AS - Wirtschaftskammer Oesterreich, AT
+49322;domains - All AS from AT - VIM-AS - ViM Internetdienstleistungen GmbH, AT
+49432;other - All AS from AT - SCHALLERT-AS - Dominic Schallert trading as schallert.com e.U., AT
+49488;domains - All AS from AT - AS_AT_TLD_SERVICES - nic.at GmbH, AT
+49808;local-telco - All AS from AT - POWERSPEED-AS - Energie AG Oberoesterreich Telekom GmbH, AT
+49864;small-telco - All AS from AT - ECSNET-AS - ECS Rockenschaub GmbH, AT
+50180;manufacturing - All AS from AT - MED-EL-AS - Med-El Elektromedizinische Geraete GmbH., AT
+50226;small-telco - All AS from AT - NETCOMPANY1-AS - NETcompany Internet Provider - NC GmbH, AT
+50782;small-telco - All AS from AT - COSYS - COSYS DATA GmbH, AT
+51066;aviation - All AS from AT - AUSTROCONTROL-AS - Austro Control Oesterreichische Gesellschaft fuer Zivilluftfahrt mit beschraenkter Haftung, AT
+51184;small-telco - All AS from AT - FONIRA - Fonira Telekom GmbH, AT
+51265;small-telco - All AS from AT - MASSRESPONSE-AS2 - Mass Response Service GmbH, AT
+51350;science - All AS from AT - TECHNIKUM-WIEN-AS - Fachhochschule Technikum Wien, AT
+51413;business - All AS from AT - WK-KAERNTEN - Wirtschaftskammer Kaernten, AT
+51454;it services - All AS from AT - CRIF-AS - CRIF GmbH, AT
+51560;it services - All AS from AT - GRESCHITZ - Greschitz Management GmbH, AT
+51658;small-telco - All AS from AT - LUCESEM-AS - Patrick Janesch trading as Lucesem, AT
+51890;manufacturing - All AS from AT - MAYR-MELNHOF - MM Service GmbH, AT
+56672;local-telco - All AS from AT - ENERGIEAG-AT-AS - Energie AG Oberoesterreich Telekom GmbH, AT
+56963;manufacturing - All AS from AT - SKIDATA-AG-AS - Skidata AG, AT
+57057;it services - All AS from AT - AVALON-AS - AVALON Computersystem Ges.m.b.H., AT
+57169;hosting - All AS from AT - EDIS-AS-EU - EDIS GmbH, AT
+57470;other - All AS from AT - Dragon - Erik Herburger, AT
+57763;small-telco - All AS from AT - SELFNET-AS - SelfNet Internet Ges.m.b.H., AT
+57878;it services - All AS from AT - Prager-IT - Prager Connect GmbH, AT
+58160;hosting - All AS from AT - CSONET - CSO.net Internet Services GmbH, AT
+59456;hosting - All AS from AT - CLOUDBROKERS-AS - Cloud-Brokers IT-Services GmbH, AT
+59779;banking - All AS from AT - IXOLIT-AS - IXOPAY GmbH, AT
+59890;small-telco - All AS from AT - Kabel-TV-Lampert - Kabel-TV Lampert GmbH & Co KG, AT
+59909;it services - All AS from AT - TELE-TEC-AS - Tele-Tec GmbH, AT
+60517;small-telco - All AS from AT - AS-CABLEVISION - Noehmer GmbH, AT
+60587;small-telco - All AS from AT - XINON-CARRIER-AS - XINON GmbH, AT
+60823;hosting - All AS from AT - IFORCE - IForce IT GmbH, AT
+61155;it services - All AS from AT - CUBIT-AS - CUBiT IT Solutions GmbH, AT
+61201;science - All AS from AT - HTBLA-KLU-AS - Hohere technische Bundeslehranstalt Klagenfurt, AT
+62149;small-telco - All AS from AT - KTVGERLOS-AS - Verein Kabel-TV Gerlos, AT
+62156;it services - All AS from AT - HXS - HXS GmbH, AT
+62363;small-telco - All AS from AT - EGW-AS - Ertl & Gross GmbH & Co OG, AT
+62373;small-telco - All AS from AT - SINGERL-AS - futurenet.gmbH, AT
+62391;it services - All AS from AT - COMM-IT - Comm-IT EDV DienstleistungsgmbH, AT
+197634;other - All AS from AT - ALECH - Alec Hoefler, AT
+197917;small-telco - All AS from AT - EWF - Elektrizitaetswerke Frastanz GmbH, AT
+197964;manufacturing - All AS from AT - BLUMNET - Julius Blum GmbH, AT
+197999;other - All AS from AT - klarinet-as - Michael Gamsjaeger, AT
+198211;manufacturing - All AS from AT - EGGER-AS - Martin Reinberger trading as FRITZ EGGER GmbH & Co. OG, AT
+198638;it services - All AS from AT - flexbit-at-as - Juergen Bachinger, AT
+198650;manufacturing - All AS from AT - ACAT-AS - APPLIED CHEMICALS Handels-GmbH, AT
+198656;manufacturing - All AS from AT - MUEHLBOECK-AT-AS - MUEHLBOECK Holztrocknungsanlagen GmbH, AT
+198950;small-telco - All AS from AT - OAB-AF - Telenet Systems GmbH, AT
+199159;it services - All AS from AT - DATASIX - ANEXIA Internetdienstleistungs GmbH, AT
+199216;media - All AS from AT - COMPASS-AS - Compass-Verlag GmbH, AT
+199236;it services - All AS from AT - EMARSYS-AS - EMARSYS eMarketing Systems GmbH, AT
+200026;local-telco - All AS from AT - SJON-AS - Ortswaerme St. Johann in Tirol GmbH, AT
+200273;other - All AS from AT - pNET - Peter Kowalsky, AT
+200727;local-telco - All AS from AT - KBRINN - Kommunalbetriebe Rinn GmbH, AT
+200849;small-telco - All AS from AT - fassma_net-AS - Martin Fassl trading as fassma.net e.U., AT
+200970;small-telco - All AS from AT - RIEPERT - Riepert Informationstechnologie GmbH, AT
+200986;business - All AS from AT - SWAROVSKITOURISM-AS - D Swarovski Tourism Service GmbH, AT
+201239;business - All AS from AT - Logispin-AS - Logispin Austria GmbH, AT
+201240;it services - All AS from AT - OpenIoT - Rocket NG GmbH, AT
+201248;it services - All AS from AT - SCC-AS - SCC EDV-Beratung AG, AT
+201470;telco - All AS from AT - CITYNET-AT-2-AS - HALLAG Kommunal GmbH, AT
+201612;domains - All AS from AT - NICAT-MINICAST-AS - nic.at GmbH, AT
+201760;business - All AS from AT - ANDREAS-AS - Andreas Pleschutznig, AT
+202516;small-telco - All AS from AT - web-crossing - web-crossing GmbH, AT
+202559;other - All AS from AT - MATT-AS - Matteo Fruhwald, AT
+202616;local-telco - All AS from AT - WE-FTTH-AS - Wien Energie GmbH, AT
+202718;it services - All AS from AT - sigmacloud - sigmavista it consulting gmbh, AT
+202745;business - All AS from AT - linkedin - LinkedIn Austria GmbH, AT
+202928;other - All AS from AT - Z-IX-AS - Armin Fisslthaler, AT
+203358;it services - All AS from AT - INCOS-Stueckler - Guenther Stueckler, AT
+203541;local-telco - All AS from AT - ATKTVPILLERSEE - Kabelfernsehen Pillersee GmbH, AT
+204081;it services - All AS from AT - imendo - IMENDO GmbH, AT
+204136;other - All AS from AT - SILENT-GHOST-AS - Kevin Holly trading as Silent Ghost e.U., AT
+204410;local-telco - All AS from AT - feistritzwerke-steweag - Feistritzwerke-STEWEAG GmbH, AT
+204419;it services - All AS from AT - ITNS - ITNS GmbH, AT
+204560;small-telco - All AS from AT - LENZEDER-AS - Lenzeder Gesellschaft m.b.H & Co KG, AT
+204659;it services - All AS from AT - ANLX-AS - Antares-NetlogiX Netzwerkberatung GmbH, AT
+205202;it services - All AS from AT - CLOUDFLIGHT - Cloudflight Austria GmbH, AT
+205243;it services - All AS from AT - CLOUDNOW-AS - CloudNow GmbH, AT
+205584;business - All AS from AT - CASHPOINT-AS - CASHPOINT Solutions GmbH, AT
+205728;banking - All AS from AT - at-cf-it - AVAFIN IT GmbH, AT
+205965;other - All AS from AT - Jason-Ruhittel - Jason Ruhittel, AT
+205989;it services - All AS from AT - RELAXT - relaxt Webdienstleistungsagentur GmbH, AT
+206021;business - All AS from AT - WKSTMK - Wirtschaftskammer Steiermark, AT
+206055;it services - All AS from AT - Specure - Specure GmbH, AT
+206128;other - All AS from AT - Dioezesane-IT - Dioezese Linz - Katholische Kirche in Oberoesterreich, AT
+206159;other - All AS from AT - VAO-AS - Verkehrsauskunft Oesterreich VAO GmbH, AT
+206228;manufacturing - All AS from AT - ANDRITZ01 - Andritz AG, AT
+206298;local-telco - All AS from AT - RKM-AS - RKM Regional Kabel TV Moelltal und Telekommunikation GmbH, AT
+206672;business - All AS from AT - Logispin-AS - Logispin Austria GmbH, AT
+207021;domains - All AS from AT - RCODEZERO-ANYCAST-SEC2 - ipcom GmbH, AT
+207203;hosting - All AS from AT - TIMEWARP-AS - TIMEWARP IT Consulting GmbH, AT
+207299;other - All AS from AT - PETOE - Michael Petoe, AT
+207426;other - All AS from AT - GSS - GSS Media Services GmbH, AT
+207760;other - All AS from AT - AS_INTICHAR - Mag. phil. Lorenz Intichar, AT
+207791;it services - All AS from AT - NTBS-AS - NTB SOLUTIONS GmbH, AT
+207869;it services - All AS from AT - GANZRUND-AT-AS - GANZRUND Informatik GmbH, AT
+207962;small-telco - All AS from AT - AS5586 - Kroell Bernhard, AT
+208094;other - All AS from AT - EDV-SCHERER - Christoph Scherer trading as EDV-SCHERER, AT
+208185;other - All AS from AT - HKS-AS - Mathias Muehlbacher, AT
+208245;it services - All AS from AT - BECHTLE-AT - Bechtle Austria GmbH, AT
+208315;manufacturing - All AS from AT - frauscher - Frauscher Sensor Technology Group GmbH, AT
+208323;it services - All AS from AT - APPLIEDPRIVACY-AS - Foundation for Applied Privacy, AT
+208419;other - All AS from AT - EISENBERGER - E+H Rechtsanwaelte GmbH, AT
+208441;government - All AS from AT - LAND-SALZBURG-AS - Amt der Salzburger Landesregierung, AT
+208689;hosting - All AS from AT - HELLOLY - helloly GmbH, AT
+208794;other - All AS from AT - BRANDST-AS - Wolfgang Michael Brandstaetter, AT
+209050;hosting - All AS from AT - DIGIMAGICAL - Digimagical GmbH, AT
+209934;small-telco - All AS from AT - ZLINE - WIERER GmbH & Co KG, AT
+210305;other - All AS from AT - ARTNER-AS - Erwin Artner, AT
+210623;other - All AS from AT - NOBAQ - Nikolaus Hammler, AT
+210626;small-telco - All AS from AT - LIPICER-AS - Lipicer KG, AT
+210775;it services - All AS from AT - niceshops - Niceshops GmbH, AT
+210863;hosting - All AS from AT - VELARTIS - Velartis GmbH, AT
+210918;other - All AS from AT - KERNSTOCK - Patrik Kernstock, AT
+210947;local-telco - All AS from AT - ZUGSPITZNET-AS - ZugspitzNet GmbH, AT
+211060;transportation - All AS from AT - VERKEHRSVERBUND-OST-REGION - VERKEHRSVERBUND OST REGION (VOR) GESMBH, AT
+211071;media - All AS from AT - BAHA-AS - baha GmbH, AT
+211099;banking - All AS from AT - MDRI-AS - Raiffeisen Informatik GmbH & Co KG, AT
+211151;other - All AS from AT - STRAUSS-AS - Markus Strauss, AT
+211196;small-telco - All AS from AT - MTEL-AS - Mtel Austria GmbH, AT
+211510;small-telco - All AS from AT - RDI-AT - Roman Franz Dissauer trading as RDI Solutions e.U., AT
+211582;it services - All AS from AT - ecomDATA-AS - ecomDATA GmbH, AT
+211629;other - All AS from AT - WOB-AS - WOB Beteiligungs Gmbh, AT
+211666;other - All AS from AT - EBSWIEN-AS - ebswien klaeranlage & tierservice Ges.m.b.H, AT
+211763;hosting - All AS from AT - CPS-IT - CPS - IT GmbH, AT
+212131;small-telco - All AS from AT - ASPSMEDIA - PSMEDIA LTD&CoKG, AT
+212640;hosting - All AS from AT - NEO-IT-AS - neo-it GmbH, AT
+212704;other - All AS from AT - AS-DXLD - Daniel Groeber, AT
+212774;other - All AS from AT - ASMEINL - Meinl Internet Commerce GmbH, AT
+212796;small-telco - All AS from AT - SmartFiber-AS - SmartFiber GmbH, AT
+212813;business - All AS from AT - Lindner - Lindner-Recyclingtech GmbH, AT
+212828;it services - All AS from AT - TWOPEAKS - Tom Hatzer trading as twopeaks digital e.U., AT
+213080;other - All AS from AT - GESPAG - Oberoesterreichische Gesundheitsholding GmbH, AT
+215788;it services - All AS from AT - MADH - Dohnal Markus, AT
+216258;it services - All AS from AT - eox-faster - EOX IT Services GmbH, AT
+216369;other - All AS from AT - jkdev - Jakob Kampichler, AT
+216441;other - All AS from AT - PLABS - Jakob Riepler, AT
+216457;it services - All AS from AT - IPK - Patrick Kaltenboeck trading as IPK IT-Solutions e.U., AT
