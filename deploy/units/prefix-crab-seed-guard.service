@@ -27,6 +27,7 @@ ExecStart=/usr/bin/podman run \
 	--cgroups=no-conmon \
 	--rm \
 	--sdnotify=conmon \
+	--group-add=keep-groups \
 	-d \
 	--name=prefix-crab-seed-guard \
 	--add-host=localhost.containers.internal:10.0.2.2 \
