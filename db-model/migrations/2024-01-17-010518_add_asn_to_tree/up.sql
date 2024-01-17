@@ -3,4 +3,4 @@
 -- more intuitive that it's not supposed to be there for debugging. We shouldn't get
 -- RPKI unallocated space anyways in our data (:
 ALTER TABLE prefix_tree
-    ADD COLUMN asn bigint NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'::uuid;
+    ADD COLUMN asn bigint NOT NULL DEFAULT 0;
