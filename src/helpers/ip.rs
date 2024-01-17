@@ -1,6 +1,4 @@
-use std::{
-    net::{IpAddr, Ipv6Addr},
-};
+use std::net::{IpAddr, Ipv6Addr};
 
 use ipnet::{IpNet, Ipv6Net};
 
@@ -48,15 +46,5 @@ impl ExpectV6 for IpAddr {
 
     fn expect_v6(self) -> Self::V6Type {
         *(&self).expect_v6()
-    }
-}
-
-pub trait ExpectAllV6<T> {
-    fn expect_all_v6(self) -> Vec<T>;
-}
-
-impl<E> ExpectAllV6<E::V6Type> for Vec<E> where E: ExpectV6 {
-    fn expect_all_v6(self) -> Vec<E::V6Type> {
-        self.into_iter().map(|it| it.expect_v6()).collect()
     }
 }

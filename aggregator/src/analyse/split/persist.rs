@@ -139,7 +139,7 @@ pub fn perform_prefix_split(
     blocklist: &PrefixBlocklist,
 ) -> Result<usize> {
     conn.transaction(|conn| {
-        insert_split_subnets(conn, subnets, blocklist)?;
+        insert_split_subnets(conn, subnets, blocklist, context.node())?;
         mark_parent_obsolete(conn, context.node())
     })
     .context("in tx to perform prefix split")
@@ -149,6 +149,7 @@ fn insert_split_subnets(
     conn: &mut PgConnection,
     subnets: Subnets,
     blocklist: &PrefixBlocklist,
+    parent: &PrefixTree,
 ) -> Result<usize> {
     use crate::schema::prefix_tree::dsl::*;
 
@@ -163,6 +164,7 @@ fn insert_split_subnets(
             net.eq6(&it.subnet.network),
             merge_status.eq(merge),
             lhr_set_hash.eq(it.lhr_set_hash()),
+            asn.eq(parent.asn),
         )
     };
     let tuples = subnets.iter().map(to_tuple).collect_vec();

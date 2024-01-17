@@ -2,8 +2,9 @@ use anyhow::*;
 use diesel::dsl::{count, exists, not, now, IntervalDsl};
 use diesel::sql_types::Integer;
 use ipnet::{IpNet, Ipv6Net};
+use itertools::Itertools;
 use log::debug;
-use prefix_crab::helpers::ip::ExpectAllV6;
+use prefix_crab::helpers::ip::ExpectV6;
 use rand::Rng;
 use std::collections::{btree_map, BTreeMap};
 
@@ -11,7 +12,9 @@ use diesel::prelude::*;
 use diesel::{PgConnection, QueryDsl};
 
 use crate::persist::DieselErrorFixCause;
-use db_model::prefix_tree::{MergeStatus, PriorityClass}; 
+use db_model::prefix_tree::{AsNumber, MergeStatus, PriorityClass};
+
+use super::as_budget::AsBudgets;
 
 #[derive(Default)]
 pub struct ClassBudgets {
@@ -83,11 +86,7 @@ fn count_available_per_class(conn: &mut PgConnection) -> Result<BTreeMap<Priorit
 
 impl ClassBudgets {
     fn allocate_next(&mut self) -> bool {
-        let remaining_ratio: u16 = self
-            .available_per_class
-            .keys()
-            .map(allocation_ratio)
-            .sum();
+        let remaining_ratio: u16 = self.available_per_class.keys().map(allocation_ratio).sum();
         if remaining_ratio == 0 {
             return false;
         }
@@ -173,10 +172,7 @@ impl Iterator for BudgetsIntoIter {
             .entry(class)
             .or_default()
             + (allocated as u64); // TODO use for tablesample
-        Some(ClassBudget {
-            class,
-            allocated,
-        })
+        Some(ClassBudget { class, allocated })
     }
 }
 
@@ -186,17 +182,43 @@ pub struct ClassBudget {
 }
 
 impl ClassBudget {
-    pub fn select_prefixes(&self, conn: &mut PgConnection) -> Result<Vec<Ipv6Net>> {
+    pub fn select_prefixes(
+        &self,
+        conn: &mut PgConnection,
+        as_budgets: &AsBudgets,
+    ) -> Result<Vec<SelectedPrefix>> {
         leaf_where_no_analysis!(let base = it);
 
-        let raw_nets = base
+        let mut raw_nets = base
             .filter(priority_class.eq(self.class))
+            .select((net, asn))
             .limit(self.allocated as i64)
-            .select(net);
-        let raw_nets: Vec<IpNet> = raw_nets.load(conn)
-            .fix_cause()?;
+            .into_boxed();
 
-        Ok(raw_nets.expect_all_v6())
+        if as_budgets.has_exhausted_asns() {
+            raw_nets = raw_nets.filter(asn.ne_all(as_budgets.get_exhausted_asns()));
+        }
+
+        let raw_nets: Vec<(IpNet, AsNumber)> = raw_nets.load(conn).fix_cause()?;
+
+        // TODO actually select prefixes at random and not just in undefined/physical order
+        // e.g. consider https://www.postgresql.org/docs/current/tsm-system-rows.html
+
+        Ok(raw_nets.into_iter().map_into().collect_vec())
+    }
+}
+
+pub struct SelectedPrefix {
+    pub net: Ipv6Net,
+    pub asn: AsNumber,
+}
+
+impl From<(IpNet, AsNumber)> for SelectedPrefix {
+    fn from((raw_net, asn): (IpNet, AsNumber)) -> Self {
+        Self {
+            net: raw_net.expect_v6(),
+            asn,
+        }
     }
 }
 

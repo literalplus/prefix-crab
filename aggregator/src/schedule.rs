@@ -25,7 +25,13 @@ pub struct Params {
     #[arg(long, env = "ANALYSIS_TIMER_PREFIX_BUDGET", default_value = "20")]
     analysis_timer_prefix_budget: u32,
 
-    // Whether to run the regular prefix schedule, or not (disabling the entire feedback system eventually)
+    /// How many prefixes to allow at most for one AS, per schedule
+    /// Default value 223 ~= 75 pps
+    /// (common ICMP rate limit, if the AS were served by a single router, plus 25 pps margin)
+    #[arg(long, env = "ANALYSIS_TIMER_MAX_PREFIX_PER_AS", default_value = "223")]
+    analysis_timer_max_prefix_per_as: usize,
+
+    /// Whether to run the regular prefix schedule, or not (disabling the entire feedback system eventually)
     #[arg(long, env = "AGG_DO_SCHEDULE", default_value = "true")]
     do_schedule: bool,
 }

@@ -111,18 +111,26 @@ pub type LhrSetHash = uuid::Uuid;
 pub struct PrefixTree {
     #[diesel(deserialize_as = crate::persist::Ipv6NetLoader)]
     pub net: Ipv6Net,
+
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+
     pub merge_status: MergeStatus,
     pub priority_class: PriorityClass,
     #[diesel(deserialize_as = crate::persist::ConfidenceLoader)]
     pub confidence: Confidence,
+
     /// A few things...
     /// 1.) 0u128 means unknown
     /// 2.) sha256 seems actually faster than md5 on modern servers
     /// 3.) u128 is just more ergonomic (we can store it as uuid in the DB)
     /// 4.) ... and even if cutting it off was problematic, we're not using it for crypto
     pub lhr_set_hash: LhrSetHash,
+
+    /// Denormalised because lookup is nontrivial (tree traversal not just join),
+    /// and we clear the prefix tree anyways on AS changes.
+    /// Needed for AS-level rate limiting.
+    pub asn: AsNumber,
 }
 
 impl HasTable for PrefixTree {
@@ -151,6 +159,7 @@ impl Selectable<Pg> for PrefixTree {
         dsl::priority_class,
         dsl::confidence,
         dsl::lhr_set_hash,
+        dsl::asn,
     );
 
     fn construct_selection() -> Self::SelectExpression {
@@ -163,6 +172,7 @@ impl Selectable<Pg> for PrefixTree {
             priority_class,
             confidence,
             lhr_set_hash,
+            asn,
         )
     }
 }
@@ -185,6 +195,10 @@ impl PrefixTree {
     }
 }
 
+/// Currently chosen for simplicity since we can serialise this into the DB easily
+/// with Diesel. Technically accurate would be u32, which doesn't fit into i32.
+pub type AsNumber = i64;
+
 #[derive(Queryable, Debug, Copy, Clone)]
 #[diesel(table_name = crate::schema::as_prefix)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -193,5 +207,5 @@ pub struct AsPrefix {
     #[diesel(deserialize_as = crate::persist::Ipv6NetLoader)]
     pub net: Ipv6Net,
     pub deleted: bool,
-    pub asn: i64,
+    pub asn: AsNumber,
 }
