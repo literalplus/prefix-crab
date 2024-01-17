@@ -180,10 +180,12 @@ pub struct WeirdData {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum WeirdType {
-    DestUnreachableUnexpectedKind { kind: u8 },
+    DestUnreachOther,
+    DestUnreachRejectRoute,
+    DestUnreachFailedEgress,
     DifferentEchoReplySource,
     EchoReplyInTrace,
-    UnexpectedIcmpType { description: String },
+    UnexpectedIcmpType,
     TtlExceededForEcho,
 }
 

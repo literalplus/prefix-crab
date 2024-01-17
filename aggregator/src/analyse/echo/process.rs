@@ -3,7 +3,7 @@ use std::net::Ipv6Addr;
 use db_model::analyse::WeirdType;
 
 use super::result::*;
-use log::debug;
+use log::{debug, warn};
 use queue_models::probe_response::{
     EchoProbeResponse,
     ResponseKey::{self, *},
@@ -38,10 +38,12 @@ fn process_responses(
         DestinationUnreachable { kind, from } => match kind.try_into() {
             Ok(source) => result.register_lhrs(targets, *from, source),
             Err(id) => {
-                result.register_weirds(
-                    targets,
-                    WeirdType::DestUnreachableUnexpectedKind { kind: id },
-                );
+                let typ = match id {
+                    5 => WeirdType::DestUnreachFailedEgress,
+                    6 => WeirdType::DestUnreachRejectRoute,
+                    _ => WeirdType::DestUnreachOther,
+                };
+                result.register_weirds(targets, typ);
                 debug!("Unknown dest-unreach kind: {:?}", id);
             }
         },
@@ -61,12 +63,8 @@ fn process_responses(
             from: _,
             description,
         } => {
-            result.register_weirds(
-                targets,
-                WeirdType::UnexpectedIcmpType {
-                    description: description.to_string(),
-                },
-            );
+            warn!("Received unexpected ICMP type: {}", description);
+            result.register_weirds(targets, WeirdType::UnexpectedIcmpType);
         }
         NoResponse => {
             follow_up_collector.stage_unresponsive(targets);
