@@ -9,7 +9,7 @@ pub struct Params {
     #[clap(long, default_value = "75")]
     zmap_pps: f64,
 
-    #[clap(long, default_value = "500000")]
+    #[clap(long, default_value = "100000")]
     zmap_target_rate_total: f64,
 }
 
