@@ -7,7 +7,7 @@ use anyhow::*;
 use clap::Args;
 use db_model::{
     persist::{dsl::CidrMethods, DieselErrorFixCause},
-    prefix_tree::{AsNumber, MergeStatus},
+    prefix_tree::MergeStatus,
     schema::{as_prefix, prefix_tree},
 };
 use diesel::{delete, upsert::excluded, Connection, ExpressionMethods, PgConnection, RunQueryDsl};

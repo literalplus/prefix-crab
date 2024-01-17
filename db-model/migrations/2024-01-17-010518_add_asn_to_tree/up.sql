@@ -4,3 +4,4 @@
 -- RPKI unallocated space anyways in our data (:
 ALTER TABLE prefix_tree
     ADD COLUMN asn bigint NOT NULL DEFAULT 0;
+ALTER TABLE prefix_tree ALTER COLUMN asn DROP DEFAULT;
