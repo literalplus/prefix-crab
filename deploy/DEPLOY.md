@@ -76,10 +76,12 @@ you need to create a new directory there and adjust the bind mounts in the syste
 
 You also need to create the data directories (`postgresql-data`, `rabbitmq-data`, `backup`) upfront, empty.
 
-For `asn-ip`, check out the Git repo directly:
+For `asn-ip`, the setup must be done in the container itself because I wasn't able to get it to mount with the correct permissions:
 
 ```bash
-git clone https://github.com/ipverse/asn-ip
+podman exec -it prefix-crab-seed-guard bash
+cd /home/app/asn-ip
+git clone https://github.com/ipverse/asn-ip .
 ```
 
 The `--group-add=keep-groups` flag on the container command lines ensures that the container users are able to access
