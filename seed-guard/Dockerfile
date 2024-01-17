@@ -8,8 +8,6 @@ WORKDIR /home/app
 # Install shared lib needed by diesel / pg
 RUN apt-get update && apt-get install -y libpq5 git && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /home/app/ip-asn && chown -R app: /home/app/ip-asn
-
 COPY --from=builder /usr/src/prefix-crab/target/release/seed-guard /usr/local/bin
 
 USER 1000
