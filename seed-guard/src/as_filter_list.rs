@@ -1,15 +1,15 @@
 use anyhow::Result;
-use db_model::persist::DieselErrorFixCause;
+use db_model::{persist::DieselErrorFixCause, prefix_tree::AsNumber};
 use diesel::{prelude::*, PgConnection, QueryDsl};
 use nohash_hasher::IntSet;
 
 pub struct AsFilterList {
     is_deny_list: bool,
-    matched_entries: IntSet<u32>,
+    matched_entries: IntSet<AsNumber>,
 }
 
 impl AsFilterList {
-    pub fn allows(&self, asn: u32) -> bool {
+    pub fn allows(&self, asn: AsNumber) -> bool {
         let contains = self.matched_entries.contains(&asn);
 
         //   contains    is_deny    allows
@@ -24,21 +24,15 @@ impl AsFilterList {
     }
 }
 
-pub fn fetch(
-    conn: &mut PgConnection,
-    is_allow_list: bool,
-) -> Result<AsFilterList> {
+pub fn fetch(conn: &mut PgConnection, is_allow_list: bool) -> Result<AsFilterList> {
     use db_model::schema::as_filter_list::dsl::*;
 
-    let all_asns: Vec<i64> = as_filter_list
+    let all_asns: Vec<AsNumber> = as_filter_list
         .select(asn)
         .distinct()
         .load(conn)
         .fix_cause()?;
-    let matched_entries = all_asns
-        .into_iter()
-        .filter_map(|it| it.try_into().ok())
-        .collect();
+    let matched_entries = all_asns.into_iter().collect();
     Ok(AsFilterList {
         is_deny_list: is_allow_list,
         matched_entries,

@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use db_model::persist::DieselErrorFixCause;
+use db_model::{persist::DieselErrorFixCause, prefix_tree::AsNumber};
 use diesel::{pg::PgRowByRowLoadingMode, prelude::*, PgConnection, QueryDsl};
 use ipnet::{IpNet, Ipv6Net};
 use log::{debug, warn, info};
@@ -17,7 +17,7 @@ use crate::as_filter_list::AsFilterList;
 
 #[derive(Default, Debug)]
 pub struct AsSetEntry {
-    pub asn: u32,
+    pub asn: AsNumber,
     pub added: HashSet<Ipv6Net>,
     pub removed: Vec<Ipv6Net>,
 }
@@ -28,7 +28,7 @@ impl AsSetEntry {
     }
 }
 
-pub type AsChangeset = IntMap<u32, AsSetEntry>;
+pub type AsChangeset = IntMap<AsNumber, AsSetEntry>;
 
 pub fn determine(
     conn: &mut PgConnection,
@@ -47,7 +47,7 @@ pub fn determine(
     Ok(indexed)
 }
 
-fn read_ases_from_dir(base_dir: &Path, filter: &AsFilterList) -> Result<IntMap<u32, AsSetEntry>> {
+fn read_ases_from_dir(base_dir: &Path, filter: &AsFilterList) -> Result<IntMap<AsNumber, AsSetEntry>> {
     let mut result = IntMap::default();
     let read_dir = base_dir.read_dir().context("reading base directory")?;
     let mut skipped = 0u64;
@@ -76,7 +76,7 @@ fn to_model(entry: DirEntry, meta: Metadata) -> Option<AsSetEntry> {
         return None;
     }
     let name_safe = entry.file_name().into_string().ok()?;
-    let asn: u32 = name_safe.parse().ok()?;
+    let asn: AsNumber = name_safe.parse().ok()?;
     match read_prefixes(entry.path()) {
         Ok(prefixes) => {
             let mut entry = AsSetEntry {
@@ -111,19 +111,18 @@ fn read_prefixes(base_path: PathBuf) -> Result<Vec<Ipv6Net>> {
 
 fn extend_with_db_asns(
     conn: &mut PgConnection,
-    indexed: &mut IntMap<u32, AsSetEntry>,
+    indexed: &mut IntMap<AsNumber, AsSetEntry>,
 ) -> Result<()> {
     let iter = {
         use crate::schema::as_prefix::dsl::*;
         as_prefix
             .select((asn, net, deleted))
-            .load_iter::<(i64, IpNet, bool), PgRowByRowLoadingMode>(conn)
+            .load_iter::<(AsNumber, IpNet, bool), PgRowByRowLoadingMode>(conn)
             .fix_cause()?
     };
 
     for res in iter {
         let (asn, net, deleted) = res.context("iterating previous ASNs from DB")?;
-        let asn = asn as u32;
         let net = net.expect_v6();
 
         let entry = indexed.entry(asn).or_default();

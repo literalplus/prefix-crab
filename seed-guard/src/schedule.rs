@@ -1,13 +1,16 @@
-use std::{path::{PathBuf, Path}, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use anyhow::*;
 use clap::Args;
 use db_model::{
     persist::{dsl::CidrMethods, DieselErrorFixCause},
-    prefix_tree::MergeStatus,
+    prefix_tree::{AsNumber, MergeStatus},
     schema::{as_prefix, prefix_tree},
 };
-use diesel::{delete, Connection, ExpressionMethods, PgConnection, RunQueryDsl, upsert::excluded};
+use diesel::{delete, upsert::excluded, Connection, ExpressionMethods, PgConnection, RunQueryDsl};
 use itertools::Itertools;
 use log::{error, info, warn};
 use prefix_crab::loop_with_stop;
@@ -75,8 +78,8 @@ fn do_tick(params: &Params, as_dir: &Path) -> Result<()> {
 
     let filter = as_filter_list::fetch(&mut conn, params.asn_filter_is_deny_list)
         .context("loading AS filter list")?;
-    let changes = as_changeset::determine(&mut conn, as_dir, &filter)
-        .context("determining AS set")?;
+    let changes =
+        as_changeset::determine(&mut conn, as_dir, &filter).context("determining AS set")?;
 
     try_save_changes(&mut conn, changes);
 
@@ -136,7 +139,7 @@ fn save_as_prefixes(conn: &mut PgConnection, change: &AsSetEntry) -> Result<()> 
     let tuples = change
         .added
         .iter()
-        .map(|it| (net.eq6(it), asn.eq(change.asn as i64)))
+        .map(|it| (net.eq6(it), asn.eq(change.asn)))
         .collect_vec();
 
     diesel::insert_into(as_prefix)
@@ -155,7 +158,13 @@ fn save_fresh_prefix_nodes(conn: &mut PgConnection, change: &AsSetEntry) -> Resu
     let tuples = change
         .added
         .iter()
-        .map(|it| (net.eq6(it), merge_status.eq(MergeStatus::UnsplitRoot)))
+        .map(|it| {
+            (
+                net.eq6(it),
+                merge_status.eq(MergeStatus::UnsplitRoot),
+                asn.eq(change.asn),
+            )
+        })
         .collect_vec();
 
     let inserted = diesel::insert_into(prefix_tree)
