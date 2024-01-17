@@ -40,7 +40,7 @@ ExecStart=/usr/bin/podman run \
 	--secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PW \
 	--mount=type=bind,source=/home/%u/prefix-crab/deploy/containers.env,ro,destination=/home/app/.env \
 	--mount=type=bind,source=/etc/scanning/blocklist,ro,destination=/etc/scanning/blocklist \
-	--mount=type=bind,source=/scans/2024_01_prefix-crab-austria/asn-ip:/opt/asn-ip \
+	--mount=type=bind,source=/scans/2024_01_prefix-crab-austria/asn-ip,ro,destination=/opt/asn-ip \
 	--tz=UTC prefix-crab.local/seed-guard
 ExecStop=/usr/bin/podman stop \
 	--ignore \
