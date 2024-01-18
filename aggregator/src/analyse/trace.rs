@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use anyhow::Result;
-use diesel::{PgConnection, ExpressionMethods, RunQueryDsl, query_builder::AsChangeset};
+use diesel::{query_builder::AsChangeset, ExpressionMethods, PgConnection, RunQueryDsl};
 use queue_models::{
     probe_request::TraceRequestId,
     probe_response::{LastHop, TraceResponse, TraceResponseType, TraceResult as TR},
@@ -60,10 +60,12 @@ fn register_as_lhr(result: &mut TraceResult, hop: &LastHop) {
         T::DestinationUnreachable { kind } => match (&kind).try_into() {
             Ok(source) => source,
             Err(kind) => {
-                result.register_weirds(
-                    &[hop.target_addr],
-                    WeirdType::DestUnreachableUnexpectedKind { kind },
-                );
+                let typ = match kind {
+                    5 => WeirdType::DestUnreachFailedEgress,
+                    6 => WeirdType::DestUnreachRejectRoute,
+                    _ => WeirdType::DestUnreachOther,
+                };
+                result.register_weirds(&[hop.target_addr], typ);
                 return;
             }
         },
@@ -105,5 +107,5 @@ impl UpdateAnalysis for TraceResult {
 #[diesel(table_name=crate::schema::split_analysis)]
 #[diesel(treat_none_as_null = true)]
 struct ClearFollowUp {
-    pending_follow_up: Option<String>
+    pending_follow_up: Option<String>,
 }
