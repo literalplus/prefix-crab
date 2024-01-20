@@ -1,4 +1,4 @@
-use std::{collections::HashSet, time::Duration};
+use std::time::Duration;
 
 use crate::{analyse, schedule::analysis_timer::class_budget::SelectedPrefix};
 
@@ -7,8 +7,7 @@ use self::{as_budget::AsBudgets, class_budget::ClassBudget};
 use super::Params;
 use anyhow::*;
 use diesel::PgConnection;
-use ipnet::Ipv6Net;
-use log::{debug, error, info, trace, warn};
+use log::{debug, info, warn, error};
 use prefix_crab::loop_with_stop;
 use queue_models::probe_request::{EchoProbeRequest, ProbeRequest};
 use tokio::{
