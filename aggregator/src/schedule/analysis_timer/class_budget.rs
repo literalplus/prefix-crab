@@ -178,7 +178,7 @@ impl Iterator for BudgetsIntoIter {
 
 pub struct ClassBudget {
     pub class: PriorityClass,
-    allocated: u32,
+    pub allocated: u32,
 }
 
 impl ClassBudget {
@@ -186,7 +186,7 @@ impl ClassBudget {
         &self,
         conn: &mut PgConnection,
         as_budgets: &AsBudgets,
-    ) -> Result<Vec<SelectedPrefix>> {
+    ) -> Result<impl Iterator<Item = SelectedPrefix>> {
         leaf_where_no_analysis!(let base = it);
 
         let mut raw_nets = base
@@ -204,7 +204,7 @@ impl ClassBudget {
         // TODO actually select prefixes at random and not just in undefined/physical order
         // e.g. consider https://www.postgresql.org/docs/current/tsm-system-rows.html
 
-        Ok(raw_nets.into_iter().map_into().collect_vec())
+        Ok(raw_nets.into_iter().map_into())
     }
 }
 

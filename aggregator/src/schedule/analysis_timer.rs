@@ -1,10 +1,14 @@
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 
 use crate::{analyse, schedule::analysis_timer::class_budget::SelectedPrefix};
 
+use self::{as_budget::AsBudgets, class_budget::ClassBudget};
+
 use super::Params;
 use anyhow::*;
-use log::{error, info, trace, warn};
+use diesel::PgConnection;
+use ipnet::Ipv6Net;
+use log::{debug, error, info, trace, warn};
 use prefix_crab::loop_with_stop;
 use queue_models::probe_request::{EchoProbeRequest, ProbeRequest};
 use tokio::{
@@ -62,56 +66,70 @@ impl Timer {
         }
 
         let start = Instant::now();
-        let mut prefix_count = 0;
-        let mut suppressed = 0;
+        let mut prefix_count = 0u32;
         for budget in budgets {
-            // TODO: If suppression has too high impact in practice, consider "retry" inside
-            // a single budget to enable full allocation. As it is implemented here, if an
-            // AS's budget is exhausted inside a single class budget, any remaining prefixes
-            // are just suppressed, which might be an issue if the workload is heavily skewed
-            // toward a single AS. The result is that fewer prefixes are probed than the budget.
+            let class = budget.class;
+            prefix_count += self
+                .process_class(&mut conn, budget, &mut as_budgets)
+                .await
+                .with_context(|| format!("processing class {:?}", class))?;
+        }
 
-            let prio = budget.class;
-            let prefixes = budget.select_prefixes(&mut conn, &as_budgets)?;
-            trace!(
-                "Allocated probes for {} prefixes of prio {:?}",
-                prefixes.len(),
-                prio
-            );
+        info!(
+            "{} prefix analyses scheduled by timer in {}ms.",
+            prefix_count,
+            start.elapsed().as_millis(),
+        );
 
+        Ok(())
+    }
+
+    async fn process_class(
+        &self,
+        conn: &mut PgConnection,
+        budget: ClassBudget,
+        as_budgets: &mut AsBudgets,
+    ) -> Result<u32> {
+        let mut available_allocation = budget.allocated;
+        let mut suppressed_count = 0u32;
+        for _ in 0..5 {
+            suppressed_count = 0; // reset since this represents slots that remain open _only_ due to AS rate limit, and not just "no prefixes available"
             let mut admitted_prefixes = vec![];
-            for SelectedPrefix { net, asn } in prefixes {
-                if as_budgets.try_consume(asn) {
+
+            for SelectedPrefix { net, asn } in budget.select_prefixes(conn, as_budgets)? {
+                if available_allocation == 0 {
+                    break;
+                } else if as_budgets.try_consume(asn) {
                     admitted_prefixes.push(net);
-                    prefix_count += 1;
+                    available_allocation -= 1;
                 } else {
-                    suppressed += 1;
+                    suppressed_count += 1;
                 }
             }
 
-            analyse::persist::begin_bulk(&mut conn, &admitted_prefixes)
+            analyse::persist::begin_bulk(conn, &admitted_prefixes)
                 .context("saving analyses to begin")?;
 
             for target_net in admitted_prefixes {
                 let req = EchoProbeRequest { target_net };
                 if self.probe_tx.send(ProbeRequest::Echo(req)).await.is_err() {
                     info!("Receiver closed probe channel, assume shutdown.");
-                    return Ok(());
+                    return Ok(budget.allocated - available_allocation);
                 }
             }
-        }
 
-        info!(
-            "{} prefix analyses scheduled by timer in {}ms{}.",
-            prefix_count,
-            start.elapsed().as_millis(),
-            if suppressed > 0 {
-                format!(" ({} suppressed by AS-level rate limit)", suppressed)
-            } else {
-                "".to_string()
+            if suppressed_count == 0 || available_allocation == 0 {
+                // don't try getting new prefixes if we have nothing left, or if we consumed everything we got,
+                // implying there just aren't any more prefixes left that don't exceed the rate limit
+                break;
             }
-        );
-
-        Ok(())
+        }
+        if suppressed_count > 0 {
+            debug!(
+                "Unable to fill class {:?} even after 5 retries, {} slots still suppressed",
+                budget.class, suppressed_count
+            );
+        }
+        Ok(budget.allocated - available_allocation)
     }
 }
