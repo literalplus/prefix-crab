@@ -41,10 +41,12 @@ fn process_responses(
                 let typ = match id {
                     5 => WeirdType::DestUnreachFailedEgress,
                     6 => WeirdType::DestUnreachRejectRoute,
-                    _ => WeirdType::DestUnreachOther,
+                    it => {
+                        debug!("Unknown dest-unreach kind: {:?}", it);
+                        WeirdType::DestUnreachOther
+                    }
                 };
                 result.register_weirds(targets, typ);
-                debug!("Unknown dest-unreach kind: {:?}", id);
             }
         },
         EchoReply {
