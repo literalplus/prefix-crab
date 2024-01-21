@@ -1,3 +1,4 @@
+use ipnet::Ipv6Net;
 use itertools::Itertools;
 use std::io::BufWriter;
 use thiserror::Error;
@@ -79,6 +80,8 @@ pub enum Error {
     LoadTree { desc: String },
     #[error("Loading closest root: {desc}")]
     LoadClosestRoot { desc: String },
+    #[error("Loading AS info for {net}: {desc}")]
+    LoadAsInfo { desc: String, net: Ipv6Net },
     #[error("Loading measurements: {desc}")]
     LoadMeasurements { desc: String },
     #[error("Splitting into subnets: {desc}")]

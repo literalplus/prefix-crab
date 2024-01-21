@@ -199,7 +199,7 @@ impl PrefixTree {
 /// with Diesel. Technically accurate would be u32, which doesn't fit into i32.
 pub type AsNumber = i64;
 
-#[derive(Queryable, Debug, Copy, Clone)]
+#[derive(Queryable, Selectable, Debug, Copy, Clone)]
 #[diesel(table_name = crate::schema::as_prefix)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(primary_key(net))]

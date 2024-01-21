@@ -3,16 +3,21 @@ use db_model::{
         subnet::{Subnet, Subnets},
         MeasurementTree,
     },
-    persist::{self, dsl::CidrMethods, DieselErrorFixCause},
-    prefix_tree::PrefixTree,
+    persist::{
+        self,
+        dsl::{masklen, CidrMethods},
+        DieselErrorFixCause,
+    },
+    prefix_tree::{AsPrefix, PrefixTree},
 };
 use diesel::{
-    ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper,
+    associations::HasTable, ExpressionMethods, JoinOnDsl, NullableExpressionMethods,
+    OptionalExtension, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper,
 };
 use itertools::Itertools;
 use prefix_crab::prefix_split::{NetIndex, SplitSubnet};
-use std::io::Write;
 use std::time::Instant;
+use std::{io::Write, ops::Deref};
 
 use ipnet::Ipv6Net;
 
@@ -21,6 +26,12 @@ pub use component::Detail;
 use model::*;
 
 macro_rules! pfxerr {
+    (LoadAsInfo, $net:ident) => {
+        |source| Error::LoadAsInfo {
+            desc: format!("{:?}", source),
+            net: $net,
+        }
+    };
     ($which:ident) => {
         |source| Error::$which {
             desc: format!("{:?}", source),
@@ -51,6 +62,26 @@ pub fn print_prefix(net: Ipv6Net) -> Result {
         tree.confidence
     );
 
+    let root = load_root(&mut conn, &tree)?;
+    let root = root.as_ref();
+    let as_info = load_as_info(&mut conn, root)?;
+    match as_info {
+        Some(as_info) => {
+            writepfx!(
+                &mut buf,
+                "🫖 AS{} / {}{}{}",
+                as_info.asn,
+                as_info.net,
+                match as_info.comment {
+                    Some(ref it) => format!(" 📝📝📝 {}", it),
+                    None => "".to_string(),
+                },
+                if as_info.deleted { " 🚫 deleted" } else { "" }
+            );
+        }
+        None => writepfx!(&mut buf, "🫖 AS{} / No nearest root found", tree.asn),
+    };
+
     let load_start = Instant::now();
     let measurements = load_relevant_measurements(&mut conn, &net)?;
 
@@ -72,7 +103,6 @@ pub fn print_prefix(net: Ipv6Net) -> Result {
 
     buf = buf.flush_section()?;
 
-    let nearest_root = load_nearest_root(&mut conn, &tree)?;
     if net.prefix_len() >= 64 {
         let mut fake_subnet: Subnet = SplitSubnet {
             index: NetIndex::try_from(0u8).map_err(pfxerr!(SubnetSplit))?,
@@ -84,11 +114,11 @@ pub fn print_prefix(net: Ipv6Net) -> Result {
                 .consume_merge(&measurement)
                 .map_err(pfxerr!(SubnetSplit))?;
         }
-        buf = print_subnet(buf, &fake_subnet, nearest_root.as_ref())?;
+        buf = print_subnet(buf, &fake_subnet, root)?;
     } else {
         let subnets = Subnets::new(net, measurements).map_err(pfxerr!(SubnetSplit))?;
         for subnet in subnets.iter() {
-            buf = print_subnet(buf, subnet, nearest_root.as_ref())?;
+            buf = print_subnet(buf, subnet, root)?;
         }
     }
 
@@ -98,7 +128,7 @@ pub fn print_prefix(net: Ipv6Net) -> Result {
 fn print_subnet(
     mut buf: PrintedPrefixBuilder,
     subnet: &Subnet,
-    nearest_root: Option<&PrefixTree>,
+    root: Option<&PrefixTree>,
 ) -> StdResult<PrintedPrefixBuilder, Error> {
     writepfx!(&mut buf,);
     writepfx!(&mut buf, "▶ Subnet: {}", subnet.subnet.network);
@@ -122,14 +152,10 @@ fn print_subnet(
     writepfx!(&mut buf, " Last-Hop Routers:");
     for (addr, item) in subnet.iter_lhrs().sorted_by_key(|(addr, _)| *addr) {
         let percent = (item.hit_count as i64 * 100i64).div_euclid(subnet.responsive_count() as i64);
-        let is_out_of_prefix = nearest_root
+        let is_out_of_prefix = root
             .map(|root| !root.net.contains(addr))
             .unwrap_or(false);
-        let out_of_prefix_marker = if is_out_of_prefix {
-            " 🛸"
-        } else {
-            ""
-        };
+        let out_of_prefix_marker = if is_out_of_prefix { " 🛸" } else { "" };
         writepfx!(
             &mut buf,
             "  🚏 {} - {} hits ({}%){}",
@@ -158,7 +184,44 @@ fn load_tree(conn: &mut PgConnection, target: &Ipv6Net) -> StdResult<PrefixTree,
         .map_err(pfxerr!(LoadTree))
 }
 
-fn load_nearest_root(
+struct AsInfo {
+    prefix: AsPrefix,
+    comment: Option<String>,
+}
+
+impl Deref for AsInfo {
+    type Target = AsPrefix;
+
+    fn deref(&self) -> &Self::Target {
+        &self.prefix
+    }
+}
+
+fn load_as_info(
+    conn: &mut PgConnection,
+    root: Option<&PrefixTree>,
+) -> StdResult<Option<AsInfo>, Error> {
+    use db_model::schema::as_filter_list::dsl as filter_list_dsl;
+    use db_model::schema::as_prefix::dsl::*;
+
+    let root = match root {
+        Some(it) => it,
+        None => return Ok(None),
+    };
+    let my_net = root.net;
+
+    as_prefix::table()
+        .left_join(filter_list_dsl::as_filter_list::table().on(asn.eq(filter_list_dsl::asn)))
+        .filter(asn.eq(root.asn))
+        .filter(net.eq6(&root.net))
+        .select((AsPrefix::as_select(), filter_list_dsl::comment.nullable()))
+        .first(conn)
+        .fix_cause()
+        .map_err(pfxerr!(LoadAsInfo, my_net))
+        .map(|(prefix, comment)| Some(AsInfo { prefix, comment }))
+}
+
+fn load_root(
     conn: &mut PgConnection,
     leaf: &PrefixTree,
 ) -> StdResult<Option<PrefixTree>, Error> {
@@ -167,6 +230,7 @@ fn load_nearest_root(
     prefix_tree
         .filter(asn.eq(leaf.asn))
         .filter(net.supernet_or_eq6(&leaf.net))
+        .order(masklen(net).asc())
         .select(PrefixTree::as_select())
         .first(conn)
         .optional()

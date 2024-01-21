@@ -12,6 +12,7 @@ mod cidr {
 
     diesel::infix_operator!(SubnetOrEq, " <<= ", Bool, backend: Pg);
     diesel::infix_operator!(SupernetOrEq, " >>= ", Bool, backend: Pg);
+    diesel::sql_function! { fn masklen(x: Cidr) -> Int8; }
 
     pub trait CidrMethods
     where
