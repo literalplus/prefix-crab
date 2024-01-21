@@ -6,7 +6,9 @@ use db_model::{
     persist::{self, dsl::CidrMethods, DieselErrorFixCause},
     prefix_tree::PrefixTree,
 };
-use diesel::{PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
+use diesel::{
+    ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper,
+};
 use itertools::Itertools;
 use prefix_crab::prefix_split::{NetIndex, SplitSubnet};
 use std::io::Write;
@@ -70,6 +72,7 @@ pub fn print_prefix(net: Ipv6Net) -> Result {
 
     buf = buf.flush_section()?;
 
+    let nearest_root = load_nearest_root(&mut conn, &tree)?;
     if net.prefix_len() >= 64 {
         let mut fake_subnet: Subnet = SplitSubnet {
             index: NetIndex::try_from(0u8).map_err(pfxerr!(SubnetSplit))?,
@@ -81,11 +84,11 @@ pub fn print_prefix(net: Ipv6Net) -> Result {
                 .consume_merge(&measurement)
                 .map_err(pfxerr!(SubnetSplit))?;
         }
-        buf = print_subnet(buf, &fake_subnet)?;
+        buf = print_subnet(buf, &fake_subnet, nearest_root.as_ref())?;
     } else {
         let subnets = Subnets::new(net, measurements).map_err(pfxerr!(SubnetSplit))?;
         for subnet in subnets.iter() {
-            buf = print_subnet(buf, subnet)?;
+            buf = print_subnet(buf, subnet, nearest_root.as_ref())?;
         }
     }
 
@@ -95,6 +98,7 @@ pub fn print_prefix(net: Ipv6Net) -> Result {
 fn print_subnet(
     mut buf: PrintedPrefixBuilder,
     subnet: &Subnet,
+    nearest_root: Option<&PrefixTree>,
 ) -> StdResult<PrintedPrefixBuilder, Error> {
     writepfx!(&mut buf,);
     writepfx!(&mut buf, "▶ Subnet: {}", subnet.subnet.network);
@@ -118,12 +122,21 @@ fn print_subnet(
     writepfx!(&mut buf, " Last-Hop Routers:");
     for (addr, item) in subnet.iter_lhrs().sorted_by_key(|(addr, _)| *addr) {
         let percent = (item.hit_count as i64 * 100i64).div_euclid(subnet.responsive_count() as i64);
+        let is_out_of_prefix = nearest_root
+            .map(|root| !root.net.contains(addr))
+            .unwrap_or(false);
+        let out_of_prefix_marker = if is_out_of_prefix {
+            " 🛸"
+        } else {
+            ""
+        };
         writepfx!(
             &mut buf,
-            "  🚏 {} - {} hits ({}%)",
+            "  🚏 {} - {} hits ({}%){}",
             addr,
             item.hit_count,
-            percent
+            percent,
+            out_of_prefix_marker
         );
     }
     writepfx!(&mut buf, " Weirdness:");
@@ -143,6 +156,22 @@ fn load_tree(conn: &mut PgConnection, target: &Ipv6Net) -> StdResult<PrefixTree,
         .first(conn)
         .fix_cause()
         .map_err(pfxerr!(LoadTree))
+}
+
+fn load_nearest_root(
+    conn: &mut PgConnection,
+    leaf: &PrefixTree,
+) -> StdResult<Option<PrefixTree>, Error> {
+    use db_model::schema::prefix_tree::dsl::*;
+
+    prefix_tree
+        .filter(asn.eq(leaf.asn))
+        .filter(net.supernet_or_eq6(&leaf.net))
+        .select(PrefixTree::as_select())
+        .first(conn)
+        .optional()
+        .fix_cause()
+        .map_err(pfxerr!(LoadClosestRoot))
 }
 
 fn load_relevant_measurements(

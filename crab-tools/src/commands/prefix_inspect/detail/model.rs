@@ -77,6 +77,8 @@ pub enum Error {
     Format { desc: String },
     #[error("Loading tree: {desc}")]
     LoadTree { desc: String },
+    #[error("Loading closest root: {desc}")]
+    LoadClosestRoot { desc: String },
     #[error("Loading measurements: {desc}")]
     LoadMeasurements { desc: String },
     #[error("Splitting into subnets: {desc}")]
