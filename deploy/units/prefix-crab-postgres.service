@@ -33,7 +33,8 @@ ExecStart=/usr/bin/podman run \
 	--group-add=keep-groups \
 	--mount=type=bind,source=/scans/2024_01_prefix-crab-austria/postgresql-data,rw,destination=/var/lib/postgresql/data \
 	--mount=type=bind,source=/scans/2024_01_prefix-crab-austria/backup,rw,destination=/backup \
-	--tz=UTC docker.io/postgres:15.3-alpine
+	--mount=type=bind,source=/home/%u/prefix-crab/deploy/postgresql.conf,ro,destination=/etc/postgresql/postgresql.conf \
+	--tz=UTC docker.io/postgres:15.3-alpine -c config_file=/etc/postgresql/postgresql.conf
 ExecStop=/usr/bin/podman stop \
 	--ignore \
 	--cidfile=%t/%n.ctr-id
