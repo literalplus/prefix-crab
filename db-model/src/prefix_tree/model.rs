@@ -93,6 +93,8 @@ pub enum PriorityClass {
     MediumSameMulti,
     // same LHR set with multiple members and same ratio (within reasonable margin)
     MediumSameRatio,
+    // same LHR set with many members (thus ratio no longer practical)
+    MediumSameMany,
     // same single LHR
     MediumSameSingle,
     MediumMultiWeird,

@@ -7,7 +7,7 @@ use super::subnet::{LhrDiff, Subnets};
 
 /// Changes in the split algorithm are versioned to allow us to invalidate results of an older version
 /// if we find out that it is flawed.
-pub const ALGO_VERSION: i32 = 112;
+pub const ALGO_VERSION: i32 = 120;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum SplitRecommendation {
@@ -73,32 +73,54 @@ fn rate_same_multi(shared: Vec<LhrDiff>) -> SplitRecommendation {
     use PriorityClass as P;
     use SplitRecommendation as R;
 
+    // What same-multi is trying to accomplish is to detect cases where both subnets are divided into parts
+    // that are each served by the same routing infrastructure (no prefix-local routers) and thus have the same
+    // LHR set, but would result in significant grouping if split further.
+    //
+    // However, if the allocated ratio is the same in both subnets, the ratio would be the same either way.
+    // We have now reduced to a much softer version that really only splits in extreme cases, because there
+    // have been so many problems with too aggressive splits, and not really a good case that what we are trying to
+    // check for here is even really very relevant at all.
+    //
+    // A possible smarter expansion would be to, if a split is suggested with high confidence (increase the bound
+    // for this prio class specifically, to group together the LHR sets and figure out in advance if, with the
+    // current data, there is even a somewhat contiguous group of recursive-subnets that has only one of the LHRs
+    // and is significantly different from the rest.
+
+    if shared.len() >= 5 {
+        // if we have too many LHRs, a ratio is no longer really meaningful and if both subnets have the same
+        // LHR set then most likely they are equivalent.
+        return R::NoKeep {
+            priority: ReProbePriority {
+                class: P::MediumSameMany,
+                // supporting the observation that there are five or more LHRs
+                // ignoring the five most popular ones is a bit much -> impractical
+                // so just apply a general 75% buff (more LHRs might show up if we keep probing)
+                supporting_observations: sum_lhr_hits(shared).div_euclid(4),
+            },
+        };
+    }
+
     let total_per_subnet: Vec<HitCount> = (0..2usize)
         .map(|i| shared.iter().map(|it| it.hit_counts[i]).sum())
         .collect();
 
-    // We allow more leeway for the percent difference if there are fewer total hits.
-    // Experience shows that nets smaller than ~/40 tend to be split wrongly/too early,
-    // because the percentages haven't converged yet.
-    // Another solution might be to somehow persist the last few percentages and somehow
-    // detect convergence, but that seems much more complicated.
-    // Rejecting a split isn't a huge problem since we can split later (but not cleanly revert the split).
-    let min_subnet_hits = total_per_subnet.iter().min().unwrap_or(&0);
-    let doubled_thresh = match min_subnet_hits {
-        0..=255 => 15, // Allow 7.5% difference if either subnet has < 255 hits
-        256..=1023 => 10,
-        1024..=2047 => 5,
-        _ => 3, // Don't lower this => Rounding error might occur on both sides, making a split impossible with 0.5%
-    };
+    // We allow more leeway for the percent difference.
+    // Rejecting a split isn't a huge problem since we usually get many attempts to split but not many to merge/revert.
+    let thresh = 15; // % difference is allowed
 
     let mut ratio_is_same = true;
     for diff in shared.iter() {
         let [left, right] = diff.hit_counts;
-        let (left, right) = (left * 200, right * 200);
-        let (left, right) = (left.saturating_div(total_per_subnet[0]), right.saturating_div(total_per_subnet[1]));
+        let both_significant = left > 3 && right > 3;
+        let (left, right) = (left * 100, right * 100);
+        let (left, right) = (
+            left.saturating_div(total_per_subnet[0]),
+            right.saturating_div(total_per_subnet[1]),
+        );
 
-        let doubled_pct_diff = left.abs_diff(right);
-        if doubled_pct_diff > doubled_thresh {
+        let pct_diff = left.abs_diff(right);
+        if pct_diff > thresh && both_significant { // don't allow 3 or fewer hits to reject the ratio of the entire prefix
             ratio_is_same = false;
             break;
         }
@@ -226,7 +248,7 @@ mod tests {
     fn same_multi_lhr_different_ratio() {
         // given
         let mut measurements = vec![
-            gen_tree_with_lhr_101(TREE_LEFT_NET, 20), // 71.4%
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 13),  // 61.9%
             gen_tree_with_lhr_101(TREE_RIGHT_NET, 31), // 79.4%
         ];
         for measurement in &mut measurements {
@@ -240,7 +262,38 @@ mod tests {
         assert_that!(rec).is_equal_to(YesSplit {
             priority: ReProbePriority {
                 class: MediumSameMulti,
-                supporting_observations: 41, // (20+31)/2 + 2*8
+                supporting_observations: 38, // (13+31)/2 + 2*8
+            },
+        })
+    }
+
+    #[test]
+    fn same_multi_lhr_same_many() {
+        // given
+        let mut measurements = vec![
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 12),
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 500), // ratio doesn't matter here!
+        ];
+        let lhrs = &[
+            "2001:db8:baba::1",
+            "2001:db8:baba::2",
+            "2001:db8:baba::3",
+            "2001:db8:baba::4",
+        ];
+        for lhr in lhrs {
+            for tree in measurements.iter_mut() {
+                gen_add_lhr(tree, lhr, 4);
+            }
+        }
+
+        // when
+        let rec = when_recommend(measurements);
+
+        // then
+        assert_that!(rec).is_equal_to(NoKeep {
+            priority: ReProbePriority {
+                class: MediumSameMany,
+                supporting_observations: 136, // all divided by 4
             },
         })
     }
@@ -249,11 +302,11 @@ mod tests {
     fn same_multi_lhr_same_ratio_few_hits_pos() {
         // given
         let mut measurements = vec![
-            gen_tree_with_lhr_101(TREE_LEFT_NET, 100), // 50%
-            gen_tree_with_lhr_101(TREE_RIGHT_NET, 126), // 57.5%
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 100),  // 50%
+            gen_tree_with_lhr_101(TREE_RIGHT_NET, 170), // 62%
         ];
         gen_add_lhr_beef(&mut measurements[0], 100); // 50%
-        gen_add_lhr_beef(&mut measurements[1], 104); // 42%
+        gen_add_lhr_beef(&mut measurements[1], 104); // 38%
 
         // when
         let rec = when_recommend(measurements);
@@ -262,30 +315,7 @@ mod tests {
         assert_that!(rec).is_equal_to(NoKeep {
             priority: ReProbePriority {
                 class: MediumSameRatio,
-                supporting_observations: 430, // all
-            },
-        })
-    }
-
-    #[test]
-    fn same_multi_lhr_same_ratio_few_hits_neg() {
-        // given
-        let mut measurements = vec![
-            gen_tree_with_lhr_101(TREE_LEFT_NET, 100), // 49% (rounded down)
-            gen_tree_with_lhr_101(TREE_RIGHT_NET, 136), // 55% (rounded down)
-        ];
-        for measurement in &mut measurements {
-            gen_add_lhr_beef(measurement, 100);
-        }
-
-        // when
-        let rec = when_recommend(measurements);
-
-        // then
-        assert_that!(rec).is_equal_to(YesSplit {
-            priority: ReProbePriority {
-                class: MediumSameMulti,
-                supporting_observations: 318, // 236/2 + 200
+                supporting_observations: 474, // all
             },
         })
     }
@@ -339,7 +369,7 @@ mod tests {
     fn same_multi_lhr_same_ratio_many_hits_neg() {
         // given
         let mut measurements = vec![
-            gen_tree_with_lhr_101(TREE_LEFT_NET, 211387), // 94%
+            gen_tree_with_lhr_101(TREE_LEFT_NET, 211387),  // 94%
             gen_tree_with_lhr_101(TREE_RIGHT_NET, 283860), // just over 95.5%
         ];
         gen_add_lhr_beef(&mut measurements[0], 12576);

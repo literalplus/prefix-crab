@@ -137,6 +137,7 @@ fn allocation_ratio(class: &PriorityClass) -> u16 {
         P::HighDisjoint => 12,
         P::MediumSameMulti => 23,
         P::MediumSameRatio => 10,
+        P::MediumSameMany => 7,
         P::MediumSameSingle => 13,
         P::MediumMultiWeird => 10,
         P::LowWeird => 2,

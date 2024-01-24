@@ -38,6 +38,10 @@ pub fn gen_tree_with_lhr_beef(net_str: &str, hits: HitCount) -> MeasurementTree 
 }
 
 pub fn gen_add_lhr_beef(tree: &mut MeasurementTree, hits: HitCount) {
+    gen_add_lhr(tree, TREE_LHR_BEEF, hits);
+}
+
+pub fn gen_add_lhr(tree: &mut MeasurementTree, addrr: &str, hits: HitCount) {
     let sources: HashSet<LhrSource> = vec![LhrSource::Trace].into_iter().collect();
-    tree.add_lhr_no_sum(addr(TREE_LHR_BEEF), sources, hits);
+    tree.add_lhr_no_sum(addr(addrr), sources, hits);
 }
