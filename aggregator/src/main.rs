@@ -47,7 +47,7 @@ fn main() -> Result<()> {
 fn do_run(cli: Cli) -> Result<()> {
     // TODO tune buffer size parameter
     // bounded s.t. we don't keep consuming new work items when we block for some reason
-    let (result_tx, result_rx) = mpsc::channel(2);
+    let (result_tx, result_rx) = mpsc::channel(8); // buffer should be lower than the prefetch-count on the RMQ channel (otherwise it won't be used up)
     let (ack_tx, ack_rx) = mpsc::channel(32);
     let (probe_tx, probe_rx) = mpsc::channel(64);
     let (follow_up_tx, follow_up_rx) = mpsc::channel(64);
@@ -73,7 +73,9 @@ fn do_run(cli: Cli) -> Result<()> {
         cli.schedule,
     ));
 
-    let rabbit_handle = tokio::spawn(rabbit::run(result_tx, ack_rx, probe_rx, stop_rx, cli.rabbit));
+    let rabbit_handle = tokio::spawn(rabbit::run(
+        result_tx, ack_rx, probe_rx, stop_rx, cli.rabbit,
+    ));
 
     executor::block_on(async {
         try_join!(

@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 use std::time::Instant;
 
+use amqprs::channel::BasicQosArguments;
 use amqprs::Deliver;
 use anyhow::*;
 use async_trait::async_trait;
@@ -29,9 +30,9 @@ pub async fn run(
     ack_rx: mpsc::Receiver<TaskRequest>,
 ) -> Result<()> {
     let echo_handle = handle.fork().await?;
-    let echo_recv = make_receiver::<EchoProbeResponse>(&echo_handle, work_tx.clone(), params);
+    let echo_recv = make_receiver::<EchoProbeResponse>(&echo_handle, work_tx.clone(), params).await;
     let trace_handle = handle.fork().await?;
-    let trace_recv = make_receiver::<TraceResponse>(&trace_handle, work_tx, params);
+    let trace_recv = make_receiver::<TraceResponse>(&trace_handle, work_tx, params).await;
 
     let ack = run_ack_router(&echo_handle, &trace_handle, ack_rx, stop_rx.clone());
     let trace = trace_recv.run(stop_rx.clone());
@@ -46,7 +47,7 @@ pub async fn run(
     res
 }
 
-fn make_receiver<'han, T>(
+async fn make_receiver<'han, T>(
     handle: &'han RabbitHandle,
     work_sender: mpsc::Sender<TaskRequest>,
     params: &Params,
@@ -54,6 +55,14 @@ fn make_receiver<'han, T>(
 where
     T: TypeRoutedMessage + Into<ProbeResponse> + for<'a> Deserialize<'a> + Send + Sync,
 {
+    // Only pre-fetch 16 messages to avoid unack channel closes for larger backlogs
+    // size is in bytes (i.e. not relevant for us)
+    handle
+        .chan()
+        .basic_qos(BasicQosArguments::new(0, 16, false))
+        .await
+        .expect("unable to configure prefetch count");
+
     JsonReceiver {
         handle,
         msg_handler: ResponseHandler {
