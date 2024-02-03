@@ -1,19 +1,18 @@
 use std::marker::PhantomData;
+use std::time::Instant;
 
 use amqprs::Deliver;
 use anyhow::*;
 use async_trait::async_trait;
-use log::debug;
+use log::{debug, trace};
 use prefix_crab::helpers::rabbit::ack_sender::AckSender;
 use prefix_crab::loop_with_stop;
-use queue_models::TypeRoutedMessage;
+use queue_models::{RoutedMessage, TypeRoutedMessage};
 use serde::Deserialize;
 use tokio::select;
 use tokio::sync::mpsc;
 
-use prefix_crab::helpers::rabbit::receive::{
-    JsonReceiver, MessageHandler,
-};
+use prefix_crab::helpers::rabbit::receive::{JsonReceiver, MessageHandler};
 use prefix_crab::helpers::rabbit::RabbitHandle;
 use queue_models::probe_response::{EchoProbeResponse, ProbeResponse, TraceResponse};
 use tokio_util::sync::CancellationToken;
@@ -80,6 +79,7 @@ where
     async fn handle_msg<'de>(&self, model: Self::Model, deliver: Deliver) -> Result<()> {
         let request = TaskRequest {
             model: model.into(),
+            received_at: Instant::now(),
             delivery_tag: deliver.delivery_tag(),
         };
         self.work_sender
@@ -94,14 +94,17 @@ where
 }
 
 async fn run_ack_router(
-    echo_handle: &RabbitHandle, trace_handle: &RabbitHandle,
-    ack_rx: mpsc::Receiver<TaskRequest>, stop_rx: CancellationToken
+    echo_handle: &RabbitHandle,
+    trace_handle: &RabbitHandle,
+    ack_rx: mpsc::Receiver<TaskRequest>,
+    stop_rx: CancellationToken,
 ) -> Result<()> {
     AckRouter {
         echo_ack: AckSender::new(echo_handle),
         trace_ack: AckSender::new(trace_handle),
     }
-    .run(ack_rx, stop_rx.clone()).await
+    .run(ack_rx, stop_rx.clone())
+    .await
 }
 
 // Struct needed to pass the two senders to the handler function (macro doesn't support that)
@@ -125,6 +128,11 @@ impl AckRouter<'_, '_> {
     async fn route_ack(&mut self, work: TaskRequest) -> Result<()> {
         use ProbeResponse as R;
 
+        trace!(
+            "Sending ack for {} after {:?}",
+            work.model.routing_key(),
+            work.received_at.elapsed()
+        );
         match work.model {
             R::Echo(_) => self.echo_ack.do_ack(work).await,
             R::Trace(_) => self.trace_ack.do_ack(work).await,

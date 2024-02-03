@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use anyhow::*;
 use clap::Args;
 use db_model::prefix_tree::context::ContextFetchError;
@@ -25,6 +27,7 @@ pub struct Params {
 #[derive(Debug)]
 pub struct TaskRequest {
     pub model: ProbeResponse,
+    pub received_at: Instant,
     pub delivery_tag: u64,
 }
 
