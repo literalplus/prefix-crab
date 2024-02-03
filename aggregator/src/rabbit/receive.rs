@@ -138,7 +138,7 @@ impl AckRouter<'_, '_> {
         use ProbeResponse as R;
 
         trace!(
-            "Sending ack for {} after {:?}",
+            "Sending ack for {} after {:?} (excl. prefetch)",
             work.model.routing_key(),
             work.received_at.elapsed()
         );
