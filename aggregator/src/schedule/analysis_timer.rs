@@ -62,7 +62,7 @@ impl Timer {
         let budgets = class_budget::allocate(&mut conn, self.params.analysis_timer_prefix_budget)?;
 
         for prio in PriorityClass::iter() {
-            observe::record_budget(prio, budgets.get_available(prio), budgets.get_allocated(prio) as u64);
+            observe::record_budget(prio, budgets.get_initial_available(prio), budgets.get_allocated(prio) as u64);
         }
 
         if budgets.is_empty() {

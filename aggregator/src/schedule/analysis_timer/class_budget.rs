@@ -18,6 +18,7 @@ use super::as_budget::AsBudgets;
 
 #[derive(Default)]
 pub struct ClassBudgets {
+    initial_per_class: BTreeMap<PriorityClass, u64>,
     available_per_class: BTreeMap<PriorityClass, u64>,
     allocated_per_class: BTreeMap<PriorityClass, u32>,
 }
@@ -25,6 +26,7 @@ pub struct ClassBudgets {
 impl ClassBudgets {
     fn new(available_per_class: BTreeMap<PriorityClass, u64>) -> Self {
         Self {
+            initial_per_class: available_per_class.clone(),
             available_per_class,
             allocated_per_class: BTreeMap::new(),
         }
@@ -34,8 +36,8 @@ impl ClassBudgets {
         self.allocated_per_class.is_empty()
     }
 
-    pub fn get_available(&self, prio: PriorityClass) -> u64 {
-        *self.available_per_class.get(&prio).unwrap_or(&0)
+    pub fn get_initial_available(&self, prio: PriorityClass) -> u64 {
+        *self.initial_per_class.get(&prio).unwrap_or(&0)
     }
 
     pub fn get_allocated(&self, prio: PriorityClass) -> u32 {
