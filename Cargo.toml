@@ -60,7 +60,7 @@ members = [
     ] }
     opentelemetry-otlp = { version = "0.14.0", features = [
         "http-proto",
-        "reqwest-client",
+        "surf-client",
     ] }
     opentelemetry_sdk = { version = "0.21", features = ["rt-tokio", "metrics"] }
     strum = { version = "0.26", features = ["derive"] }
@@ -98,13 +98,11 @@ thiserror           = { workspace = true }
 nix                 = { version = "0.27", features = ["signal"] }
 
 
-# TODO - It seems like OTLP metrics exports via HTTP only actually do something with this speciciation
-# It's not a code change, both the main branch and the latest release commit (0.21.2) work; just not
-# the released versions from crates.io. Might be some weird interoperation issue where the compiler
-# thinks it's two different versions of the crate, but it really doesn't look like it.
-# Forked to ensure that we don't get surprised by upstream updates
-#
-# Local path dependency also works
+# These three need the same version of the overall thing, but sadly upstream uses
+# different version numbers for them all. In addition, on patch releases, not
+# all versions are incremented, which seems to confuse the system a bit and
+# prevents them from talking to each other (maybe). Also, the otlp_unstable
+# feature is currently missing in the release, but we need it for gauges
 [patch.crates-io]
 opentelemetry_sdk  = { git = "https://github.com/literalplus/opentelemetry-rust" }
 opentelemetry      = { git = "https://github.com/literalplus/opentelemetry-rust" }
