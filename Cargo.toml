@@ -63,6 +63,9 @@ members = [
         "surf-client",
     ] }
     opentelemetry_sdk = { version = "0.21", features = ["rt-tokio", "metrics"] }
+    tracing-opentelemetry = { version = "0.22.0", default-features = false } # disable metrics integration (broken with our OT fork), disable log brige (don't need)
+    tracing-subscriber = "0.3.18"
+    tracing = "0.1.40"
     strum = { version = "0.26", features = ["derive"] }
 
 
