@@ -200,3 +200,26 @@ pg_dump -U postgres prefix_crab | gzip >/backup/name.sql.gz
 ```
 
 For more info, see https://www.postgresql.org/docs/current/backup-dump.html
+
+# FAQ
+
+##   = note: /usr/bin/ld: cannot find -lpq
+
+It's telling you that the postgres client lib is not installed on the system.
+This isn't really easily possible to solve without root access.
+
+https://askubuntu.com/questions/1148609/usr-bin-ld-cannot-find-lpq
+
+Instead, if you want to try things locally on the remote server you can use the builder image:
+
+```bash
+podman run --rm -it lukemathwalker/cargo-chef:latest-rust-latest bash
+cd /usr/src
+ssh-keygen -t ed25519
+cat ~/.ssh/id_ed25519.pub # store to github deploy keys
+git clone git@github.com:literalplus/prefix-crab.git
+cd prefix-crab
+apt update && apt install vim
+vim .env
+
+```
