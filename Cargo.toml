@@ -81,3 +81,16 @@ tokio-util          = { workspace = true }
 itertools           = { workspace = true }
 thiserror           = { workspace = true }
 nix                 = { version = "0.27", features = ["signal"] }
+
+
+# TODO - It seems like OTLP metrics exports via HTTP only actually do something with this speciciation
+# It's not a code change, both the main branch and the latest release commit (0.21.2) work; just not
+# the released versions from crates.io. Might be some weird interoperation issue where the compiler
+# thinks it's two different versions of the crate, but it really doesn't look like it.
+# Forked to ensure that we don't get surprised by upstream updates
+#
+# Local path dependency also works
+[patch.crates-io]
+opentelemetry_sdk = { git = "https://github.com/literalplus/opentelemetry-rust" }
+opentelemetry = { git = "https://github.com/literalplus/opentelemetry-rust" }
+opentelemetry-otlp = { git = "https://github.com/literalplus/opentelemetry-rust" }

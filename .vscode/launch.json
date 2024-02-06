@@ -7,20 +7,20 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'zmap-buddy'",
+            "name": "Debug crab-tools test-metrics'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=zmap-buddy",
-                    "--package=zmap-buddy"
+                    "--bin=crab-tools",
+                    "--package=crab-tools"
                 ],
                 "filter": {
-                    "name": "zmap-buddy",
+                    "name": "crab-tools",
                     "kind": "bin"
                 }
             },
-            "args": [],
-            "cwd": "${workspaceFolder}"
+            "args": ["test-metrics"],
+            "cwd": "${workspaceFolder}/crab-tools"
         },
         {
             "type": "lldb",
