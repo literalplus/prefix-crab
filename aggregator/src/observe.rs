@@ -30,11 +30,17 @@ lazy_static! {
 
 #[derive(Args, Clone)]
 pub struct Params {
-    #[arg(env = "OTLP_ENDPOINT")]
+    #[arg(long, env = "OTLP_ENDPOINT", default_value = "")]
     endpoint: String,
 
-    #[arg(env = "OTLP_AUTH_HEADER")]
+    #[arg(long, env = "OTLP_AUTH_HEADER", default_value = "")]
     header: String,
+}
+
+impl Params {
+    pub fn should_observe(&self) -> bool {
+        !self.endpoint.is_empty()
+    }
 }
 
 pub fn initialize(params: Params) -> Result<()> {
