@@ -6,7 +6,8 @@ RUN useradd -m app
 WORKDIR /home/app
 
 # Install shared lib needed by diesel / pg
-RUN apt-get update && apt-get install -y libpq5 && rm -rf /var/lib/apt/lists/*
+# libcurl is needed for surf-client needed by opentelemetry
+RUN apt-get update && apt-get install -y libpq5 libcurl4-openssl-dev && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/src/prefix-crab/target/release/aggregator /usr/local/bin
 
