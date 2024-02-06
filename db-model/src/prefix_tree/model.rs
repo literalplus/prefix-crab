@@ -11,6 +11,7 @@ use ipnet::{IpNet, Ipv6Net};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use strum::EnumIter;
 
 use crate::analyse::Confidence;
 
@@ -81,6 +82,7 @@ impl MergeStatus {
     Hash,
     Ord,
     PartialOrd,
+    EnumIter,
 )]
 #[ExistingTypePath = "crate::sql_types::PrefixPriorityClass"]
 pub enum PriorityClass {

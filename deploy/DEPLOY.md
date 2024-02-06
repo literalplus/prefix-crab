@@ -110,6 +110,10 @@ Do not use spaces in the passwords !
 
 echo -n "changeme" | podman secret create prefix-crab-postgres-password -
 echo -n "changeme" | podman secret create prefix-crab-rmq-password -
+echo -n "changeme" | podman secret create prefix-crab-otlp-header -
+
+OTLP instrumentation can be omitted if not needed.
+A free Grafana Cloud account + OTLP setup can be provisioned here: https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/
 
 podman run --rm -it --add-host=localhost.containers.internal:10.0.2.2 --network=slirp4netns:allow_host_loopback=true docker.io/nicolaka/netshoot
 

@@ -1,15 +1,17 @@
 use std::time::Duration;
 
-use crate::{analyse, schedule::analysis_timer::class_budget::SelectedPrefix};
+use crate::{analyse, observe, schedule::analysis_timer::class_budget::SelectedPrefix};
 
 use self::{as_budget::AsBudgets, class_budget::ClassBudget};
 
 use super::Params;
 use anyhow::*;
+use db_model::prefix_tree::PriorityClass;
 use diesel::PgConnection;
-use log::{debug, info, warn, error};
+use log::{debug, error, info, warn};
 use prefix_crab::loop_with_stop;
 use queue_models::probe_request::{EchoProbeRequest, ProbeRequest};
+use strum::IntoEnumIterator;
 use tokio::{
     sync::mpsc::Sender,
     time::{interval, Instant},
@@ -58,6 +60,10 @@ impl Timer {
         let mut conn = crate::persist::connect("aggregator - analysis timer")?;
         let mut as_budgets = as_budget::allocate(&self.params);
         let budgets = class_budget::allocate(&mut conn, self.params.analysis_timer_prefix_budget)?;
+
+        for prio in PriorityClass::iter() {
+            observe::record_budget(prio, budgets.get_available(prio), budgets.get_allocated(prio) as u64);
+        }
 
         if budgets.is_empty() {
             warn!("No priority classes received any probe budget, are there leaves available?");

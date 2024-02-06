@@ -33,6 +33,14 @@ impl ClassBudgets {
     pub fn is_empty(&self) -> bool {
         self.allocated_per_class.is_empty()
     }
+
+    pub fn get_available(&self, prio: PriorityClass) -> u64 {
+        *self.available_per_class.get(&prio).unwrap_or(&0)
+    }
+
+    pub fn get_allocated(&self, prio: PriorityClass) -> u32 {
+        *self.allocated_per_class.get(&prio).unwrap_or(&0)
+    }
 }
 
 pub fn allocate(conn: &mut PgConnection, total_prefixes: u32) -> Result<ClassBudgets> {

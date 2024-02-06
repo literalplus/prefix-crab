@@ -20,6 +20,7 @@ mod handle_probe;
 mod rabbit;
 /// Scheduling new analyses based on priority and capacity
 mod schedule;
+mod observe;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -38,6 +39,9 @@ struct Cli {
 
     #[clap(flatten)]
     handle_probe: handle_probe::Params,
+
+    #[clap(flatten)]
+    observe: Option<observe::Params>,
 }
 
 fn main() -> Result<()> {
@@ -53,6 +57,9 @@ fn do_run(cli: Cli) -> Result<()> {
     let (follow_up_tx, follow_up_rx) = mpsc::channel(64);
 
     persist::initialize(&cli.persist)?;
+    if let Some(params) = cli.observe {
+        observe::initialize(params)?;
+    }
 
     // This task is shut down by the RabbitMQ receiver closing the channel
     let probe_handle = tokio::spawn(handle_probe::run(

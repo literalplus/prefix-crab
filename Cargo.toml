@@ -51,6 +51,21 @@ members = [
     thiserror = "1.0.50"
     uuid = "1.6.1" # note that this must be kept in sync with Diesel's uuid dependency
 
+    # CRITICAL: Keep opentelemetry versions synched to each other, else it won't work
+    # ref: https://github.com/open-telemetry/opentelemetry-rust/blob/main/opentelemetry-otlp/Cargo.toml
+    # NOTE: Still patched below
+    opentelemetry = { version = "0.21", features = [
+        "metrics",
+        "otel_unstable", # gauges apparently
+    ] }
+    opentelemetry-otlp = { version = "0.14.0", features = [
+        "http-proto",
+        "reqwest-client",
+    ] }
+    opentelemetry_sdk = { version = "0.21", features = ["rt-tokio", "metrics"] }
+    strum = { version = "0.26", features = ["derive"] }
+
+
 [package]
 name                   = "prefix-crab"
 description            = "Friendly multi-binary crab that inspects IPv6 prefixes to reveal all their secrets"
@@ -91,6 +106,6 @@ nix                 = { version = "0.27", features = ["signal"] }
 #
 # Local path dependency also works
 [patch.crates-io]
-opentelemetry_sdk = { git = "https://github.com/literalplus/opentelemetry-rust" }
-opentelemetry = { git = "https://github.com/literalplus/opentelemetry-rust" }
+opentelemetry_sdk  = { git = "https://github.com/literalplus/opentelemetry-rust" }
+opentelemetry      = { git = "https://github.com/literalplus/opentelemetry-rust" }
 opentelemetry-otlp = { git = "https://github.com/literalplus/opentelemetry-rust" }

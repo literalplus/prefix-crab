@@ -40,6 +40,7 @@ ExecStart=/usr/bin/podman run \
 	--replace \
 	--secret=prefix-crab-rmq-password,type=env,target=RMQ_PW \
 	--secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PW \
+	--secret=prefix-crab-otlp-header,type=env,target=OTLP_AUTH_HEADER \
 	--mount=type=bind,source=/home/%u/prefix-crab/deploy/containers.env,ro,destination=/home/app/.env \
 	--mount=type=bind,source=/etc/scanning/blocklist,ro,destination=/etc/scanning/blocklist \
 	--tz=UTC prefix-crab.local/aggregator

@@ -7,6 +7,7 @@ use queue_models::probe_response::EchoProbeResponse;
 
 use crate::{
     analyse::{self, context, persist::UpdateAnalysis, split, EchoResult},
+    observe,
     schedule::FollowUpRequest,
 };
 
@@ -18,6 +19,7 @@ impl ProbeHandler {
 
         let (interpretation, context) = interpret_and_save(&mut self.conn, res.target_net, res)?;
 
+        observe::record_echo_analysis(interpretation.needs_follow_up());
         if interpretation.needs_follow_up() {
             if let Some(id) = &context.analysis.pending_follow_up {
                 let model = FollowUpRequest {
@@ -26,7 +28,10 @@ impl ProbeHandler {
                     follow_ups: interpretation.follow_ups,
                 };
                 info!("Requesting follow-up {} for {}.", model.id, res.target_net);
-                self.follow_up_tx.send(model).await.context("sending follow-up")?;
+                self.follow_up_tx
+                    .send(model)
+                    .await
+                    .context("sending follow-up")?;
             } else {
                 warn!("Interpretation needs follow-up but it wasn't registered in the node");
             }
@@ -46,8 +51,8 @@ fn interpret_and_save(
 ) -> Result<(EchoResult, context::Context)> {
     let tree_context =
         prefix_tree::context::fetch(conn, &target_net).context("fetching tree context")?;
-    let mut context = analyse::context::fetch(conn, tree_context)
-        .context("fetch context for probe handling")?;
+    let mut context =
+        analyse::context::fetch(conn, tree_context).context("fetch context for probe handling")?;
 
     let mut interpretation = analyse::echo::process(model);
 
