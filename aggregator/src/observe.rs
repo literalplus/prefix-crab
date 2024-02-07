@@ -93,6 +93,7 @@ fn make_exporter(params: &Params) -> HttpExporterBuilder {
 
 impl Drop for ObserveDropGuard {
     fn drop(&mut self) {
+        debug!("Shutting down tracer");
         global::shutdown_tracer_provider(); // Must happen outside of Tokio runtime, otherwise blocks forever
                                             // OTLP metrics exporter doesn't need shutdown
     }

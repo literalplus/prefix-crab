@@ -16,11 +16,11 @@ pub use db_model::{schema, sql_types};
 mod analyse;
 /// Business logic for handling incoming probes
 mod handle_probe;
+mod observe;
 /// RabbitMQ-specific logic (producers, consumers), encapsulated using in-memory senders/receivers
 mod rabbit;
 /// Scheduling new analyses based on priority and capacity
 mod schedule;
-mod observe;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -57,7 +57,7 @@ fn do_run(cli: Cli) -> Result<()> {
     let (follow_up_tx, follow_up_rx) = mpsc::channel(64);
 
     persist::initialize(&cli.persist)?;
-    let _ = observe::initialize(cli.observe)?;
+    let observe_guard = observe::initialize(cli.observe)?;
 
     // This task is shut down by the RabbitMQ receiver closing the channel
     let probe_handle = tokio::spawn(handle_probe::run(
@@ -82,12 +82,14 @@ fn do_run(cli: Cli) -> Result<()> {
         result_tx, ack_rx, probe_rx, stop_rx, cli.rabbit,
     ));
 
-    executor::block_on(async {
+    let res = executor::block_on(async {
         try_join!(
             flatten(schedule_handle),
             flatten(rabbit_handle),
             flatten(probe_handle)
         )?;
         Ok(())
-    })
+    });
+    drop(observe_guard);
+    res
 }
