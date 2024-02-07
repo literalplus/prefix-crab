@@ -85,7 +85,12 @@ fn load_relevant_measurements(
     }
     let mut query = measurement_tree.into_boxed();
     for net in forest.to_iter_all_nets() {
-        query = query.or_filter(target_net.supernet_or_eq6(&net)); // TODO maybe use eq for /64s
+        if net.prefix_len() >= 64 {
+            // Semantically equivalent, but much more efficient
+            query = query.or_filter(target_net.eq6(&net));
+        } else {
+            query = query.or_filter(target_net.supernet_or_eq6(&net));
+        }
     }
     query.load(conn).fix_cause().with_context(|| {
         format!(
