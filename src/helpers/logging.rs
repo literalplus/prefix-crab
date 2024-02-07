@@ -29,18 +29,10 @@ pub fn configure_from(params: &Params) -> Result<LoggerHandle> {
     // log_level() returns None iff verbosity < 0, i.e. being most quiet seems reasonable
     let cli_level = params.verbose.log_level().unwrap_or(Level::Error);
 
-    let format = if params.no_color {
-        println!("no color!");
-        default_format
-    } else {
-        colored_default_format
-    };
-
     let log_builder = Logger::try_with_env_or_str(cli_level.to_string())
         .context("Failed to parse logger spec from env RUST_LOG or cli level")?
         .write_mode(WriteMode::Async)
-        .format_for_stdout(format)
-        .format_for_files(detailed_format);
+        .log_to_stdout();
 
     match (&params.use_log_spec, &params.log_spec_file) {
         (true, specfile_path) => log_builder
