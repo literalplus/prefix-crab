@@ -5,6 +5,7 @@ use anyhow::*;
 use diesel::prelude::*;
 use diesel::PgConnection;
 use queue_models::probe_request::TraceRequestId;
+use tracing::instrument;
 
 use crate::analyse::context::Context;
 use crate::analyse::persist::UpdateAnalysis;
@@ -14,6 +15,7 @@ use crate::persist::DieselErrorFixCause;
 use crate::schema::split_analysis::pending_follow_up;
 
 impl UpdateAnalysis for EchoResult {
+    #[instrument(skip_all)]
     fn update_analysis(&mut self, conn: &mut PgConnection, context: &mut Context) -> Result<()> {
         self.deref_mut().update_analysis(conn, context)?;
 

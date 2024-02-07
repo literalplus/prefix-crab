@@ -1,13 +1,15 @@
+use std::time::Instant;
+
 use anyhow::*;
 use db_model::prefix_tree::{self, ContextOps};
 use diesel::PgConnection;
 use ipnet::Ipv6Net;
 use log::{info, warn};
 use queue_models::probe_response::EchoProbeResponse;
-use tracing::instrument;
+use tracing::{info_span, instrument};
 
 use crate::{
-    analyse::{self, context, persist::UpdateAnalysis, split, EchoResult},
+    analyse::{self, context, persist::UpdateAnalysis, split, EchoFollowUp, EchoResult},
     observe,
     schedule::FollowUpRequest,
 };
@@ -24,17 +26,18 @@ impl ProbeHandler {
         observe::record_echo_analysis(interpretation.needs_follow_up());
         if interpretation.needs_follow_up() {
             if let Some(id) = &context.analysis.pending_follow_up {
+                let start = Instant::now();
                 let model = FollowUpRequest {
                     id: id.parse().context("Invalid TypeID stored in node")?,
                     prefix_tree: *context.node(),
                     follow_ups: interpretation.follow_ups,
                 };
-                tracing::info!("Follow-up ID: {}", model.id);
                 info!("Requesting follow-up {} for {}.", model.id, res.target_net);
                 self.follow_up_tx
                     .send(model)
                     .await
                     .context("sending follow-up")?;
+                tracing::info!("Follow-up {} waited {:?} to schedule", id, start.elapsed());
             } else {
                 warn!("Interpretation needs follow-up but it wasn't registered in the node");
             }

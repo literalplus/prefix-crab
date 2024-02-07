@@ -1,9 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Args;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
-use flexi_logger::{
-    colored_default_format, default_format, detailed_format, Logger, LoggerHandle, WriteMode,
-};
+use flexi_logger::{Logger, LoggerHandle, WriteMode};
 use log::Level;
 
 #[derive(Args, Debug)]
