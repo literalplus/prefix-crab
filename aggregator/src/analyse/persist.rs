@@ -7,6 +7,7 @@ use ipnet::Ipv6Net;
 use itertools::Itertools;
 use log::trace;
 use log::warn;
+use tracing::instrument;
 
 use crate::analyse::context::Context;
 use crate::analyse::Interpretation;
@@ -44,6 +45,7 @@ pub trait UpdateAnalysis {
 }
 
 impl UpdateAnalysis for Interpretation {
+    #[instrument(skip_all)]
     fn update_analysis(&mut self, conn: &mut PgConnection, context: &mut Context) -> Result<()> {
         save(conn, &context.analysis, self.drain_to_measurement_forest()?)
     }
@@ -72,6 +74,7 @@ fn save(
     .context("while saving changes")
 }
 
+#[instrument(skip_all, fields(forest = %forest))]
 fn load_relevant_measurements(
     conn: &mut PgConnection,
     analysis: &SplitAnalysis,
@@ -82,7 +85,7 @@ fn load_relevant_measurements(
     }
     let mut query = measurement_tree.into_boxed();
     for net in forest.to_iter_all_nets() {
-        query = query.or_filter(target_net.supernet_or_eq6(&net));
+        query = query.or_filter(target_net.supernet_or_eq6(&net)); // TODO maybe use eq for /64s
     }
     query.load(conn).fix_cause().with_context(|| {
         format!(
@@ -94,6 +97,7 @@ fn load_relevant_measurements(
     })
 }
 
+#[instrument(skip_all)]
 fn save_merging_into_existing(
     conn: &mut PgConnection,
     relevant_measurements: Vec<MeasurementTree>,
