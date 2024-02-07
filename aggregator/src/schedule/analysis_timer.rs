@@ -17,6 +17,7 @@ use tokio::{
     time::{interval, Instant},
 };
 use tokio_util::sync::CancellationToken;
+use tracing::instrument;
 
 mod as_budget;
 mod class_budget;
@@ -56,13 +57,18 @@ impl Timer {
         }
     }
 
+    #[instrument(skip(self))]
     async fn do_tick(&mut self) -> Result<()> {
         let mut conn = crate::persist::connect("aggregator - analysis timer")?;
         let mut as_budgets = as_budget::allocate(&self.params);
         let budgets = class_budget::allocate(&mut conn, self.params.analysis_timer_prefix_budget)?;
 
         for prio in PriorityClass::iter() {
-            observe::record_budget(prio, budgets.get_initial_available(prio), budgets.get_allocated(prio) as u64);
+            observe::record_budget(
+                prio,
+                budgets.get_initial_available(prio),
+                budgets.get_allocated(prio) as u64,
+            );
         }
 
         if budgets.is_empty() {
@@ -80,6 +86,7 @@ impl Timer {
                 .with_context(|| format!("processing class {:?}", class))?;
         }
 
+        tracing::info!("Scheduled {} analyses", prefix_count);
         info!(
             "{} prefix analyses scheduled by timer in {}ms.",
             prefix_count,
@@ -89,6 +96,7 @@ impl Timer {
         Ok(())
     }
 
+    #[instrument(skip_all, fields(class = ?budget.class))]
     async fn process_class(
         &self,
         conn: &mut PgConnection,

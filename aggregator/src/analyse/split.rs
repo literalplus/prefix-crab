@@ -3,6 +3,7 @@ use ipnet::Ipv6Net;
 use log::{debug, info, warn};
 use prefix_crab::blocklist::PrefixBlocklist;
 use thiserror::Error;
+use tracing::instrument;
 
 use crate::{persist::dsl::CidrMethods, persist::DieselErrorFixCause};
 use db_model::prefix_tree::ContextOps;
@@ -41,18 +42,21 @@ pub enum SplitError {
 
 pub type SplitResult<T> = std::result::Result<T, SplitError>;
 
+#[instrument(skip_all, fields(net = %request.parent.node.net))]
 pub fn process(
     conn: &mut PgConnection,
     request: context::Context,
     blocklist: &PrefixBlocklist,
 ) -> SplitResult<()> {
     if !request.node().merge_status.is_eligible_for_split() {
+        tracing::warn!("no longer a leaf");
         warn!(
             "Handled prefix is (no longer?) a leaf, split not possible: {:?}",
             request.node().net,
         );
         return Ok(());
     } else if blocklist.is_whole_net_blocked(&request.node().net) {
+        tracing::warn!("blocked");
         info!(
             "Entire prefix {} is blocked, marking the node as such.",
             request.node().net
@@ -125,6 +129,7 @@ pub fn process(
     Ok(())
 }
 
+#[instrument(skip(conn))]
 fn load_relevant_measurements(
     conn: &mut PgConnection,
     base_net: &Ipv6Net,

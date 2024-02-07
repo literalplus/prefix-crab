@@ -4,6 +4,7 @@ use anyhow::*;
 use diesel::{Connection, PgConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use log::{debug, info};
+use tracing::instrument;
 use url::Url;
 
 use super::Params;
@@ -30,6 +31,7 @@ pub fn initialize(params: &Params) -> Result<()> {
     Ok(())
 }
 
+#[instrument(name = "DB connect")]
 pub fn connect(app_name: &str) -> Result<PgConnection> {
     let params = STORED_PARAMS
         .get()

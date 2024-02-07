@@ -10,7 +10,9 @@ use opentelemetry::{
     metrics::{Counter, Gauge, Meter},
     KeyValue,
 };
-use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_otlp::{HttpExporterBuilder, WithExportConfig};
+use opentelemetry_sdk::{runtime::Tokio, trace::config, Resource};
+use tracing_subscriber::{filter::filter_fn, layer::SubscriberExt, Layer, Registry};
 
 lazy_static! {
     static ref METER: Meter = global::meter("prefix-crab.local/crab-tools");
@@ -37,30 +39,59 @@ pub struct Params {
     header: String,
 }
 
-impl Params {
-    pub fn should_observe(&self) -> bool {
-        !self.endpoint.is_empty()
-    }
-}
+pub struct ObserveDropGuard {}
 
-pub fn initialize(params: Params) -> Result<()> {
-    debug!("Sending metrics to {}", params.endpoint);
-    let exporter = opentelemetry_otlp::new_exporter()
-        .http()
-        .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
-        .with_endpoint(params.endpoint)
-        .with_headers(HashMap::from([("Authorization".to_owned(), params.header)]));
+pub fn initialize(params: Params) -> Result<Option<ObserveDropGuard>> {
+    if params.endpoint.is_empty() {
+        return Ok(None);
+    }
+
+    debug!("Sending OTLP data to {}", params.endpoint);
 
     opentelemetry_otlp::new_pipeline()
-        .metrics(opentelemetry_sdk::runtime::Tokio)
+        .metrics(Tokio)
         .with_period(Duration::from_secs(15))
         .with_timeout(Duration::from_secs(5))
-        .with_exporter(exporter)
+        .with_exporter(make_exporter(&params))
         .build()?; // auto-registers as default
 
-    // It would be nice to shut down the provider, but a) difficult b) this one is stateless either way
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(make_exporter(&params))
+        .with_trace_config(config().with_resource(Resource::new(vec![KeyValue::new(
+            "service.name",
+            "aggregator",
+        )])))
+        .install_batch(Tokio)?;
 
-    Ok(())
+    let telemetry = tracing_opentelemetry::layer()
+        .with_tracer(tracer)
+        .with_filter(filter_fn(|metadata| {
+            metadata.module_path() != Some("isahc::handler") // Trace exporter is very noisy otherwise
+        }));
+
+    let subscriber = Registry::default().with(telemetry);
+    tracing::subscriber::set_global_default(subscriber)?;
+
+    Ok(Some(ObserveDropGuard {}))
+}
+
+fn make_exporter(params: &Params) -> HttpExporterBuilder {
+    opentelemetry_otlp::new_exporter()
+        .http()
+        .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
+        .with_endpoint(&params.endpoint)
+        .with_headers(HashMap::from([(
+            "Authorization".to_owned(),
+            params.header.to_owned(),
+        )]))
+}
+
+impl Drop for ObserveDropGuard {
+    fn drop(&mut self) {
+        global::shutdown_tracer_provider(); // Must happen outside of Tokio runtime, otherwise blocks forever
+                                            // OTLP metrics exporter doesn't need shutdown
+    }
 }
 
 pub fn record_budget(prio: PriorityClass, available: u64, allocated: u64) {

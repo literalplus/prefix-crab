@@ -1,8 +1,10 @@
 use db_model::prefix_tree::AsNumber;
 use nohash_hasher::IntMap;
+use tracing::instrument;
 
 use crate::schedule::Params;
 
+#[instrument(name = "allocate AS budgets", skip(params))]
 pub fn allocate(params: &Params) -> AsBudgets {
     AsBudgets::new(params.analysis_timer_max_prefix_per_as)
 }

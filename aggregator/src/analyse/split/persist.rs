@@ -4,6 +4,7 @@ use diesel::{prelude::*, PgConnection};
 use itertools::Itertools;
 use log::warn;
 use prefix_crab::blocklist::PrefixBlocklist;
+use tracing::instrument;
 
 use crate::analyse::split::subnet::Subnet;
 use crate::analyse::SplitAnalysis;
@@ -16,6 +17,7 @@ use super::recommend::{self, ReProbePriority, SplitRecommendation};
 use super::subnet::Subnets;
 use super::{context, Confidence, SplitAnalysisResult};
 
+#[instrument(skip(conn, context))]
 pub fn save_recommendation(
     conn: &mut PgConnection,
     context: &context::Context,
@@ -132,6 +134,7 @@ impl From<&SplitRecommendation> for SplitAnalysisResult {
     }
 }
 
+#[instrument(skip_all)]
 pub fn perform_prefix_split(
     conn: &mut PgConnection,
     context: context::Context,

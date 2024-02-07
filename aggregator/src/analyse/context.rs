@@ -4,6 +4,7 @@ use log::warn;
 use prefix_crab::error::IsPermanent;
 use queue_models::probe_request::TraceRequestId;
 use thiserror::Error;
+use tracing::instrument;
 
 use crate::persist::DieselErrorFixCause;
 use crate::persist::dsl::CidrMethods;
@@ -62,6 +63,7 @@ impl IsPermanent for ContextFetchError {
 
 pub type ContextFetchResult = Result<Context, ContextFetchError>;
 
+#[instrument(name = "fetch analysis ctx", skip_all)]
 pub fn fetch(conn: &mut PgConnection, parent: prefix_tree::Context) -> ContextFetchResult {
     let actives = fetch_active(conn, &parent.node)?;
     if actives.is_empty() {
@@ -91,6 +93,7 @@ fn fetch_active(
         .map_err(ContextFetchError::DbError)
 }
 
+#[instrument(skip_all, err)]
 pub fn fetch_by_follow_up(conn: &mut PgConnection, request_id: &TraceRequestId) -> ContextFetchResult {
     let target_net = find_follow_up_prefix(conn, request_id)?;
     let parent = prefix_tree::context::fetch(conn, &target_net)

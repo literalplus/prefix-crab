@@ -8,9 +8,11 @@ use diesel::dsl::*;
 use diesel::{query_dsl::methods::FilterDsl, Connection, PgConnection, RunQueryDsl};
 use ipnet::Ipv6Net;
 use itertools::Itertools;
+use tracing::instrument;
 
 use crate::analyse::context::Context;
 
+#[instrument(name = "collapse measurements", skip_all)]
 pub fn process(
     conn: &mut PgConnection,
     request: &Context,

@@ -6,6 +6,7 @@ use itertools::Itertools;
 use log::debug;
 use prefix_crab::helpers::ip::ExpectV6;
 use rand::Rng;
+use tracing::instrument;
 use std::collections::{btree_map, BTreeMap};
 
 use diesel::prelude::*;
@@ -45,6 +46,7 @@ impl ClassBudgets {
     }
 }
 
+#[instrument(name = "allocate class budgets", skip(conn))]
 pub fn allocate(conn: &mut PgConnection, total_prefixes: u32) -> Result<ClassBudgets> {
     let available_per_class = count_available_per_class(conn)?;
     if available_per_class.is_empty() {

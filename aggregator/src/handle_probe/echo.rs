@@ -4,6 +4,7 @@ use diesel::PgConnection;
 use ipnet::Ipv6Net;
 use log::{info, warn};
 use queue_models::probe_response::EchoProbeResponse;
+use tracing::instrument;
 
 use crate::{
     analyse::{self, context, persist::UpdateAnalysis, split, EchoResult},
@@ -14,6 +15,7 @@ use crate::{
 use super::{archive, ProbeHandler};
 
 impl ProbeHandler {
+    #[instrument(skip(self, res), fields(net = %res.target_net))]
     pub(super) async fn handle_echo(&mut self, res: &EchoProbeResponse) -> Result<()> {
         archive::process(&mut self.conn, &res.target_net, res);
 
@@ -27,6 +29,7 @@ impl ProbeHandler {
                     prefix_tree: *context.node(),
                     follow_ups: interpretation.follow_ups,
                 };
+                tracing::info!("Follow-up ID: {}", model.id);
                 info!("Requesting follow-up {} for {}.", model.id, res.target_net);
                 self.follow_up_tx
                     .send(model)

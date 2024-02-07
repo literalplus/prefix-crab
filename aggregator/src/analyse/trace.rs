@@ -6,6 +6,7 @@ use queue_models::{
     probe_request::TraceRequestId,
     probe_response::{LastHop, TraceResponse, TraceResponseType, TraceResult as TR},
 };
+use tracing::instrument;
 
 use crate::{analyse::WeirdType, persist::DieselErrorFixCause};
 
@@ -84,6 +85,7 @@ fn register_as_lhr(result: &mut TraceResult, hop: &LastHop) {
 }
 
 impl UpdateAnalysis for TraceResult {
+    #[instrument(skip_all)]
     fn update_analysis(
         &mut self,
         conn: &mut PgConnection,

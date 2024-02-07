@@ -2,6 +2,7 @@ use diesel::prelude::*;
 use ipnet::Ipv6Net;
 use prefix_crab::error::IsPermanent;
 use thiserror::Error;
+use tracing::instrument;
 
 use crate::persist::dsl::CidrMethods;
 use crate::persist::DieselErrorFixCause;
@@ -53,8 +54,9 @@ impl IsPermanent for ContextFetchError {
 
 pub type ContextFetchResult = Result<Context, ContextFetchError>;
 
-pub fn fetch(conn: &mut PgConnection, target_net: &Ipv6Net) -> ContextFetchResult {
-    let node = select_self(conn, target_net)?;
+#[instrument(name = "fetch tree ctx", skip(conn))]
+pub fn fetch(conn: &mut PgConnection, net: &Ipv6Net) -> ContextFetchResult {
+    let node = select_self(conn, net)?;
     Result::Ok(Context { node })
 }
 

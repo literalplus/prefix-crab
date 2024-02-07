@@ -1,6 +1,7 @@
 use std::net::Ipv6Addr;
 
 use db_model::analyse::WeirdType;
+use tracing::instrument;
 
 use super::result::*;
 use log::{debug, warn};
@@ -10,6 +11,7 @@ use queue_models::probe_response::{
     Responses, SplitResult,
 };
 
+#[instrument(name = "analyse echo", skip_all)]
 pub fn process(model: &EchoProbeResponse) -> EchoResult {
     let mut result = EchoResult::default();
     for split in &model.splits {

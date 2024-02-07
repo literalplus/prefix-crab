@@ -8,9 +8,12 @@ use diesel::{dsl::sql, prelude::*, BoolExpressionMethods, ExpressionMethods, PgC
 use ipnet::Ipv6Net;
 use itertools::Itertools;
 use log::info;
+use tracing::instrument;
 
 use crate::analyse::context::Context;
 
+
+#[instrument(name = "merge redundant", skip_all)]
 pub fn process(conn: &mut PgConnection, request: &Context) -> Result<()> {
     if is_redundant(conn, request)? {
         info!(
