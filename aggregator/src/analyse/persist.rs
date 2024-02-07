@@ -79,10 +79,12 @@ fn load_relevant_measurements(
     conn: &mut PgConnection,
     analysis: &SplitAnalysis,
     forest: &MeasurementForest,
-) -> Result<Vec<MeasurementTree>> { // TODO can this be called without filters?
+) -> Result<Vec<MeasurementTree>> {
     if forest.is_empty() {
         return Ok(vec![]);
     }
+
+    // TODO: Do we really need to limit it like this? Why can't we just filter to the base net?
     let mut query = measurement_tree.into_boxed();
     for net in forest.to_iter_all_nets() {
         if net.prefix_len() >= 64 {
