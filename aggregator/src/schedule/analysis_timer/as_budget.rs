@@ -12,7 +12,7 @@ pub fn allocate(params: &Params) -> AsBudgets {
 #[derive(Default)]
 pub struct AsBudgets {
     allocation_per_as: usize,
-    consumed_per_as: IntMap<AsNumber, usize>,
+    pub consumed_per_as: IntMap<AsNumber, usize>,
     exhausted_asns: Vec<AsNumber>,
 }
 

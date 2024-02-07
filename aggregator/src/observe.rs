@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use anyhow::Result;
 use clap::Args;
-use db_model::prefix_tree::PriorityClass;
+use db_model::prefix_tree::{AsNumber, PriorityClass};
 use lazy_static::lazy_static;
 use log::debug;
 use opentelemetry::{
@@ -23,6 +23,10 @@ lazy_static! {
     static ref PREFIXES_ALLOCATED: Gauge<u64> = METER
         .u64_gauge("prefix_crab_schedule_prefixes_allocated")
         .with_description("Prefixes allocated for scheduling after udgeting")
+        .init();
+    static ref AS_BUDGET_ALLOCATED: Gauge<u64> = METER
+        .u64_gauge("prefix_crab_schedule_asn_allocated")
+        .with_description("Prefixes allocated for a single ASN")
         .init();
     static ref ECHO_ANALYSIS_COUNT: Counter<u64> = METER
         .u64_counter("prefix_crab_echo_analysis_count")
@@ -97,6 +101,10 @@ impl Drop for ObserveDropGuard {
 pub fn record_budget(prio: PriorityClass, available: u64, allocated: u64) {
     PREFIXES_AVAILABLE.record(available, &[KeyValue::new("class", format!("{:?}", prio))]);
     PREFIXES_ALLOCATED.record(allocated, &[KeyValue::new("class", format!("{:?}", prio))]);
+}
+
+pub fn record_as_budget_usage(asn: AsNumber, consumed: u64) {
+    AS_BUDGET_ALLOCATED.record(consumed, &[KeyValue::new("asn", format!("{:?}", asn))]);
 }
 
 pub fn record_echo_analysis(follow_up: bool) {

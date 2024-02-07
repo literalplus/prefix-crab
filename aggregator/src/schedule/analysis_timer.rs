@@ -6,7 +6,7 @@ use self::{as_budget::AsBudgets, class_budget::ClassBudget};
 
 use super::Params;
 use anyhow::*;
-use db_model::prefix_tree::PriorityClass;
+use db_model::prefix_tree::{AsNumber, PriorityClass};
 use diesel::PgConnection;
 use log::{debug, error, info, warn};
 use prefix_crab::loop_with_stop;
@@ -92,6 +92,10 @@ impl Timer {
             prefix_count,
             start.elapsed().as_millis(),
         );
+
+        for (asn, consumed) in as_budgets.consumed_per_as.into_iter() {
+            observe::record_as_budget_usage(asn as AsNumber, consumed as u64);
+        }
 
         Ok(())
     }
