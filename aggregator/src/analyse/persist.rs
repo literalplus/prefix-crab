@@ -29,10 +29,7 @@ use diesel::dsl::*;
 pub fn begin_bulk(conn: &mut PgConnection, nets: &[Ipv6Net]) -> Result<()> {
     use crate::schema::split_analysis::dsl::*;
 
-    let tuples = nets
-        .iter()
-        .map(|net| tree_net.eq6(net))
-        .collect_vec();
+    let tuples = nets.iter().map(|net| tree_net.eq6(net)).collect_vec();
     insert_into(split_analysis)
         .values(tuples)
         .execute(conn)
@@ -84,15 +81,13 @@ fn load_relevant_measurements(
         return Ok(vec![]);
     }
 
-    // TODO: Do we really need to limit it like this? Why can't we just filter to the base net?
+    // TODO: This is a bit of a bottleneck; Instead we could save everything as /64 and rely on the merge logic with
+    // high confidence to normalise cases where a supernet exists and the /64 as well
     let mut query = measurement_tree.into_boxed();
     for net in forest.to_iter_all_nets() {
-        if net.prefix_len() >= 64 {
-            // Semantically equivalent, but much more efficient
-            query = query.or_filter(target_net.eq6(&net));
-        } else {
-            query = query.or_filter(target_net.supernet_or_eq6(&net));
-        }
+        // NOTE: This is for _super_net, i.e. we want to find the /64s that we hit AND any potentially-merged
+        // supernets that we'd need to update instead.
+        query = query.or_filter(target_net.supernet_or_eq6(&net));
     }
     query.load(conn).fix_cause().with_context(|| {
         format!(
@@ -132,6 +127,8 @@ fn save_merging_into_existing(
             ModificationType::Untouched => {}
             ModificationType::Inserted => inserts.push(tree),
             ModificationType::Updated => {
+                // TODO: Since this is a major % in the trace, maybe parallelise them if we can't batch
+                // for that we need a connection pool!
                 diesel::update(measurement_tree)
                     .filter(target_net.eq(tree.target_net))
                     .set(tree)
