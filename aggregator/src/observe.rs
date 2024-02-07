@@ -71,7 +71,8 @@ pub fn initialize(params: Params) -> Result<Option<ObserveDropGuard>> {
     let telemetry = tracing_opentelemetry::layer()
         .with_tracer(tracer)
         .with_filter(filter_fn(|metadata| {
-            metadata.module_path() != Some("isahc::handler") // Trace exporter is very noisy otherwise
+            metadata.module_path() != Some("isahc::handler") && // Trace exporter is very noisy otherwise
+            metadata.module_path() != Some("isahc::agent")
         }));
 
     let subscriber = Registry::default().with(telemetry);

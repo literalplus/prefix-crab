@@ -30,6 +30,7 @@ pub fn configure_from(params: &Params) -> Result<LoggerHandle> {
     let cli_level = params.verbose.log_level().unwrap_or(Level::Error);
 
     let format = if params.no_color {
+        println!("no color!");
         default_format
     } else {
         colored_default_format
