@@ -6,10 +6,10 @@ use diesel::PgConnection;
 use ipnet::Ipv6Net;
 use log::{info, warn};
 use queue_models::probe_response::EchoProbeResponse;
-use tracing::{info_span, instrument};
+use tracing::instrument;
 
 use crate::{
-    analyse::{self, context, persist::UpdateAnalysis, split, EchoFollowUp, EchoResult},
+    analyse::{self, context, persist::UpdateAnalysis, split, EchoResult},
     observe,
     schedule::FollowUpRequest,
 };
