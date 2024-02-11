@@ -54,7 +54,7 @@ pub fn initialize(params: Params) -> Result<Option<ObserveDropGuard>> {
 
     opentelemetry_otlp::new_pipeline()
         .metrics(Tokio)
-        .with_period(Duration::from_secs(15))
+        .with_period(Duration::from_secs(30))
         .with_timeout(Duration::from_secs(5))
         .with_exporter(make_exporter(&params))
         .build()?; // auto-registers as default
