@@ -98,7 +98,7 @@ fn load_relevant_measurements(
             forest.to_iter_all_nets().collect_vec(),
         )
     })?;
-    Span::current().record("found_trees", format!("{}", res.len()));
+    Span::current().record("found_trees", res.len());
     Ok(res)
 }
 
