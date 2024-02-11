@@ -72,7 +72,7 @@ fn save(
     .context("while saving changes")
 }
 
-#[instrument(skip_all, fields(forest = %forest, found_trees))]
+#[instrument(skip_all, fields(forest = %forest, found_trees, filter_trees64))]
 fn load_relevant_measurements(
     conn: &mut PgConnection,
     analysis: &SplitAnalysis,
@@ -85,10 +85,21 @@ fn load_relevant_measurements(
     // TODO: This is a bit of a bottleneck; Instead we could save everything as /64 and rely on the merge logic with
     // high confidence to normalise cases where a supernet exists and the /64 as well
     let mut query = measurement_tree.into_boxed();
-    for net in forest.to_iter_all_nets() {
-        // NOTE: This is for _super_net, i.e. we want to find the /64s that we hit AND any potentially-merged
-        // supernets that we'd need to update instead.
-        query = query.or_filter(target_net.supernet_or_eq6(&net));
+
+    Span::current().record("filter_trees64", forest.get_trees64_count());
+    if forest.get_trees64_count() > 10 {
+        // For large numbers of /64 to look up, supernet queries take really long to execute.
+        // In these cases, load all trees of the target net instead, which is  in experience much faster to evaluate,
+        // even though it might yield many more results.
+        //
+        // An alternative could also be to just always safe /64s and only merge them while actually merging.
+        query = query.filter(target_net.subnet_or_eq6(&analysis.tree_net));
+    } else {
+        for net in forest.to_iter_all_nets() {
+            // NOTE: This is for the _super_net, i.e. we want to find the /64s that we hit AND any potentially-merged
+            // supernets that we'd need to update instead.
+            query = query.or_filter(target_net.supernet_or_eq6(&net));
+        }
     }
     let res = query.load(conn).fix_cause().with_context(|| {
         format!(
@@ -102,7 +113,7 @@ fn load_relevant_measurements(
     Ok(res)
 }
 
-#[instrument(skip_all)]
+#[instrument(skip_all, fields(inserts, updates))]
 fn save_merging_into_existing(
     conn: &mut PgConnection,
     relevant_measurements: Vec<MeasurementTree>,
@@ -121,9 +132,11 @@ fn save_merging_into_existing(
             obsolete_nets
         );
     }
+
     // Batching would be ideal, but Diesel doesn't seem to directly support that
     // ref: https://github.com/diesel-rs/diesel/issues/1517
     let mut inserts = vec![];
+    let mut update_count = 0;
     for updated_tree in remote_forest.into_iter() {
         let ModifiableTree { tree, touched } = updated_tree;
         match touched {
@@ -137,9 +150,14 @@ fn save_merging_into_existing(
                     .set(tree)
                     .execute(conn)
                     .fix_cause()?;
+                update_count += 1;
             }
         }
     }
+
+    Span::current().record("inserts", inserts.len());
+    Span::current().record("updates", update_count);
+
     if !inserts.is_empty() {
         trace!(
             "Inserting {} FRESH trees for the CO2 credits",
