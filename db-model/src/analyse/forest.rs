@@ -13,6 +13,12 @@ pub struct MeasurementForest {
     pub obsolete_nets: HashSet<Ipv6Net>,
 }
 
+impl MeasurementForest {
+    pub fn get_trees64_count(&self) -> usize {
+        self.trees64.len()
+    }
+}
+
 impl Display for MeasurementForest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MeasurementForest")

@@ -8,6 +8,7 @@ use itertools::Itertools;
 use log::trace;
 use log::warn;
 use tracing::instrument;
+use tracing::Span;
 
 use crate::analyse::context::Context;
 use crate::analyse::Interpretation;
@@ -71,7 +72,7 @@ fn save(
     .context("while saving changes")
 }
 
-#[instrument(skip_all, fields(forest = %forest))]
+#[instrument(skip_all, fields(forest = %forest, found_trees))]
 fn load_relevant_measurements(
     conn: &mut PgConnection,
     analysis: &SplitAnalysis,
@@ -89,14 +90,16 @@ fn load_relevant_measurements(
         // supernets that we'd need to update instead.
         query = query.or_filter(target_net.supernet_or_eq6(&net));
     }
-    query.load(conn).fix_cause().with_context(|| {
+    let res = query.load(conn).fix_cause().with_context(|| {
         format!(
             "while loading existing trees for amendment related to PrefixTree[{}], \n\
             with potential MeasurementTree prefixes: {:?}.",
             analysis.tree_net,
             forest.to_iter_all_nets().collect_vec(),
         )
-    })
+    })?;
+    Span::current().record("found_trees", format!("{}", res.len()));
+    Ok(res)
 }
 
 #[instrument(skip_all)]
