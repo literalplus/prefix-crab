@@ -32,7 +32,7 @@ pub struct Params {
     analysis_timer_max_prefix_per_as: usize,
 
     /// Whether to run the regular prefix schedule, or not (disabling the entire feedback system eventually)
-    #[arg(long, env = "AGG_DO_SCHEDULE", default_value = "true")]
+    #[arg(long, env = "AGG_DO_SCHEDULE", default_value = "true", action = clap::ArgAction::Set)]
     do_schedule: bool,
 }
 
