@@ -2,6 +2,10 @@ use anyhow::{Context as AnyhowContext, *};
 
 use db_model::analyse::MeasurementTree;
 use diesel::prelude::*;
+use diesel::sql_types::Array;
+use diesel::sql_types::Cidr;
+use diesel::sql_types::Integer;
+use diesel::sql_types::Jsonb;
 use diesel::PgConnection;
 use ipnet::Ipv6Net;
 use itertools::Itertools;
@@ -113,7 +117,7 @@ fn load_relevant_measurements(
     Ok(res)
 }
 
-#[instrument(skip_all, fields(inserts, updates))]
+#[instrument(skip_all)]
 fn save_merging_into_existing(
     conn: &mut PgConnection,
     relevant_measurements: Vec<MeasurementTree>,
@@ -136,40 +140,79 @@ fn save_merging_into_existing(
     // Batching would be ideal, but Diesel doesn't seem to directly support that
     // ref: https://github.com/diesel-rs/diesel/issues/1517
     let mut inserts = vec![];
-    let mut update_count = 0;
+    let mut updates = vec![];
     for updated_tree in remote_forest.into_iter() {
         let ModifiableTree { tree, touched } = updated_tree;
         match touched {
             ModificationType::Untouched => {}
             ModificationType::Inserted => inserts.push(tree),
             ModificationType::Updated => {
+                updates.push(tree);
                 // TODO: Since this is a major % in the trace, maybe parallelise them if we can't batch
                 // for that we need a connection pool!
-                diesel::update(measurement_tree)
-                    .filter(target_net.eq(tree.target_net))
-                    .set(tree)
-                    .execute(conn)
-                    .fix_cause()?;
-                update_count += 1;
+                // diesel::update(measurement_tree)
+                //     .filter(target_net.eq(tree.target_net))
+                //     .set(tree)
+                //     .execute(conn)
+                //     .fix_cause()?;
+                // update_count += 1;
             }
         }
     }
 
-    Span::current().record("inserts", inserts.len());
-    Span::current().record("updates", update_count);
-
     if !inserts.is_empty() {
-        trace!(
-            "Inserting {} FRESH trees for the CO2 credits",
-            inserts.len()
-        );
-        diesel::insert_into(measurement_tree)
-            .values(inserts)
-            .on_conflict_do_nothing()
-            .execute(conn)
-            .fix_cause()?;
+        do_inserts(conn, inserts)?;
     }
+
+    if !updates.is_empty() {
+        do_updates(conn, updates)?;
+    }
+
     Ok(())
+}
+
+#[instrument(skip_all, fields(inserts = inserts.len()))]
+fn do_inserts(conn: &mut PgConnection, inserts: Vec<MeasurementTree>) -> Result<usize> {
+    trace!(
+        "Inserting {} FRESH trees for the CO2 credits",
+        inserts.len()
+    );
+    diesel::insert_into(measurement_tree)
+        .values(inserts)
+        .on_conflict_do_nothing()
+        .execute(conn)
+        .fix_cause()
+}
+
+#[instrument(skip_all, fields(updates = updates.len()))]
+fn do_updates(conn: &mut PgConnection, updates: Vec<MeasurementTree>) -> Result<usize> {
+    let query = diesel::sql_query(
+        "
+        UPDATE measurement_tree mt
+        SET updated_at = NOW(),
+            responsive_count = dat.responsive_count,
+            unresponsive_count = dat.unresponsive_count,
+            last_hop_routers = dat.last_hop_routers,
+            weirdness = dat.weirdness
+        FROM (
+            SELECT
+                UNNEST($1) as target_net,
+                UNNEST($2) as responsive_count, UNNEST($3) as unresponsive_count,
+                UNNEST($4) as last_hop_routers, UNNEST($5) as weirdness
+        ) dat
+        WHERE mt.target_net = dat.target_net
+    ",
+    );
+
+    let query = query
+        .bind::<Array<Cidr>, _>(updates.iter().map(|it| it.target_net).collect_vec())
+        .bind::<Array<Integer>, _>(updates.iter().map(|it| it.responsive_count).collect_vec())
+        .bind::<Array<Integer>, _>(updates.iter().map(|it| it.unresponsive_count).collect_vec())
+        .bind::<Array<Jsonb>, _>(updates.iter().map(|it| it.last_hop_routers.clone()).collect_vec())
+        .bind::<Array<Jsonb>, _>(updates.into_iter().map(|it| it.weirdness).collect_vec())
+        ;
+
+    query.execute(conn).fix_cause()
 }
 
 fn make_tree(net: Ipv6Net, entry: Prefix) -> MeasurementTree {
