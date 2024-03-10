@@ -1,33 +1,33 @@
-# prefix-crab-yarrp-buddy.service
+# zmap-buddy.service
 # bare-metal
 
 [Unit]
-Description=prefix-crab yarrp-buddy (bare-metal)
+Description=prefix-crab zmap-buddy (bare-metal)
 Wants=network-online.target
 After=network-online.target
 
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Wants=
 # Dependencies manually added!
-Wants=prefix-crab-rabbitmq.service
-After=prefix-crab-rabbitmq.service
+Wants=rabbitmq.service
+After=rabbitmq.service
 
 [Service]
 Type=simple
 TimeoutStopSec=70s
 # updating crates.io index + building may take a long time
 TimeoutStartSec=3m
-WorkingDirectory=/home/%u/prefix-crab/yarrp-buddy
+WorkingDirectory=/home/%u/prefix-crab/zmap-buddy
 
 ExecStartPre=/home/%u/.cargo/bin/rustup run stable -- cargo build --release
 ExecStart=/home/%u/prefix-crab/deploy/run-with-rmq-pw.sh \
-	/home/%u/prefix-crab/target/release/yarrp-buddy
+	/home/%u/prefix-crab/target/release/zmap-buddy
 
 # Otherwise it shows up as run-with-rmq-pw.sh
-SyslogIdentifier=prefix-crab-yarrp-buddy
+SyslogIdentifier=zmap-buddy
 
 OOMScoreAdjust=-10
 ProtectSystem=full
-ReadWritePaths=/home/%u/prefix-crab/yarrp-buddy
+ReadWritePaths=/home/%u/prefix-crab/zmap-buddy
 ReadWritePaths=/home/%u/prefix-crab/target
 
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#RestartSec=

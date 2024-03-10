@@ -123,7 +123,7 @@ scp ./gen-systemd.sh podman-test.lit.plus:.
 ./gen-systemd.sh prefix-crab-rabbitmq
 ./gen-systemd.sh prefix-crab-postgres
 
-journalctl --user -u prefix-crab-postgres
+journalctl --user -u postgres
 
 ssh podman-test.lit.plus mkdir -p prefix-crab/deploy
 scp containers.env podman-test.lit.plus:prefix-crab/deploy
@@ -164,7 +164,7 @@ Debian 12.
 # ON THE SERVER
 git pull
 systemctl --user daemon-reload  # if there are changes to the unit files
-systemctl --user restart prefix-crab-{yarrp,zmap}-buddy.service  # will recompile
+systemctl --user restart {yarrp,zmap}-buddy.service  # will recompile
 ```
 
 ### Containers (everything else)
@@ -178,8 +178,8 @@ cd deploy
 # ON THE SERVER
 git pull
 systemctl --user daemon-reload
-systemctl --user restart prefix-crab-aggregator.service
-systemctl --user restart prefix-crab-seed-guard.service
+systemctl --user restart aggregator.service
+systemctl --user restart seed-guard.service
 ```
 
 ## Access to infrastructure services (port forwarding)

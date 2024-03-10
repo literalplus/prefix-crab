@@ -6,7 +6,7 @@
 #       which we don't have yet.
 
 [Unit]
-Description=Podman prefix-crab-aggregator.service
+Description=Podman aggregator2.service
 Documentation=man:podman-generate-systemd(1)
 Wants=network-online.target
 After=network-online.target
@@ -14,10 +14,10 @@ RequiresMountsFor=%t/containers
 
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Wants=
 # Dependencies manually added!
-Wants=prefix-crab-postgres.service
-After=prefix-crab-postgres.service
-Wants=prefix-crab-rabbitmq.service
-After=prefix-crab-rabbitmq.service
+Wants=postgres.service
+After=postgres.service
+Wants=rabbitmq.service
+After=rabbitmq.service
 
 [Service]
 Environment=PODMAN_SYSTEMD_UNIT=%n
@@ -30,7 +30,7 @@ ExecStart=/usr/bin/podman run \
 	--rm \
 	--sdnotify=conmon \
 	-d \
-	--name=prefix-crab-aggregator \
+	--name=prefix-crab-aggregator2 \
 	--add-host=localhost.containers.internal:10.0.2.2 \
 	--network=slirp4netns:allow_host_loopback=true \
 	--memory=1g \
@@ -43,7 +43,7 @@ ExecStart=/usr/bin/podman run \
 	--secret=prefix-crab-otlp-header,type=env,target=OTLP_AUTH_HEADER \
 	--mount=type=bind,source=/home/%u/prefix-crab/deploy/containers.env,ro,destination=/home/app/.env \
 	--mount=type=bind,source=/etc/scanning/blocklist,ro,destination=/etc/scanning/blocklist \
-	--tz=UTC prefix-crab.local/aggregator
+	--tz=UTC prefix-crab.local/aggregator --do-schedule=false
 ExecStop=/usr/bin/podman stop \
 	--ignore \
 	--cidfile=%t/%n.ctr-id
@@ -57,7 +57,7 @@ NotifyAccess=all
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html#RestartSec=
 # Additional manual restart settings
 Restart=always
-RestartSec=5s
+RestartSec=10s
 RestartSteps=20
 RestartMaxDelaySec=5m
 

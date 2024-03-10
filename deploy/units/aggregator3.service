@@ -6,7 +6,7 @@
 #       which we don't have yet.
 
 [Unit]
-Description=Podman prefix-crab-aggregator3.service
+Description=Podman aggregator3.service
 Documentation=man:podman-generate-systemd(1)
 Wants=network-online.target
 After=network-online.target
@@ -14,10 +14,10 @@ RequiresMountsFor=%t/containers
 
 # https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Wants=
 # Dependencies manually added!
-Wants=prefix-crab-postgres.service
-After=prefix-crab-postgres.service
-Wants=prefix-crab-rabbitmq.service
-After=prefix-crab-rabbitmq.service
+Wants=postgres.service
+After=postgres.service
+Wants=rabbitmq.service
+After=rabbitmq.service
 
 [Service]
 Environment=PODMAN_SYSTEMD_UNIT=%n
