@@ -239,6 +239,10 @@ systemctl --user daemon-reload
 
 ## Start services again
 
+Ensure you have the latest code for all services, especially less-frequently updated ones (seed-gauard!).
+
+Also, make sure to set up the AS filter list in the DB.
+
 ```bash
 systemctl --user start {yarrp-buddy,zmap-buddy,seed-guard,postgres,rabbitmq}
 systemctl --user start aggregator{,2,3}
