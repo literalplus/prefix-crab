@@ -191,7 +191,12 @@ ssh -L 17862:localhost:17862 pnowak@measurement-aim.etchosts.internal  # postgre
 
 http://localhost:17863
 
-# Taking a DB backup
+# Starting a new measurement
+
+## Taking a DB backup 
+
+Only needed if there is data from the previous measurement that you need to save.
+If it doubt, save it.
 
 ```bash
 podman exec -it prefix-crab-postgres /bin/bash
@@ -200,6 +205,44 @@ pg_dump -U postgres prefix_crab | gzip >/backup/name.sql.gz
 ```
 
 For more info, see https://www.postgresql.org/docs/current/backup-dump.html
+
+## Shut down all services
+
+```bash
+systemctl --user stop aggregator{,2,3}
+systemctl --user stop {yarrp-buddy,zmap-buddy,seed-guard,postgres,rabbitmq}
+```
+
+## Set up new data directly
+
+Note that this means that we don't have access to past results from the previous measurement any more.
+You would only do this if you need to start completely from scratch, e.g. during evaluation of the method itself.
+
+Example: `/scans/2024_03_prefix-crab-austria2` -- adjust to your path or you will corrupt that measurement's data
+
+Start by replacing the old measurement's path (of the same format) with the new path in the unit files (`units/` directory).
+It makes sense to also adjust the environment settings (`*.env`) at the same time if needed.
+
+On the measurement server:
+
+```bash
+# Repeat the setup from the "Storage" section, e.g.
+mkdir -p /scans/2024_03_prefix-crab-austria2
+cd /scans/2024_03_prefix-crab-austria2
+mkdir -p {backup,rabbitmq-data,postgresql-data}
+# Also make sure to clone the asn-ip repo in the seed-guard container
+
+cd ~/prefix-crab
+git pull
+systemctl --user daemon-reload
+```
+
+## Start services again
+
+```bash
+systemctl --user start {yarrp-buddy,zmap-buddy,seed-guard,postgres,rabbitmq}
+systemctl --user start aggregator{,2,3}
+```
 
 # FAQ
 
