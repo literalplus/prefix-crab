@@ -85,7 +85,7 @@ pub fn process(
                 rec,
                 confidence
             );
-            observe::record_split_decision(rec.priority().class, true);
+            observe::record_split_decision(rec.priority().class, true, rec.should_split());
             persist::perform_prefix_split(conn, request, subnets, blocklist)
                 .map_err(|source| SplitError::PerformSplit { source })?;
         } else {
@@ -96,7 +96,7 @@ pub fn process(
                     rec,
                     confidence
                 );
-                observe::record_split_decision(rec.priority().class, false);
+                observe::record_split_decision(rec.priority().class, false, rec.should_split());
             } else {
                 // If we reach 255% of the threshold without splitting (any doubt would immediately split at this point),
                 // optimise the measurement trees down to 16 (instead of one per /64 -> huge savings for bigger prefixes)
@@ -106,7 +106,7 @@ pub fn process(
                     rec,
                     confidence
                 );
-                observe::record_split_decision(rec.priority().class, true);
+                observe::record_split_decision(rec.priority().class, true, rec.should_split());
                 collapse::process(conn, &request, relevant_measurements)
                     .map_err(|source| SplitError::CollapseMeasurements { source })?;
             }
@@ -128,7 +128,7 @@ pub fn process(
             rec,
             confidence
         );
-        observe::record_split_decision(rec.priority().class, false);
+        observe::record_split_decision(rec.priority().class, false, rec.should_split());
     }
     Ok(())
 }

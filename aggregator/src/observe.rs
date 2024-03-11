@@ -117,12 +117,13 @@ pub fn record_echo_analysis(follow_up: bool) {
     ECHO_ANALYSIS_COUNT.add(1, &[KeyValue::new("follow_up", follow_up)])
 }
 
-pub fn record_split_decision(prio: PriorityClass, action_performed: bool) {
+pub fn record_split_decision(prio: PriorityClass, action_performed: bool, would_split: bool) {
     SPLIT_DECISION_COUNT.add(
         1,
         &[
             KeyValue::new("class", format!("{:?}", prio)),
             KeyValue::new("performed", action_performed),
+            KeyValue::new("would_split", would_split),
         ],
     )
 }
