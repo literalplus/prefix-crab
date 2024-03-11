@@ -32,6 +32,10 @@ lazy_static! {
         .u64_counter("prefix_crab_echo_analysis_count")
         .with_description("Count of echo analyses")
         .init();
+    static ref SPLIT_DECISION_COUNT: Counter<u64> = METER
+        .u64_counter("prefix_crab_split_decision_count")
+        .with_description("Count of split decisions")
+        .init();
 }
 
 #[derive(Args, Clone)]
@@ -111,4 +115,14 @@ pub fn record_as_budget_usage(asn: AsNumber, consumed: u64) {
 
 pub fn record_echo_analysis(follow_up: bool) {
     ECHO_ANALYSIS_COUNT.add(1, &[KeyValue::new("follow_up", follow_up)])
+}
+
+pub fn record_split_decision(prio: PriorityClass, action_performed: bool) {
+    SPLIT_DECISION_COUNT.add(
+        1,
+        &[
+            KeyValue::new("class", format!("{:?}", prio)),
+            KeyValue::new("performed", action_performed),
+        ],
+    )
 }

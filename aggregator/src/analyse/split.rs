@@ -5,7 +5,7 @@ use prefix_crab::blocklist::PrefixBlocklist;
 use thiserror::Error;
 use tracing::instrument;
 
-use crate::{persist::dsl::CidrMethods, persist::DieselErrorFixCause};
+use crate::{observe, persist::{dsl::CidrMethods, DieselErrorFixCause}};
 use db_model::prefix_tree::ContextOps;
 
 use self::subnet::Subnets;
@@ -85,6 +85,7 @@ pub fn process(
                 rec,
                 confidence
             );
+            observe::record_split_decision(rec.priority().class, true);
             persist::perform_prefix_split(conn, request, subnets, blocklist)
                 .map_err(|source| SplitError::PerformSplit { source })?;
         } else {
@@ -95,6 +96,7 @@ pub fn process(
                     rec,
                     confidence
                 );
+                observe::record_split_decision(rec.priority().class, false);
             } else {
                 // If we reach 255% of the threshold without splitting (any doubt would immediately split at this point),
                 // optimise the measurement trees down to 16 (instead of one per /64 -> huge savings for bigger prefixes)
@@ -104,6 +106,7 @@ pub fn process(
                     rec,
                     confidence
                 );
+                observe::record_split_decision(rec.priority().class, true);
                 collapse::process(conn, &request, relevant_measurements)
                     .map_err(|source| SplitError::CollapseMeasurements { source })?;
             }
