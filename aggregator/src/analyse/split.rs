@@ -128,6 +128,7 @@ pub fn process(
             rec,
             confidence
         );
+        observe::record_split_decision(rec.priority().class, false);
     }
     Ok(())
 }
