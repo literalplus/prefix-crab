@@ -43,7 +43,8 @@ ExecStart=/usr/bin/podman run \
 	--secret=prefix-crab-otlp-header,type=env,target=OTLP_AUTH_HEADER \
 	--mount=type=bind,source=/home/%u/prefix-crab/deploy/containers.env,ro,destination=/home/app/.env \
 	--mount=type=bind,source=/etc/scanning/blocklist,ro,destination=/etc/scanning/blocklist \
-	--tz=UTC prefix-crab.local/aggregator
+	--tz=UTC prefix-crab.local/aggregator \
+	--otlp-instance=%n
 ExecStop=/usr/bin/podman stop \
 	--ignore \
 	--cidfile=%t/%n.ctr-id

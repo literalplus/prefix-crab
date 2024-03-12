@@ -15,7 +15,7 @@ use opentelemetry_sdk::{runtime::Tokio, trace::config, Resource};
 use tracing_subscriber::{filter::filter_fn, layer::SubscriberExt, Layer, Registry};
 
 lazy_static! {
-    static ref METER: Meter = global::meter("prefix-crab.local/crab-tools");
+    static ref METER: Meter = global::meter("prefix-crab.local/aggregator");
     static ref PREFIXES_AVAILABLE: Gauge<u64> = METER
         .u64_gauge("prefix_crab_schedule_prefixes_available")
         .with_description("Prefixes available for scheduling, regardless of budget")
@@ -45,6 +45,13 @@ pub struct Params {
 
     #[arg(long, env = "OTLP_AUTH_HEADER", default_value = "")]
     header: String,
+
+    #[arg(
+        long = "otlp-instance",
+        env = "OTLP_INSTANCE",
+        default_value = "default"
+    )]
+    instance: String,
 }
 
 pub struct ObserveDropGuard {}
@@ -54,22 +61,25 @@ pub fn initialize(params: Params) -> Result<Option<ObserveDropGuard>> {
         return Ok(None);
     }
 
-    debug!("Sending OTLP data to {}", params.endpoint);
+    debug!("Sending OTLP data to {} as {}", params.endpoint, params.instance);
+
+    let resource = Resource::new(vec![
+        KeyValue::new("service.name", "aggregator"),
+        KeyValue::new("service.instance.id", params.instance.to_owned()),
+    ]);
 
     opentelemetry_otlp::new_pipeline()
         .metrics(Tokio)
         .with_period(Duration::from_secs(30))
         .with_timeout(Duration::from_secs(5))
         .with_exporter(make_exporter(&params))
+        .with_resource(resource.clone())
         .build()?; // auto-registers as default
 
     let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(make_exporter(&params))
-        .with_trace_config(config().with_resource(Resource::new(vec![KeyValue::new(
-            "service.name",
-            "aggregator",
-        )])))
+        .with_trace_config(config().with_resource(resource))
         .install_batch(Tokio)?;
 
     let telemetry = tracing_opentelemetry::layer()
