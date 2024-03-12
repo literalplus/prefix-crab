@@ -33,7 +33,7 @@ lazy_static! {
         .with_description("Count of echo analyses")
         .init();
     static ref SPLIT_DECISION_COUNT: Counter<u64> = METER
-        .u64_counter("prefix_crab_split_decision_count")
+        .u64_counter("prefix_crab_split_decision_count_v2") // v1 missed instance indicators
         .with_description("Count of split decisions")
         .init();
 }
