@@ -33,6 +33,7 @@ ExecStart=/usr/bin/podman run \
 	--group-add=keep-groups \
 	--mount=type=bind,source=/home/%u/eval-pg/data,rw,destination=/var/lib/postgresql/data \
 	--mount=type=bind,source=/home/%u/eval-pg/backup,rw,destination=/backup \
+	--mount=type=bind,source=/home/%u/pg-dumps,ro,destination=/dumps \
 	--mount=type=bind,source=/home/%u/prefix-crab/deploy/eval/postgresql.conf,ro,destination=/etc/postgresql/postgresql.conf \
 	--tz=UTC docker.io/postgres:15.3-alpine -c config_file=/etc/postgresql/postgresql.conf
 ExecStop=/usr/bin/podman stop \
