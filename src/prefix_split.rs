@@ -1,8 +1,8 @@
 use anyhow::*;
 use ipnet::Ipv6Net;
 
-pub use sample::{ToSubnetSamples, SubnetSample};
-pub use split::{PrefixSplit, SplitSubnet, SplitSubnets, NetIndex};
+pub use sample::{SubnetSample, ToSubnetSamples, sample_single_net};
+pub use split::{NetIndex, PrefixSplit, SplitSubnet, SplitSubnets};
 
 pub const SAMPLES_PER_SUBNET: u16 = 16; // we could reduce this for more-specific prefixes
 pub const PREFIX_BITS_PER_SPLIT: u8 = 1;
@@ -26,7 +26,9 @@ mod split {
     use anyhow::*;
     use ipnet::Ipv6Net;
 
-    use super::{MAX_PREFIX_LEN, PREFIX_BITS_PER_SPLIT, SUBNETS_PER_SPLIT, SUBNETS_PER_SPLIT_USIZE};
+    use super::{
+        MAX_PREFIX_LEN, PREFIX_BITS_PER_SPLIT, SUBNETS_PER_SPLIT, SUBNETS_PER_SPLIT_USIZE,
+    };
 
     pub fn process(base_net: Ipv6Net) -> Result<PrefixSplit> {
         let subnet_prefix_len = subnet_prefix_len_for(base_net).context("Base net too small")?;
@@ -107,7 +109,7 @@ mod split {
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
     pub struct NetIndex(u8);
 
-    type NetIndexIter = Map<Range<u8>, fn (u8) -> NetIndex>;
+    type NetIndexIter = Map<Range<u8>, fn(u8) -> NetIndex>;
 
     impl NetIndex {
         const RANGE: Range<u8> = (0..SUBNETS_PER_SPLIT);
@@ -217,13 +219,10 @@ mod split {
         fn subnets_at_boundaries() -> Result<()> {
             // given
             let net = "2001:db8::/32".parse::<Ipv6Net>()?;
-            let expected_subnets: Vec<Ipv6Net> = vec![
-                "2001:db8::/33",
-                "2001:db8:8000::/33",
-            ]
-            .iter()
-            .map(|s| s.parse().unwrap())
-            .collect();
+            let expected_subnets: Vec<Ipv6Net> = vec!["2001:db8::/33", "2001:db8:8000::/33"]
+                .iter()
+                .map(|s| s.parse().unwrap())
+                .collect();
 
             // when
             let result = process(net)?;
@@ -290,7 +289,7 @@ mod sample {
     use ipnet::{IpAdd, Ipv6Net};
     use rand::distributions::{Distribution, Uniform};
 
-    use super::{PrefixSplit, SplitSubnet, split::NetIndex};
+    use super::{split::NetIndex, PrefixSplit, SplitSubnet};
 
     #[derive(Debug, Clone)]
     pub struct SubnetSample {
@@ -314,15 +313,15 @@ mod sample {
 
     impl ToSubnetSamples for PrefixSplit {
         fn to_samples(&self, hosts_per_sample: u16) -> Vec<SubnetSample> {
-            let distribution = Uniform::from(determine_host_range(self));
+            let distribution = Uniform::from(determine_host_range(&self.base_net, self.subnet_prefix_len));
             self.iter()
                 .map(|subnet| to_sample(subnet, distribution, hosts_per_sample))
                 .collect()
         }
     }
 
-    fn determine_host_range(prefix_split: &PrefixSplit) -> Range<u128> {
-        let free_bits = prefix_split.base_net.max_prefix_len() - prefix_split.subnet_prefix_len;
+    fn determine_host_range(base_net: &Ipv6Net, subnet_prefix_len: u8) -> Range<u128> {
+        let free_bits = base_net.max_prefix_len() - subnet_prefix_len;
         0_u128..(2_u128.pow(free_bits as u32))
     }
 
@@ -336,7 +335,20 @@ mod sample {
         let addresses = (0..hosts_per_sample)
             .map(|_| base_addr.saturating_add(distribution.sample(&mut rng)))
             .collect();
-        SubnetSample { network: subnet.network, index: subnet.index, addresses }
+        SubnetSample {
+            network: subnet.network,
+            index: subnet.index,
+            addresses,
+        }
+    }
+
+    pub fn sample_single_net(net: &Ipv6Net, hosts_per_sample: u16) -> SubnetSample {
+        let distribution = Uniform::from(determine_host_range(net, net.prefix_len()));
+        let fake_net = SplitSubnet {
+            index: 0u8.try_into().expect("0 to be a net index"),
+            network: *net,
+        };
+        to_sample(&fake_net, distribution, hosts_per_sample)
     }
 
     #[cfg(test)]
@@ -350,7 +362,7 @@ mod sample {
             let net = "2001:db8::/32".parse::<Ipv6Net>()?;
             let subnets = [
                 "2001:db8::/33".parse::<Ipv6Net>()?,
-                "2001:db8:8000::/33".parse::<Ipv6Net>()?
+                "2001:db8:8000::/33".parse::<Ipv6Net>()?,
             ];
             let split = super::super::split(net)?;
             // when

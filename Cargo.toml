@@ -7,6 +7,7 @@ members = [
     "seed-guard",
     "db-model",
     "crab-tools",
+    "yarrp-evaluator",
 ]
 
     [workspace.package]
@@ -14,7 +15,7 @@ members = [
     edition      = "2021"
     authors      = ["Philipp Nowak <prefixcrab@phnowak.eu>"]
     license      = "MIT"
-    rust-version = "1.67.1"                                  # flexi_logger
+    rust-version = "1.77.0" # File::create_new()
 
     [workspace.dependencies]
     amqprs = { version = "1.2.0", features = ["traces", "urispec"] }

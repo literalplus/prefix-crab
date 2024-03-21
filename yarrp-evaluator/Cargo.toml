@@ -1,0 +1,36 @@
+[package]
+name                   = "yarrp-evaluator"
+description            = "Checks whether yarrp-buddy behaved, using exhaustive probing"
+version.workspace      = true
+edition.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+
+[dependencies]
+amqprs              = { workspace = true }
+anyhow              = { workspace = true }
+clap                = { workspace = true }
+clap-verbosity-flag = { workspace = true }
+csv                 = "1.2.1"
+flexi_logger        = { workspace = true }
+futures             = { workspace = true }
+futures-util        = { workspace = true }
+human-panic         = { workspace = true }
+ipnet               = { workspace = true }
+log                 = { workspace = true }
+prefix-crab         = { path = ".." }
+rand                = { workspace = true }
+regex               = "1.8.1"
+serde               = { workspace = true }
+serde_json          = { workspace = true }
+tempfile            = "3.5.0"
+tokio               = { workspace = true }
+tokio-util          = { workspace = true }
+tokio-stream        = "0.1.12"
+queue-models        = { path = "../queue-models" }
+derive-where        = "1.2.1"
+async-trait         = { workspace = true }
+assertor            = { workspace = true }
+itertools           = { workspace = true }
+nohash-hasher         = "0.2.0"

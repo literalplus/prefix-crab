@@ -4076,6 +4076,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "yarrp-evaluator"
+version = "0.1.0"
+dependencies = [
+ "amqprs",
+ "anyhow",
+ "assertor",
+ "async-trait",
+ "clap",
+ "clap-verbosity-flag",
+ "csv",
+ "derive-where",
+ "flexi_logger",
+ "futures",
+ "futures-util",
+ "human-panic",
+ "ipnet",
+ "itertools 0.12.0",
+ "log",
+ "nohash-hasher",
+ "prefix-crab",
+ "queue-models",
+ "rand 0.8.5",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+]
+
+[[package]]
 name = "zmap-buddy"
 version = "0.1.0"
 dependencies = [
