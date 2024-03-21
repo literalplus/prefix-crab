@@ -105,6 +105,11 @@ Host Ports:
  - 17861 RabbitMQ
  - 17862 Postgres `ssh -L 17862:localhost:17862 pnowak@measurement-aim.etchosts.internal`
  - 17863 RabbitMQ UI `ssh -L 17863:localhost:17863 pnowak@measurement-aim.etchosts.internal`
+ - 17869 Postgres on evaluation host
+
+```
+ssh -o "RequestTTY yes" -L 17862:localhost:17862 -L 17863:localhost:17863 pnowak@measurement-aim.etchosts.internal tmux a
+```
 
 Do not use spaces in the passwords !
 
