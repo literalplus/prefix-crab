@@ -80,8 +80,8 @@ impl Scheduler {
         let out_file = File::create_new(&self.params.out_file)?;
 
         info!(
-            "Scheduling for {} on {} granularity...",
-            self.params.target_net, self.params.subnet_size,
+            "Scheduling at {} pps for {} on {} granularity...",
+            self.params.base.rate_pps, self.params.target_net, self.params.subnet_size,
         );
         let mut task = SchedulerTask::new(self.params.clone())?;
         let mut num_subnets = 0i64;

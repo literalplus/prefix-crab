@@ -42,7 +42,7 @@ pub struct Params {
     interface: Option<String>,
 
     #[arg(long, env = "YARRP_RATE_PPS", default_value = "10")] // upstream default
-    rate_pps: u16,
+    pub rate_pps: u16,
 
     #[arg(long, env = "YARRP_SHUTDOWN_WAIT_SECS", default_value = "23")]
     shutdown_wait_secs: u16,
