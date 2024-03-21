@@ -1,21 +1,17 @@
-use core::num;
 use std::collections::HashSet;
 use std::fs::File;
 use std::net::Ipv6Addr;
-use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::path::PathBuf;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use clap::Args;
-use ipnet::{Ipv6Net, PrefixLenError};
+use ipnet::Ipv6Net;
 use itertools::Itertools;
-use log::{error, info, trace, warn};
-use nohash_hasher::IntSet;
+use log::info;
+
 use prefix_crab::{blocklist, prefix_split};
 use queue_models::probe_response::TraceResult;
 use serde::Serialize;
-use tokio::sync::mpsc::{Receiver, UnboundedSender};
-use tokio_stream::wrappers::ReceiverStream;
 
 use crate::schedule::model::EvaluateRequest;
 use crate::schedule::task::SchedulerTask;
@@ -35,19 +31,39 @@ pub struct Params {
     #[clap(flatten)]
     blocklist: blocklist::Params,
 
+    #[arg(long, default_value = "48")]
+    subnet_size: u8,
+
     target_net: Ipv6Net,
 
     out_file: PathBuf,
 }
 
 pub const PROBES_PER_NET: u16 = 16;
-pub const SUBNET_SIZE: u8 = 48;
 
 #[derive(Serialize)]
 pub struct SubnetRow {
     pub subnet: Ipv6Net,
     pub received_count: u64,
-    pub last_hop_routers: Vec<Ipv6Addr>,
+    pub last_hop_routers: String,
+}
+
+impl SubnetRow {
+    fn new<T: IntoIterator<Item = Ipv6Addr>>(
+        subnet: Ipv6Net,
+        received_count: u64,
+        lhrs_raw: T,
+    ) -> Self {
+        let last_hop_routers = lhrs_raw
+            .into_iter()
+            .map(|addr| format!("{}", addr))
+            .join(";");
+        Self {
+            subnet,
+            received_count,
+            last_hop_routers,
+        }
+    }
 }
 
 struct Scheduler {
@@ -61,16 +77,16 @@ pub async fn run(params: Params) -> Result<()> {
 impl Scheduler {
     async fn run(&mut self) -> Result<()> {
         self.check_preflight().await?;
-        let out_file = File::create_new(self.params.out_file.to_owned())?;
+        let out_file = File::create_new(&self.params.out_file)?;
 
         info!(
             "Scheduling for {} on {} granularity...",
-            self.params.target_net, SUBNET_SIZE
+            self.params.target_net, self.params.subnet_size,
         );
         let mut task = SchedulerTask::new(self.params.clone())?;
         let mut num_subnets = 0i64;
 
-        for net in self.params.target_net.subnets(SUBNET_SIZE)? {
+        for net in self.params.target_net.subnets(self.params.subnet_size)? {
             let sample = prefix_split::sample_single_net(&net, PROBES_PER_NET);
             let req = EvaluateRequest {
                 net,
@@ -82,6 +98,8 @@ impl Scheduler {
         info!("Pushed {} subnets", num_subnets);
 
         let results = task.run().await?;
+        info!("Received {} results", results.len());
+
         let mut writer = csv::Writer::from_writer(out_file);
 
         for response in results {
@@ -98,14 +116,12 @@ impl Scheduler {
                 }
             }
 
-            let row = SubnetRow {
-                subnet: response.net,
-                received_count,
-                last_hop_routers: last_hop_routers.into_iter().collect_vec(),
-            };
+            let row = SubnetRow::new(response.net, received_count, last_hop_routers);
 
             writer.serialize(row)?;
         }
+
+        info!("Done writing.");
         Ok(())
     }
 

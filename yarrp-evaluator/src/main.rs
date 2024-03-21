@@ -29,7 +29,7 @@ fn do_run(cli: Cli) -> Result<()> {
     let scheduler_handle = tokio::spawn(schedule::run(cli.scheduler));
 
     let sig_handler = stop::new();
-    let stop_rx = sig_handler.subscribe_stop();
+    let _stop_rx = sig_handler.subscribe_stop();
     tokio::spawn(sig_handler.wait_for_signal());
 
     executor::block_on(flatten(scheduler_handle))

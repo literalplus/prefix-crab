@@ -1,6 +1,6 @@
 use std::net::Ipv6Addr;
 use ipnet::Ipv6Net;
-use queue_models::probe_response::{TraceResponse, TraceResult};
+use queue_models::probe_response::{TraceResult};
 
 #[derive(Debug, serde::Deserialize)]
 pub struct ProbeResponse {
