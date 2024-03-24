@@ -85,6 +85,8 @@ from all_stats als
 
 -- C2 SQL - measurement_tree join
 
+CREATE EXTENSION pg_prewarm;
+select pg_prewarm('measurement_tree');
 with roots as (
 	select net, asn from as_prefix ap 
 	where ap.deleted = false
