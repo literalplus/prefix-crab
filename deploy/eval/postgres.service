@@ -25,7 +25,6 @@ ExecStart=/usr/bin/podman run \
 	-d \
 	--name=prefix-crab-eval-postgres \
 	--publish=127.0.0.1:17869:5432 \
-	--memory=8g \
 	--replace \
 	--secret=prefix-crab-postgres-password,type=env,target=POSTGRES_PASSWORD \
 	--env=POSTGRES_USER=postgres \
