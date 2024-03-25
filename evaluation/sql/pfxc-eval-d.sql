@@ -6,3 +6,7 @@ select masklen(target_net), count(*)
 from measurement_tree mt
 group by masklen(target_net );
 
+-- D2' number of prefix tree nodes per masklen
+select masklen(net), count(*)
+from prefix_tree
+group by masklen(net );

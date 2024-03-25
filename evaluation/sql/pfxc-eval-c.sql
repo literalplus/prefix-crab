@@ -136,7 +136,7 @@ lhr_sets_of_subnet as (
 	group by root_net, asn, subnet
 ),
 distinct_lhrs_count as (
-	select root_net, asn, count(distinct lhr_set)
+	select root_net, asn, count(distinct lhr_set) as num_dstnct_lhrs
 	from lhr_sets_of_subnet
 	group by root_net, asn
 )
@@ -144,3 +144,5 @@ select * from distinct_lhrs_count;--c2 overall
 
 
 -- C3 confident discoveries (leaves-up)
+
+select count(*) from eval_at10.public.prefix_tree pt where merge_status = 'split_root';

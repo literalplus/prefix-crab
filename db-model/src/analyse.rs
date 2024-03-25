@@ -1,7 +1,8 @@
 pub mod forest;
-mod tree;
 pub mod map64;
 pub mod subnet;
+mod tree;
+mod analysis;
 
 /// percent rating
 /// at least 0, not more than 255
@@ -15,3 +16,4 @@ pub type LhrAddr = Ipv6Addr;
 use std::net::Ipv6Addr;
 
 pub use tree::*;
+pub use analysis::*;
