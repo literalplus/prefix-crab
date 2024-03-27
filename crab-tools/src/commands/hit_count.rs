@@ -1,7 +1,4 @@
-use std::{
-    ops::{Add, AddAssign},
-    path::PathBuf,
-};
+use std::{ops::AddAssign, path::PathBuf};
 
 use anyhow::*;
 use clap::Args;
@@ -48,7 +45,7 @@ pub struct Params {
 }
 
 pub fn handle(params: Params) -> Result<()> {
-    let (res_tx, res_rx) = mpsc::channel(512);
+    let (res_tx, res_rx) = mpsc::channel(32);
 
     let out_file = std::fs::File::create_new(&params.out_file)?;
 
@@ -117,12 +114,14 @@ async fn run(params: Params, res_tx: Sender<HitSummary>) -> Result<()> {
     persist::initialize(&params.persist)?;
     info!("Loading prefixes..");
 
-    let mut prefixes = select_prefixes()?.into_iter();
+    let prefixes = select_prefixes()?;
+    let total_work = prefixes.len();
+    let mut prefixes = prefixes.into_iter();
     let mut futures = JoinSet::new();
 
     for _ in 0..20 {
         if let Some(net) = prefixes.next() {
-            futures.spawn(analyse_one(net));
+            futures.spawn_blocking(move || analyse_one(net));
         } else {
             info!("Didn't even get 20 start prefixes to analyse.");
             break;
@@ -130,16 +129,21 @@ async fn run(params: Params, res_tx: Sender<HitSummary>) -> Result<()> {
     }
 
     info!("Started 20 prefix analyses in parallel.");
+    let mut completed_work = 0;
 
     while let Some(result) = futures.join_next().await {
         let result = result?; // join error
+        completed_work += 1;
         match result {
             Result::Ok(analysis) => {
-                info!(" ... Analysed {}", analysis.net);
+                info!(
+                    " ... Analysed {} ({}/{})",
+                    analysis.net, completed_work, total_work
+                );
                 res_tx.send(analysis).await?;
 
                 if let Some(net) = prefixes.next() {
-                    futures.spawn(analyse_one(net));
+                    futures.spawn_blocking(move || analyse_one(net));
                 } else {
                     info!("Out of nets to schedule. Waiting for the rest to complete.");
                 }
@@ -167,13 +171,11 @@ fn select_prefixes() -> Result<Vec<Ipv6Net>> {
     Ok(raw_nets.into_iter().map(|it| it.expect_v6()).collect_vec())
 }
 
-async fn analyse_one(net: Ipv6Net) -> Result<HitSummary> {
-    analyse_one_inner(net)
-        .await
-        .with_context(|| anyhow!("analysing net {}", net))
+fn analyse_one(net: Ipv6Net) -> Result<HitSummary> {
+    analyse_one_inner(net).with_context(|| anyhow!("analysing net {}", net))
 }
 
-async fn analyse_one_inner(net: Ipv6Net) -> Result<HitSummary> {
+fn analyse_one_inner(net: Ipv6Net) -> Result<HitSummary> {
     use db_model::schema::response_archive::dsl::*;
 
     let mut conn = persist::connect("crab-tools - hit-count - job")?;
