@@ -1,3 +1,4 @@
 /seed-guard/asn-ip
 /target
 /deploy
+.env

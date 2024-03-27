@@ -253,6 +253,12 @@ systemctl --user start {yarrp-buddy,zmap-buddy,seed-guard,postgres,rabbitmq}
 systemctl --user start aggregator{,2,3}
 ```
 
+# Running evaluation with crab-tools on server
+
+```bash
+podman run --memory=200G --network=slirp4netns:allow_host_loopback=true --add-host=localhost.containers.internal:10.0.2.2 --mount=type=bind,source=/home/pnowak/env-at10,ro,destination=/usr/src/prefix-crab/.env --mount=type=bind,source=/home/pnowak/eval-out,rw,destination=/out --rm -it --entrypoint=/bin/bash prefix-crab.local/crab-tools:latest
+```
+
 # FAQ
 
 ##   = note: /usr/bin/ld: cannot find -lpq
