@@ -16,7 +16,21 @@ path,
 	else '[]'::jsonb end
 ) as yarrp_responses
 from response_archive ra; commit;
- 
+
+-- subnet relationship detection
+select ap.net, ap.asn, ap2.net, ap2.asn from 
+	as_prefix ap 
+	cross join as_prefix ap2 
+where ap.net >>= ap2.net and ap.net != ap2.net;
+--2001:890::/29	2001:890:c000::/34 -> both
+--2001:628::/29	2001:628:2000::/48 -> both
+--2001:628::/29	2001:628:453::/48 -> both
+--2a03:3180::/36	2a03:3180:f::/48
+--2a01:aea0::/32	2a01:aea0:df3::/48 -> AT-10 only
+--2a01:aea0::/32	2a01:aea0:df4::/47 -> AT-10 only
+--2a01:aea0::/32	2a01:aea0:dd4::/47 -> AT-10 only
+--2a01:aea0::/32	2a01:aea0:dd3::/48 -> AT-10 only
+
 create materialized view response_archive_per_path as
 with all_combos as (
 	select distinct path from response_archive_responses_raw
@@ -84,13 +98,13 @@ group by masklen(path)
 select ('[{"a": "b"}]'::jsonb || '[{"c": 6}]'::jsonb);
 
 
-create materialized view response_archive_grouped_masklen as 
+--create materialized view response_archive_grouped_masklen as 
 select masklen(path), 
-(("data"->'splits') is not null) as is_zmap,
-(is_zmap and jsonb_array_length("data"->'splits'->0->'responses') = 1 and
-jsonb_array_length("data"->'splits'->1->'responses') = 1 and
-"data"->'splits'->0->'responses'->0->'key' = '"NoResponse"' and
-"data"->'splits'->1->'responses'->0->'key' = '"NoResponse"') as zmap_no_responses,
+--(("data"->'splits') is not null) as is_zmap,
+count(*)
+from response_archive ra
+where (("data"->'splits') is not null)
+group by masklen(path);
 
 
 -- AT-11 total: 3037480

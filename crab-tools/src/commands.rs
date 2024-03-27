@@ -2,11 +2,12 @@ use anyhow::Result;
 use clap::Subcommand;
 use log::debug;
 
+mod edge_analyse;
+mod hit_count;
 mod prefix_inspect;
 mod prefix_scan;
 mod rate_calculate;
 mod test_metrics;
-mod edge_analyse;
 
 pub fn handle(cmd: Commands) -> Result<()> {
     let command_result = match cmd {
@@ -15,6 +16,7 @@ pub fn handle(cmd: Commands) -> Result<()> {
         Commands::RateCalculate(data) => rate_calculate::handle(data),
         Commands::TestMetrics(data) => test_metrics::handle(data),
         Commands::EdgeAnalyse(data) => edge_analyse::handle(data),
+        Commands::HitCount(data) => hit_count::handle(data),
     };
     debug!("Finished command execution. Result: {:?}", command_result);
     command_result
@@ -27,4 +29,5 @@ pub enum Commands {
     RateCalculate(rate_calculate::Params),
     TestMetrics(test_metrics::Params),
     EdgeAnalyse(edge_analyse::Params), // evaluation E
+    HitCount(hit_count::Params),       // evaluation A
 }
