@@ -16,12 +16,16 @@ use futures::executor;
 use ipnet::{IpNet, Ipv6Net};
 use itertools::Itertools;
 use log::{debug, info, warn};
-use prefix_crab::{confidence_threshold, helpers::{ip::ExpectV6, stop::flatten}};
+use prefix_crab::{
+    confidence_threshold,
+    helpers::{ip::ExpectV6, stop::flatten},
+};
 use serde::Serialize;
 use tokio::{
     fs::File,
     sync::mpsc::{self, Receiver, Sender},
-    task::JoinSet, try_join,
+    task::JoinSet,
+    try_join,
 };
 
 #[derive(Args, Clone)]
@@ -42,10 +46,7 @@ pub fn handle(params: Params) -> Result<()> {
     let write_handle = tokio::spawn(write(File::from_std(out_file), res_rx));
 
     executor::block_on(async {
-        try_join!(
-            flatten(analyse_handle),
-            flatten(write_handle)
-        )?;
+        try_join!(flatten(analyse_handle), flatten(write_handle))?;
         Ok(())
     })?;
 
@@ -55,10 +56,10 @@ pub fn handle(params: Params) -> Result<()> {
 #[derive(Serialize)]
 pub struct EdgeAnalysis {
     pub net: Ipv6Net,
+    pub net_len: u8,
 
     pub run_count: usize,
     pub run_len_avg: f64,
-
 
     pub last_run: PriorityClass,
     pub last_run_len: u32,
@@ -74,6 +75,8 @@ impl EdgeAnalysis {
         let last_run = runs.iter().last().expect("at least one run");
         Self {
             net,
+            net_len: net.prefix_len(),
+
             run_count,
             run_len_avg: runs.iter().map_into::<f64>().sum::<f64>() / (run_count as f64),
 
