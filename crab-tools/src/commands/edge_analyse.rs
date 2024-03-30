@@ -3,13 +3,13 @@ use std::path::PathBuf;
 use anyhow::*;
 use clap::Args;
 use db_model::{
-    analyse::{HitCount, SplitAnalysis, SplitAnalysisResult},
+    analyse::{Confidence, HitCount, SplitAnalysis, SplitAnalysisResult},
     persist::{
         self,
         dsl::{masklen, CidrMethods},
-        DieselErrorFixCause,
+        ConfidenceLoader, DieselErrorFixCause,
     },
-    prefix_tree::PriorityClass,
+    prefix_tree::{AsNumber, LhrSetHash, MergeStatus, PriorityClass},
 };
 use diesel::{dsl::not, prelude::*};
 use futures::executor;
@@ -56,7 +56,11 @@ pub fn handle(params: Params) -> Result<()> {
 #[derive(Serialize)]
 pub struct EdgeAnalysis {
     pub net: Ipv6Net,
+    pub asn: AsNumber,
     pub net_len: u8,
+    pub merge_status: MergeStatus,
+    pub confidence: Confidence,
+    pub lhr_set_hash: String,
 
     pub run_count: usize,
     pub run_len_avg: f64,
@@ -70,12 +74,23 @@ pub struct EdgeAnalysis {
 }
 
 impl EdgeAnalysis {
-    fn new(net: Ipv6Net, runs: Vec<Run>) -> Self {
+    fn new(prefix: Prefix, runs: Vec<Run>) -> Self {
+        let Prefix {
+            net,
+            asn,
+            merge_status,
+            confidence,
+            lhr_set_hash,
+        } = prefix;
         let run_count = runs.len();
         let last_run = runs.iter().last().expect("at least one run");
         Self {
             net,
+            asn,
             net_len: net.prefix_len(),
+            merge_status,
+            confidence,
+            lhr_set_hash: lhr_set_hash.to_string()[0..10].to_string(),
 
             run_count,
             run_len_avg: runs.iter().map_into::<f64>().sum::<f64>() / (run_count as f64),
@@ -134,8 +149,8 @@ async fn run(params: Params, res_tx: Sender<EdgeAnalysis>) -> Result<()> {
     let mut futures = JoinSet::new();
 
     for _ in 0..20 {
-        if let Some(net) = prefixes.next() {
-            futures.spawn(analyse_one(net));
+        if let Some(prefix) = prefixes.next() {
+            futures.spawn(analyse_one(prefix));
         } else {
             info!("Didn't even get 20 start prefixes to analyse.");
             break;
@@ -151,8 +166,8 @@ async fn run(params: Params, res_tx: Sender<EdgeAnalysis>) -> Result<()> {
                 info!(" ... Analysed {}", analysis.net);
                 res_tx.send(analysis).await?;
 
-                if let Some(net) = prefixes.next() {
-                    futures.spawn(analyse_one(net));
+                if let Some(prefix) = prefixes.next() {
+                    futures.spawn(analyse_one(prefix));
                 } else {
                     info!("Out of nets to schedule. Waiting for the rest to complete.");
                 }
@@ -166,33 +181,56 @@ async fn run(params: Params, res_tx: Sender<EdgeAnalysis>) -> Result<()> {
     Ok(())
 }
 
-fn select_prefixes(root: &Ipv6Net) -> Result<Vec<Ipv6Net>> {
+#[derive(Clone, Copy, Debug)]
+struct Prefix {
+    net: Ipv6Net,
+    merge_status: MergeStatus,
+    confidence: Confidence,
+    asn: AsNumber,
+    lhr_set_hash: LhrSetHash,
+}
+
+type PrefixLoader = (IpNet, MergeStatus, ConfidenceLoader, AsNumber, LhrSetHash);
+
+impl From<PrefixLoader> for Prefix {
+    fn from((net, merge_status, confidence, asn, lhr_set_hash): PrefixLoader) -> Self {
+        Self {
+            net: net.expect_v6(),
+            merge_status,
+            confidence: confidence.into(),
+            asn,
+            lhr_set_hash,
+        }
+    }
+}
+
+fn select_prefixes(root: &Ipv6Net) -> Result<Vec<Prefix>> {
     use db_model::schema::prefix_tree::dsl::*;
     let mut conn = persist::connect("crab-tools - edge-analyse - init")?;
 
-    let raw_nets: Vec<IpNet> = prefix_tree
+    let raw_nets: Vec<PrefixLoader> = prefix_tree
         .filter(net.subnet_or_eq6(root))
         .filter(masklen(net).lt(64)) // /64 nets are not analysed further
-        .select(net)
+        .select((net, merge_status, confidence, asn, lhr_set_hash))
         .load(&mut conn)
         .fix_cause()?;
 
-    Ok(raw_nets.into_iter().map(|it| it.expect_v6()).collect_vec())
+    Ok(raw_nets.into_iter().map_into().collect_vec())
 }
 
-async fn analyse_one(net: Ipv6Net) -> Result<EdgeAnalysis> {
-    analyse_one_inner(net)
+async fn analyse_one(prefix: Prefix) -> Result<EdgeAnalysis> {
+    analyse_one_inner(prefix)
         .await
-        .with_context(|| anyhow!("analysing net {}", net))
+        .with_context(|| anyhow!("analysing prefix {:?}", prefix))
 }
 
-async fn analyse_one_inner(net: Ipv6Net) -> Result<EdgeAnalysis> {
+async fn analyse_one_inner(prefix: Prefix) -> Result<EdgeAnalysis> {
     use db_model::schema::split_analysis::dsl::*;
 
     let mut conn = persist::connect("crab-tools - edge-analyse - job")?;
 
     let analyses: Vec<SplitAnalysis> = split_analysis
-        .filter(tree_net.eq6(&net))
+        .filter(tree_net.eq6(&prefix.net))
         .filter(not(completed_at.is_null()))
         .order(completed_at.asc())
         .load(&mut conn)
@@ -202,7 +240,7 @@ async fn analyse_one_inner(net: Ipv6Net) -> Result<EdgeAnalysis> {
     debug!(
         "Loaded {} completed analyses for net {}",
         analyses.len(),
-        net
+        &prefix.net,
     );
 
     let mut last_run: Run = if let Some(analysis) = analyses.next() {
@@ -211,7 +249,7 @@ async fn analyse_one_inner(net: Ipv6Net) -> Result<EdgeAnalysis> {
             .ok_or_else(|| anyhow!("no result for completed first analysis {}", analysis.id))?
             .into()
     } else {
-        return Err(anyhow!("No completed analyses for {}", net));
+        return Err(anyhow!("No completed analyses for {}", &prefix.net));
     };
 
     let mut runs = vec![];
@@ -232,7 +270,7 @@ async fn analyse_one_inner(net: Ipv6Net) -> Result<EdgeAnalysis> {
 
     runs.push(last_run);
 
-    Ok(EdgeAnalysis::new(net, runs))
+    Ok(EdgeAnalysis::new(prefix, runs))
 }
 
 impl From<SplitAnalysisResult> for Run {

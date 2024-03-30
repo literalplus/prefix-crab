@@ -15,7 +15,7 @@ use strum::EnumIter;
 
 use crate::analyse::Confidence;
 
-#[derive(diesel_derive_enum::DbEnum, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(diesel_derive_enum::DbEnum, Debug, Copy, Clone, PartialEq, Eq, Serialize)]
 #[ExistingTypePath = "crate::sql_types::PrefixMergeStatus"]
 pub enum MergeStatus {
     /// A leaf in the tree.
