@@ -61,6 +61,7 @@ pub struct EdgeAnalysis {
     pub merge_status: MergeStatus,
     pub confidence: Confidence,
     pub lhr_set_hash: String,
+    pub is_eligible_for_split: bool,
 
     pub run_count: usize,
     pub run_len_avg: f64,
@@ -91,6 +92,7 @@ impl EdgeAnalysis {
             merge_status,
             confidence,
             lhr_set_hash: lhr_set_hash.to_string()[0..10].to_string(),
+            is_eligible_for_split: merge_status.is_eligible_for_split(),
 
             run_count,
             run_len_avg: runs.iter().map_into::<f64>().sum::<f64>() / (run_count as f64),
