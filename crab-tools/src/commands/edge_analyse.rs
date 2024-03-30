@@ -16,7 +16,7 @@ use futures::executor;
 use ipnet::{IpNet, Ipv6Net};
 use itertools::Itertools;
 use log::{debug, info, warn};
-use prefix_crab::helpers::{ip::ExpectV6, stop::flatten};
+use prefix_crab::{confidence_threshold, helpers::{ip::ExpectV6, stop::flatten}};
 use serde::Serialize;
 use tokio::{
     fs::File,
@@ -59,10 +59,12 @@ pub struct EdgeAnalysis {
     pub run_count: usize,
     pub run_len_avg: f64,
 
+
     pub last_run: PriorityClass,
     pub last_run_len: u32,
     pub last_run_start_evidence: HitCount,
     pub last_run_end_evidence: HitCount,
+    pub last_run_target_evidence: u32,
     pub last_run_should_split: Option<bool>,
 }
 
@@ -80,6 +82,7 @@ impl EdgeAnalysis {
             last_run_start_evidence: last_run.start_evidence,
             last_run_end_evidence: last_run.end_evidence,
             last_run_should_split: last_run.should_split,
+            last_run_target_evidence: last_run.target_evidence(&net),
         }
     }
 }
@@ -97,6 +100,16 @@ pub struct Run {
     pub start_evidence: HitCount,
     pub end_evidence: HitCount,
     pub should_split: Option<bool>,
+}
+
+impl Run {
+    fn target_evidence(&self, net: &Ipv6Net) -> u32 {
+        if self.should_split.unwrap_or(false) {
+            confidence_threshold::split_distinct_responses_thresh(net)
+        } else {
+            confidence_threshold::keep_equivalent_responses_thresh(net)
+        }
+    }
 }
 
 async fn write(out_file: File, mut res_rx: Receiver<EdgeAnalysis>) -> Result<()> {

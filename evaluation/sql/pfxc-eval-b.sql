@@ -33,14 +33,27 @@ split_conf as (
 	where merge_status in ('split_down', 'split_root')
 	group by confidence
 	order by confidence desc -- B1'' - confidence distribution for splits
+),
+leaf_conf as (
+	select confidence, count(*) as targetable_leaf_nodes from prefix_tree pt 
+	where merge_status in ('leaf', 'unsplit_root') -- min_size excluded!
+	group by confidence
+	order by confidence desc -- B1'' - confidence distribution for splits
 )
-select
-	(width_bucket(confidence, 0, 256, 17)-1)*(255.0/17) as bucket,
+select confidence, 
 	SUM(all_nodes) as all_nodes,
-	SUM(split_nodes) as split_nodes
-from all_conf natural full outer join split_conf
-group by bucket
-order by bucket desc;
+	SUM(split_nodes) as split_nodes,
+	SUM(targetable_leaf_nodes) as targetable_leaf_nodes
+from all_conf natural full outer join split_conf natural full outer join leaf_conf
+group by confidence order by confidence desc;
+
+--select
+--	(width_bucket(confidence, 0, 256, 17)-1)*(255.0/17) as bucket,
+--	SUM(all_nodes) as all_nodes,
+--	SUM(split_nodes) as split_nodes
+--from all_conf natural full outer join split_conf
+--group by bucket
+--order by bucket desc;
 
 
 -- B2 node prefix length distribution (SQL prefix_tree)
