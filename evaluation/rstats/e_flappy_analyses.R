@@ -6,9 +6,9 @@ library(ggpubr)
 library(dplyr)
 
 
-at10 <- read_csv("at10_all.csv")
-at11 <- read_csv("at11_all.csv")
-u3 <- read_csv("u3_all.csv")
+at10 <- read_csv("at10_3.csv")
+at11 <- read_csv("at11_3.csv")
+u3 <- read_csv("u3_3.csv")
 
 ###
 
@@ -49,17 +49,144 @@ analyse_per_verdict <- function(label, base) {
 
 sink("analysis_at10.txt")
 analyse_changes("AT-10", at10)
+analyse_changes("AT-10 (can split further)", at10 |> filter(is_eligible_for_split))
+analyse_changes("AT-10 (cannot split further)", at10 |> filter(!is_eligible_for_split))
 analyse_per_verdict("AT-10", at10)
 sink()
 
 sink("analysis_at11.txt")
 analyse_changes("AT-11", at11)
+analyse_changes("AT-11 (can split further)", at11 |> filter(is_eligible_for_split))
+analyse_changes("AT-11 (cannot split further)", at11 |> filter(!is_eligible_for_split))
 analyse_per_verdict("AT-11", at11)
 sink()
 
 sink("analysis_u3.txt")
 analyse_changes("U-3", u3)
+analyse_changes("U-3 (can split further)", u3 |> filter(is_eligible_for_split))
+analyse_changes("U-3 (cannot split further)", u3 |> filter(!is_eligible_for_split))
 analyse_per_verdict("U-3", u3)
 sink()
 
-# 
+
+### average run length
+
+avg_run_len_hist <- function(base, label) {
+  grouped_len <- base |>
+    group_by(net_len) |>
+    summarise(run_len_avg = mean(run_len_avg))
+  ggplot(data = grouped_len, aes(x = net_len, y = run_len_avg)) +
+    geom_bar(stat="identity", fill = "#9967bc") +
+    labs(title = NULL, x = paste("Prefix Length -", label)) +
+    scale_y_continuous(name = "Average Run Length") +
+    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+}
+avg_analysis_count_hist <- function(base, label) { # avg_run_len * num_runs = total_len
+  grouped_len <- base |>
+    mutate(analysis_count = run_len_avg * run_count) |>
+    group_by(net_len) |>
+    summarise(analysis_count = mean(analysis_count))
+  ggplot(data = grouped_len, aes(x = net_len, y = analysis_count)) +
+    geom_bar(stat="identity", fill = "#9967bc") +
+    labs(title = NULL, x = paste("Prefix Length -", label)) +
+    scale_y_continuous(name = "Average Analysis Count") +
+    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+}
+
+arl_at10 <- avg_run_len_hist(at10, "AT-10")
+arl_at11 <- avg_run_len_hist(at11, "AT-11")
+arl_u3 <- avg_run_len_hist(u3, "U-3")
+
+arl <- ggarrange(arl_at10, arl_at11, ncol = 2)
+ggsave("Eval-Flappy-AvgRunLen.pdf", arl, units="cm", width=19, height=6)
+
+
+aac_at10 <- avg_analysis_count_hist(at10, "AT-10")
+aac_at11 <- avg_analysis_count_hist(at11, "AT-11")
+aac_u3 <- avg_analysis_count_hist(u3, "U-3")
+
+aac <- ggarrange(aac_at10, aac_at11, ncol = 2)
+ggsave("Eval-Flappy-AvgAnalysisCnt.pdf", aac, units="cm", width=19, height=6)
+
+
+###
+
+confidence_per_len <- function(base, label) {
+  grouped_len <- base |>
+    group_by(net_len) |>
+    summarise(confidence_median = mean(confidence))
+  ggplot(data = grouped_len, aes(x = net_len, y = confidence_median)) +
+    geom_bar(stat="identity", fill = "#9967bc") +
+    labs(title = NULL, x = paste("Prefix Length -", label)) +
+    scale_y_continuous(name = "Median Confidence") +
+    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+}
+
+confidence_per_len(at10, "AT-10")
+confidence_per_len(at11, "AT-11")
+confidence_per_len(u3, "U-3")
+
+###
+
+nonflappy_start_evidence <- function(base, label) {
+  grouped_len <- base |>
+    filter(run_count == 1) |>
+    group_by(net_len) |>
+    summarise(confidence_median = median(last_run_start_evidence))
+  ggplot(data = grouped_len, aes(x = net_len, y = confidence_median)) +
+    geom_bar(stat="identity", fill = "#9967bc") +
+    labs(title = NULL, x = paste("Prefix Length -", label)) +
+    scale_y_continuous(name = "Median Evidence (No Changes)") +
+    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+}
+
+
+nonflappy_start_evidence(at10, "AT-10")
+nonflappy_start_evidence(at11, "AT-11")
+nonflappy_start_evidence(u3, "U-3")
+
+###
+
+actionable_leaves_per_len <- function(base, label) {
+  grouped_len <- base |>
+    filter(is_eligible_for_split) |>
+    filter(last_run_should_split) |>
+    group_by(net_len) |>
+    summarise(leaf_count = n())
+  ggplot(data = grouped_len, aes(x = net_len, y = leaf_count)) +
+    geom_bar(stat="identity", fill = "#9967bc") +
+    labs(title = NULL, x = paste("Prefix Length -", label)) +
+    scale_y_continuous(name = "# Leaves") +
+    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+}
+
+alpl_at10 <- actionable_leaves_per_len(at10, "AT-10")
+alpl_at11 <- actionable_leaves_per_len(at11, "AT-11")
+alpl_u3 <- actionable_leaves_per_len(u3, "U-3")
+
+
+alpl <- ggarrange(alpl_at10, alpl_at11, ncol = 2)
+ggsave("Eval-Flappy-ActionablePrefixes.pdf", alpl, units="cm", width=19, height=6)
+
+
+
+###
+
+
+nonleaves_per_len <- function(base, label) {
+  grouped_len <- base |>
+    filter(!is_eligible_for_split) |>
+    group_by(net_len) |>
+    summarise(leaf_count = n())
+  ggplot(data = grouped_len, aes(x = net_len, y = leaf_count)) +
+    geom_bar(stat="identity", fill = "#9967bc") +
+    labs(title = NULL, x = paste("Prefix Length -", label)) +
+    scale_y_continuous(name = "# Leaves") +
+    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+}
+
+nonleaves_per_len(at10, "AT-10")
+nonleaves_per_len(at11, "AT-11")
+nonleaves_per_len(u3, "U-3")
+
+###

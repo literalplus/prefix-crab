@@ -349,9 +349,9 @@ async fn analyse_one_inner(prefix: Prefix, params: Params, swap: bool) -> Result
     use db_model::schema::prefix_tree::dsl::*;
 
     let db_params = if swap {
-        params.reference_db()
-    } else {
         params.persist
+    } else {
+        params.reference_db()
     };
 
     let mut ref_conn = persist::connect_manual("crab-tools - tree-compare - ref", &db_params)?;
