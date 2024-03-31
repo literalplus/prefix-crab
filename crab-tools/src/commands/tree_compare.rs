@@ -61,6 +61,10 @@ pub struct ComparedNode {
     pub asn: AsNumber,
     pub net_len: u8,
 
+    // -- !! -- IMPORTANT -- !! -- 
+    // eval and ref are INVERTED in the results due to a programming error (parameters swapped)
+    // i.e. in the CSV the "normal" DB is referred to as ref and the reference DB is eval.
+    // The code uses the INVERSE terminology.
     pub eval_present: NodePresence,
     pub eval_confidence: Option<Confidence>,
     pub eval_class: Option<PriorityClass>,

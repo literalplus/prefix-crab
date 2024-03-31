@@ -146,3 +146,29 @@ select * from distinct_lhrs_count;--c2 overall
 -- C3 confident discoveries (leaves-up)
 
 select count(*) from eval_at10.public.prefix_tree pt where merge_status = 'split_root';
+
+-- C4 who has my /64 nets
+
+select asn, count(*) from prefix_tree pt 
+where masklen(net) = 64
+group by asn
+order by count(*) desc;
+
+with roots as (
+	select net, asn from as_prefix ap 
+	where ap.deleted = false
+),
+root_64s as (
+	select
+		r.net, r.asn, count(*) as num_64s
+	from roots r
+		join prefix_tree pt
+		on pt.net <<= r.net and masklen(pt.net) = 64
+	group by r.net, r.asn
+)
+select
+	net, masklen(net) as root_len, asn,
+	num_64s,
+	2^(64 - masklen(net)) as potential_64s
+from root_64s
+order by num_64s desc;

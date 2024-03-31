@@ -10,6 +10,8 @@ at10 <- read_csv("at10_3.csv")
 at11 <- read_csv("at11_3.csv")
 u3 <- read_csv("u3_3.csv")
 
+NET_BREAKS <- c(29, 32, 40, 48, 56, 64)
+
 ###
 
 analyse_changes <- function(label, base) {
@@ -49,23 +51,31 @@ analyse_per_verdict <- function(label, base) {
 
 sink("analysis_at10.txt")
 analyse_changes("AT-10", at10)
-analyse_changes("AT-10 (can split further)", at10 |> filter(is_eligible_for_split))
-analyse_changes("AT-10 (cannot split further)", at10 |> filter(!is_eligible_for_split))
+analyse_changes("AT-10 (potential split)", at10 |> filter(is_eligible_for_split) |> filter(confidence < 255))
+analyse_changes("AT-10 (confident leaves)", at10 |> filter(is_eligible_for_split) |> filter(confidence == 255))
+analyse_changes("AT-10 (internal nodes)", at10 |> filter(!is_eligible_for_split))
 analyse_per_verdict("AT-10", at10)
+analyse_per_verdict("AT-10 (potential split)", at10 |> filter(is_eligible_for_split) |> filter(confidence < 255))
+analyse_per_verdict("AT-10 (internal nodes)", at10 |> filter(!is_eligible_for_split))
 sink()
 
 sink("analysis_at11.txt")
 analyse_changes("AT-11", at11)
-analyse_changes("AT-11 (can split further)", at11 |> filter(is_eligible_for_split))
-analyse_changes("AT-11 (cannot split further)", at11 |> filter(!is_eligible_for_split))
+analyse_changes("AT-11 (potential split)", at11 |> filter(is_eligible_for_split) |> filter(confidence < 255))
+analyse_changes("AT-11 (confident leaves)", at11 |> filter(is_eligible_for_split) |> filter(confidence == 255))
+analyse_changes("AT-11 (cinternal nodes)", at11 |> filter(!is_eligible_for_split))
 analyse_per_verdict("AT-11", at11)
+analyse_per_verdict("AT-11 (potential split)", at11 |> filter(is_eligible_for_split) |> filter(confidence < 255))
+analyse_per_verdict("AT-11 (internal nodes)", at11 |> filter(!is_eligible_for_split))
 sink()
 
 sink("analysis_u3.txt")
 analyse_changes("U-3", u3)
-analyse_changes("U-3 (can split further)", u3 |> filter(is_eligible_for_split))
-analyse_changes("U-3 (cannot split further)", u3 |> filter(!is_eligible_for_split))
+analyse_changes("U-3 (potential split)", u3 |> filter(is_eligible_for_split) |> filter(confidence < 255))
+analyse_changes("U-3 (internal nodes)", u3 |> filter(!is_eligible_for_split))
 analyse_per_verdict("U-3", u3)
+analyse_per_verdict("U-3 (potential split)", u3 |> filter(is_eligible_for_split) |> filter(confidence < 255))
+analyse_per_verdict("U-3 (internal nodes)", u3 |> filter(!is_eligible_for_split))
 sink()
 
 
@@ -79,7 +89,7 @@ avg_run_len_hist <- function(base, label) {
     geom_bar(stat="identity", fill = "#9967bc") +
     labs(title = NULL, x = paste("Prefix Length -", label)) +
     scale_y_continuous(name = "Average Run Length") +
-    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+    scale_x_continuous(breaks=NET_BREAKS)
 }
 avg_analysis_count_hist <- function(base, label) { # avg_run_len * num_runs = total_len
   grouped_len <- base |>
@@ -90,7 +100,7 @@ avg_analysis_count_hist <- function(base, label) { # avg_run_len * num_runs = to
     geom_bar(stat="identity", fill = "#9967bc") +
     labs(title = NULL, x = paste("Prefix Length -", label)) +
     scale_y_continuous(name = "Average Analysis Count") +
-    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+    scale_x_continuous(breaks=NET_BREAKS)
 }
 
 arl_at10 <- avg_run_len_hist(at10, "AT-10")
@@ -119,7 +129,7 @@ confidence_per_len <- function(base, label) {
     geom_bar(stat="identity", fill = "#9967bc") +
     labs(title = NULL, x = paste("Prefix Length -", label)) +
     scale_y_continuous(name = "Median Confidence") +
-    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+    scale_x_continuous(breaks=NET_BREAKS)
 }
 
 confidence_per_len(at10, "AT-10")
@@ -137,7 +147,7 @@ nonflappy_start_evidence <- function(base, label) {
     geom_bar(stat="identity", fill = "#9967bc") +
     labs(title = NULL, x = paste("Prefix Length -", label)) +
     scale_y_continuous(name = "Median Evidence (No Changes)") +
-    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+    scale_x_continuous(breaks=NET_BREAKS)
 }
 
 
@@ -157,7 +167,7 @@ actionable_leaves_per_len <- function(base, label) {
     geom_bar(stat="identity", fill = "#9967bc") +
     labs(title = NULL, x = paste("Prefix Length -", label)) +
     scale_y_continuous(name = "# Leaves") +
-    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+    scale_x_continuous(breaks=NET_BREAKS)
 }
 
 alpl_at10 <- actionable_leaves_per_len(at10, "AT-10")
@@ -182,7 +192,7 @@ nonleaves_per_len <- function(base, label) {
     geom_bar(stat="identity", fill = "#9967bc") +
     labs(title = NULL, x = paste("Prefix Length -", label)) +
     scale_y_continuous(name = "# Leaves") +
-    scale_x_continuous(breaks=c(31, 36, 40, 44, 48, 52, 56, 64))
+    scale_x_continuous(breaks=NET_BREAKS)
 }
 
 nonleaves_per_len(at10, "AT-10")
