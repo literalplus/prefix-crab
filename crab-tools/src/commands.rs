@@ -8,6 +8,7 @@ mod prefix_inspect;
 mod prefix_scan;
 mod rate_calculate;
 mod test_metrics;
+mod tree_compare;
 
 pub fn handle(cmd: Commands) -> Result<()> {
     let command_result = match cmd {
@@ -17,6 +18,7 @@ pub fn handle(cmd: Commands) -> Result<()> {
         Commands::TestMetrics(data) => test_metrics::handle(data),
         Commands::EdgeAnalyse(data) => edge_analyse::handle(data),
         Commands::HitCount(data) => hit_count::handle(data),
+        Commands::TreeCompare(data) => tree_compare::handle(data),
     };
     debug!("Finished command execution. Result: {:?}", command_result);
     command_result
@@ -30,4 +32,5 @@ pub enum Commands {
     TestMetrics(test_metrics::Params),
     EdgeAnalyse(edge_analyse::Params), // evaluation E
     HitCount(hit_count::Params),       // evaluation A
+    TreeCompare(tree_compare::Params), // evaluation F
 }

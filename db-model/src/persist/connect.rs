@@ -36,7 +36,10 @@ pub fn connect(app_name: &str) -> Result<PgConnection> {
     let params = STORED_PARAMS
         .get()
         .expect("params to be stored by initialisation call");
+    connect_manual(app_name, params)
+}
 
+pub fn connect_manual(app_name: &str, params: &Params) -> Result<PgConnection> {
     let mut url = Url::parse(&params.database_url)?;
     url.query_pairs_mut()
         .append_pair("application_name", app_name);

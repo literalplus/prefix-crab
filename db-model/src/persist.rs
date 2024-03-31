@@ -1,15 +1,15 @@
 use clap::Args;
+pub use connect::*;
 pub use error::*;
 pub use loader::*;
 pub use macros::configure_jsonb_serde;
-pub use connect::*;
 
 pub mod dsl;
 
+mod connect;
 mod error;
 mod loader;
 mod macros;
-mod connect;
 
 #[derive(Args, Debug, Clone)]
 #[group(id = "database")]
@@ -20,4 +20,10 @@ pub struct Params {
     /// a config file, to avoid exposure in shell history and process list.
     #[arg(long, env = "DATABASE_URL")]
     database_url: String,
+}
+
+impl Params {
+    pub fn new(database_url: String) -> Self {
+        Self { database_url }
+    }
 }
