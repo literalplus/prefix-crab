@@ -1,0 +1,11 @@
+config:
+  clients:
+    - url: http://loki.grafana.svc:3100/loki/api/v1/push
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi

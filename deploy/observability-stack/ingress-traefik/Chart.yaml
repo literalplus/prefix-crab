@@ -1,0 +1,13 @@
+apiVersion: v2
+name: ingress-traefik
+version: 1.0.0
+appVersion: 2.6.1
+dependencies:
+  - name: traefik
+    # see: https://github.com/traefik/traefik-helm-chart/blob/master/traefik/Chart.yaml
+    version: 10.15.0
+    # !!! sync appVersion with THE LINK above for the image tag !!!
+    repository: "https://helm.traefik.io/traefik"
+  - name: cert-manager
+    repository: https://charts.jetstack.io
+    version: 1.7.1

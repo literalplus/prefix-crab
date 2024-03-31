@@ -24,7 +24,7 @@ at10_med <- at10 %>%
   summarise(median_confidence = median(rep(confidence, all_nodes))) # 100..
 
 all_nodes_at10 <- ggplot(data = at10_binned, aes(x = bin, y = all_nodes)) +
-  geom_bar(stat="identity", fill = "#9967bc") +
+  geom_bar(stat="identity", fill = "#9967bc", color = "black") +
   labs(title = NULL, x = "Confidence Metric - AT-10 - Nodes") +
   #geom_vline(aes(xintercept=at10_med), color="#34b0a7") +
   #annotate("text", x=39.5, y=50000, label=paste0("med ", at10_med), angle=90, color="#34b0a7", size=3) +
@@ -41,7 +41,7 @@ at11_med <- at10 %>%
   summarise(median_confidence = median(rep(confidence, all_nodes))) # 100..
 
 all_nodes_at11 <- ggplot(data = at11_binned, aes(x = bin, y = all_nodes)) +
-  geom_bar(stat="identity", fill = "#d19cf5") +
+  geom_bar(stat="identity", fill = "#d19cf5", color = "black") +
   labs(title = NULL, x = "Confidence Metric - AT-11 - Nodes") +
  # geom_vline(aes(xintercept=at11_med), color="#34b0a7") +
  # annotate("text", x=46, y=50000, label=paste0("med ", at11_med), angle=90, color="#34b0a7", size=3) +
@@ -64,7 +64,7 @@ at10_binned2 <- at10_nona_ned |>
 at10_med2 <- round(median(at10_nona_ned$split_nodes), digits=0)
 
 split_at10 <- ggplot(data = at10_binned2, aes(x = bin, y = split_nodes)) +
-  geom_bar(stat="identity", fill = "#9967bc") +
+  geom_bar(stat="identity", fill = "#9967bc", color = "black") +
   labs(title = NULL, x = "Confidence Metric - AT-10 - Split") +
   geom_vline(aes(xintercept=at10_med), color="#34b0a7") +
   annotate("text", x=39.5, y=50000, label=paste0("med ", at10_med2), angle=90, color="#34b0a7", size=3) +
@@ -88,7 +88,7 @@ at10_med2 <- at10_nona_ned2 %>%
 at10_med22 <- at10_med2[["median_confidence"]]
 
 leaves_at10 <- ggplot(data = at10_binned2, aes(x = bin, y = targetable_leaf_nodes)) +
-  geom_bar(stat="identity", fill = "#9967bc") +
+  geom_bar(stat="identity", fill = "#9967bc", color = "black") +
   labs(title = NULL, x = "Confidence Metric - AT-10") +
   geom_vline(aes(xintercept=at10_med22), color="#34b0a7") +
   annotate("text", x=120, y=23000, label=paste0("med ", at10_med22), angle=90, color="#34b0a7", size=3) +
@@ -108,7 +108,7 @@ at11_med2 <- at11_nona_ned2 %>%
 at11_med22 <- at11_med2[["median_confidence"]]
 
 leaves_at11 <- ggplot(data = at11_binned2, aes(x = bin, y = targetable_leaf_nodes)) +
-  geom_bar(stat="identity", fill = "#9967bc") +
+  geom_bar(stat="identity", fill = "#9967bc", color = "black") +
   labs(title = NULL, x = "Confidence Metric - AT-11") +
   geom_vline(aes(xintercept=at11_med22), color="#34b0a7") +
   annotate("text", x=120, y=23000, label=paste0("med ", at11_med22), angle=90, color="#34b0a7", size=3) +

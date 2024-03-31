@@ -1,0 +1,64 @@
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - grafana.apps.nowak.cloud
+  tls:
+    - hosts:
+        - grafana.apps.nowak.cloud
+      secretName: grafana-tls
+
+server:
+  root_url: https://grafana.apps.nowak.cloud
+
+persistence:
+  type: pvc
+  enabled: true
+  storageClassName: rook-ceph-block
+
+grafana.ini:
+  smtp:
+    enabled: true
+    host: "XXX"
+    from_address: "grafana@apps.nowak.cloud"
+
+env:
+  GF_EXPLORE_ENABLED: true
+  GF_LOG_FILTERS: rendering:debug
+
+smtp:
+  existingSecret: "grafana-smtp"
+  userKey: "smtpUser"
+  passwordKey: "smtpPassword"
+
+adminPassword: XXX
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 50m
+    memory: 512Mi
+
+# Needed to export panels to images
+imageRenderer:
+  enabled: true
+  replicas: 1
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 1Gi
+    requests:
+      cpu: 50m
+      memory: 256Mi
+  
+  env:
+    # https://grafana.com/docs/grafana/latest/setup-grafana/image-rendering/
+    RENDERING_VIEWPORT_MAX_DEVICE_SCALE_FACTOR: 8
+    RENDERING_VIEWPORT_DEVICE_SCALE_FACTOR: 4

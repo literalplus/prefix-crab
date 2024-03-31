@@ -1,0 +1,76 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/tls-acme: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    # grafana- is the namespace
+    traefik.ingress.kubernetes.io/router.middlewares: "grafana-otlp-ingress-auth@kubernetescrd,grafana-otlp-ingress-add-otlp-prefix@kubernetescrd"
+
+  name: otlp-ingress
+  namespace: grafana
+
+  labels:
+    name: otlp-ingress
+spec:
+  ingressClassName: noatnet-traefik
+  tls:
+  - hosts:
+    - otlp.apps.nowak.cloud
+    secretName: otlp-ingress-tls
+  rules:
+  - host: otlp.apps.nowak.cloud
+    http:
+      paths:
+      - pathType: Exact
+        path: "/v1/metrics"
+        backend:
+          service:
+            name: prometheus-server
+            port: 
+              number: 80
+      - pathType: Exact
+        path: "/v1/traces"
+        backend:
+          service:
+            name: tempo
+            port:
+              name: tempo-otlp-http
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: otlp-ingress-auth
+  namespace: grafana
+spec:
+  basicAuth:
+    secret: otlp-ingress-auth
+
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: otlp-ingress-add-otlp-prefix
+  namespace: grafana
+spec:
+  replacePathRegex:
+    regex: ^/v1/metrics
+    # https://github.com/prometheus/prometheus/pull/12643#discussion_r1282613251
+    replacement: /api/v1/otlp/v1/metrics
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: otlp-ingress-auth
+  namespace: grafana
+type: kubernetes.io/basic-auth
+stringData:
+  username: otlp
+  password: --changeme--

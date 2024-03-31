@@ -1,0 +1,41 @@
+---
+tempo:
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 500Mi
+  
+  ingester: {}
+
+  # 7d
+  retention: 168h
+
+  receivers:
+    # jaeger:
+    #   protocols:
+    #     grpc:
+    #       endpoint: 0.0.0.0:14250
+    #     thrift_binary:
+    #       endpoint: 0.0.0.0:6832
+    #     thrift_compact:
+    #       endpoint: 0.0.0.0:6831
+    #     thrift_http:
+    #       endpoint: 0.0.0.0:14268
+    # opencensus:
+    otlp:
+      protocols:
+        # grpc:
+        #   endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+
+persistence:
+  enabled: true
+  size: 15Gi
+  storageClassName: rook-ceph-block
+
+

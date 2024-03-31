@@ -1,0 +1,118 @@
+---
+traefikNameOverride: traefik
+traefik:
+  nameOverride: traefik
+  fullnameOverride: noatnet-traefik
+
+  serviceAccount:
+    name: ""
+  deployment:
+    kind: Deployment
+  service:
+    type: ClusterIP
+  
+  nodeSelector:
+    role.lit.plus/ingress: "True"
+
+  ingressClass:
+    enabled: true
+    isDefaultClass: true
+
+  ingressRoute:
+    dashboard:
+      enabled: false
+  
+  providers:
+    kubernetesCRD:
+      ingressClass: 
+      allowCrossNamespace: true
+      allowExternalNameServices: false
+    kubernetesIngress:
+      allowExternalNameServices: false
+
+  additionalArguments:
+    - "--ping.terminatingStatusCode=204"
+  env: []
+  hostNetwork: false
+
+  resources:
+    requests:
+      memory: 75Mi
+      cpu: 100m
+    limits:
+      memory: 128Mi
+      cpu: 2
+
+  ports:
+    # The name of this one can't be changed as it is used for the readiness and
+    # liveness probes, but you can adjust its config to your liking
+    traefik:
+      port: 9000
+      # hostPort: 9000
+      expose: false
+      exposedPort: 9000
+      protocol: TCP
+    web:
+      port: 8000
+      hostPort: 80
+      expose: true
+      exposedPort: 80
+      protocol: TCP
+      # Use nodeport if set. This is useful if you have configured Traefik in a
+      # LoadBalancer
+      # nodePort: 32080
+      # Port Redirections
+      # Added in 2.2, you can make permanent redirects via entrypoints.
+      # https://docs.traefik.io/routing/entrypoints/#redirection
+      redirectTo: websecure
+    websecure:
+      port: 8443
+      hostPort: 443
+      expose: true
+      exposedPort: 443
+      protocol: TCP
+      # nodePort: 32443
+      # Set TLS at the entrypoint
+      # https://doc.traefik.io/traefik/routing/entrypoints/#tls
+      tls:
+        enabled: true
+        # this is the name of a TLSOption definition
+        options: default
+        certResolver: ""
+        domains: []
+        # - main: example.com
+        #   sans:
+        #     - foo.example.com
+        #     - bar.example.com
+    metrics:
+      port: 9100
+      # hostPort: 9100
+      expose: false
+      exposedPort: 9100
+      protocol: TCP
+
+  tlsOptions:
+    default:
+      minVersion: VersionTLS12
+      cipherSuites:
+        - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+        - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+        - "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+        - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+        - "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305"
+        - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+
+  metrics:
+    prometheus: false
+
+  logs:
+    general:
+      level: INFO
+    access:
+      enabled: true
+
+cert-manager:
+  global:
+    leaderElection:
+      namespace: kube-ingress
+  installCRDs: true

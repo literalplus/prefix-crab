@@ -1,0 +1,58 @@
+tableManager:
+    retention_deletes_enabled: true
+    retention_period: 336h # 14d
+
+test:
+  enabled: false
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  tracing:
+    enabled: false
+
+singleBinary:
+  replicas: 1
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 500Mi
+
+  persistence:
+    size: 10Gi
+    storageClass: rook-ceph-block
+
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  lokiCanary:
+    enabled: false
+gateway:
+  enabled: false
+
+ingress:
+  # literally why would we need this; use grafana to access
+  enabled: false
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: loki.apps.nowak.cloud
+      paths:
+        - /
+  tls:
+    - hosts:
+        - loki.apps.nowak.cloud
+      secretName: loki-tls
+
