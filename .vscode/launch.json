@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug crab-tools test-metrics'",
+            "name": "Debug crab-tools uniform-merge'",
             "cargo": {
                 "args": [
                     "build",
@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["test-metrics"],
+            "args": ["uniform-merge", "target/2024-03-21_university48s.csv", "target/uni_merged_tree.csv"],
             "cwd": "${workspaceFolder}/crab-tools"
         },
         {

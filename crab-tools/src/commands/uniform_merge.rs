@@ -1,17 +1,21 @@
-use std::{fs::File, net::Ipv6Addr, path::PathBuf};
+use std::{collections::HashSet, fs::File, net::Ipv6Addr, path::PathBuf};
 
 use anyhow::*;
 use clap::Args;
 use db_model::prefix_tree::PrefixTree;
 use ipnet::Ipv6Net;
 use itertools::Itertools;
-use log::info;
+use log::{debug, info};
+use petgraph::{dot::{Config, Dot}, graphmap::DiGraphMap};
 use serde::{Deserialize, Serialize};
 
 #[derive(Args, Clone)]
 pub struct Params {
     in_file: PathBuf,
     out_file: PathBuf,
+
+    #[arg(long, num_args(0..))]
+    ignore_lhr: Vec<Ipv6Addr>,
 }
 
 pub fn handle(params: Params) -> Result<()> {
@@ -23,7 +27,7 @@ pub fn handle(params: Params) -> Result<()> {
     let input: Vec<SubnetRow> = reader.deserialize().map(|it| it.unwrap()).collect_vec();
 
     info!("Processing {} subnets...", input.len());
-    let result = run(input)?;
+    let result = run(params, input)?;
 
     info!("Writing {} nodes...", result.len());
     write(out_file, result)
@@ -34,19 +38,6 @@ pub struct SubnetRow {
     pub subnet: Ipv6Net,
     pub received_count: u64,
     pub last_hop_routers: String,
-}
-
-impl SubnetRow {
-    fn super_row(self, consume: SubnetRow) -> SubnetRow {
-        if consume.last_hop_routers != self.last_hop_routers {
-            panic!("LHRs should be checked before consuming");
-        }
-        Self {
-            subnet: self.subnet.supernet().expect("to have supernet"),
-            received_count: self.received_count + consume.received_count,
-            last_hop_routers: self.last_hop_routers,
-        }
-    }
 }
 
 #[derive(Serialize)]
@@ -71,9 +62,7 @@ fn write(out_file: File, result: Vec<OutputNode>) -> Result<()> {
 
 #[derive(Debug)]
 enum Node {
-    SameLeaf {
-        row: SubnetRow,
-    },
+    SameLeaf(Leaf),
     Distinct {
         net: Ipv6Net,
         left: Box<Node>,
@@ -81,10 +70,37 @@ enum Node {
     },
 }
 
+#[derive(Debug)]
+struct Leaf {
+    pub net: Ipv6Net,
+    pub received_count: u64,
+    pub last_hop_routers: HashSet<Ipv6Addr>,
+}
+
+impl Leaf {
+    fn merge_with(self, consume: &Self) -> Self {
+        if consume.last_hop_routers != self.last_hop_routers {
+            panic!("LHRs should be checked before consuming. oida");
+        }
+        Self {
+            net: self.net.supernet().expect("to have supernet"),
+            received_count: self.received_count + consume.received_count,
+            last_hop_routers: self.last_hop_routers,
+        }
+    }
+}
+
 impl Node {
+    fn leaf(&self) -> Option<&Leaf> {
+        match self {
+            Node::SameLeaf(leaf) => Some(leaf),
+            _ => None,
+        }
+    }
+
     fn net(&self) -> &Ipv6Net {
         match self {
-            Node::SameLeaf { row } => &row.subnet,
+            Node::SameLeaf(leaf) => &leaf.net,
             Node::Distinct {
                 net,
                 left: _,
@@ -93,28 +109,19 @@ impl Node {
         }
     }
 
-    fn last_hop_routers(&self) -> Option<&String> {
-        match self {
-            Node::SameLeaf { row } => Some(&row.last_hop_routers),
-            _ => None,
-        }
-    }
-
-    fn row(self) -> Option<SubnetRow> {
-        match self {
-            Node::SameLeaf { row } => Some(row),
-            _ => None,
-        }
+    fn last_hop_routers(&self) -> Option<&HashSet<Ipv6Addr>> {
+        self.leaf().map(|it| &it.last_hop_routers)
     }
 
     fn merge_with(self, right: Self) -> Self {
+        debug!("Merging {:?} with {:?}", self.net(), right.net());
         if self.last_hop_routers() == right.last_hop_routers() {
-            if let Node::SameLeaf { row } = self {
-                return Node::SameLeaf {
-                    row: row.super_row(right.row().expect("same LHRs = leaf")),
-                };
+            if let Node::SameLeaf(leaf) = self {
+                debug!("It was a match!");
+                return Node::SameLeaf(leaf.merge_with(right.leaf().expect("same LHRs = leaf")));
             }
         }
+        debug!("ghosted");
 
         Node::Distinct {
             net: self
@@ -127,7 +134,7 @@ impl Node {
     }
 }
 
-fn run(input: Vec<SubnetRow>) -> Result<Vec<OutputNode>> {
+fn run(params: Params, input: Vec<SubnetRow>) -> Result<Vec<OutputNode>> {
     let orig_prefix_size = input.first().expect("input not empty").subnet.prefix_len();
     for check in input.iter() {
         if check.subnet.prefix_len() != orig_prefix_size {
@@ -140,12 +147,28 @@ fn run(input: Vec<SubnetRow>) -> Result<Vec<OutputNode>> {
     }
 
     info!("Merging...");
-    let input = input.into_iter().map_into().collect_vec();
+    let input = input
+        .into_iter()
+        .map(|row| to_node(&params.ignore_lhr, row))
+        .collect_vec();
     let root = merge_to_root(input)?;
 
     info!("Collecting from root {}...", root.net());
     let mut nodes: Vec<OutputNode> = vec![];
     collect_recursive_into(&mut nodes, root);
+
+    const NIL: &str = "";
+    let mut graph: DiGraphMap<Ipv6Net, &str> = DiGraphMap::new();
+    for node in nodes.iter() {
+        graph.add_node(node.net);
+    }
+    for node in nodes.iter() {
+        let supernet = node.net.supernet().expect("a supernet please");
+        if graph.contains_node(supernet) {
+            graph.add_edge(node.net, supernet, NIL);
+        }
+    }
+    eprintln!("{}", Dot::with_config(&graph, &[Config::EdgeNoLabel]));
 
     Ok(nodes)
 }
@@ -178,23 +201,34 @@ fn merge_to_root(input: Vec<Node>) -> Result<Node> {
                         right_node
                     );
                 }
-                next_level_nodes.push(left_node.merge_with(right_node));
+                let merged = left_node.merge_with(right_node);
+                debug!("Adding node: {:?}", merged);
+                next_level_nodes.push(merged);
             }
         }
 
         std::mem::swap(&mut current_level_nodes, &mut next_level_nodes);
+        info!("Processing next level...");
     }
 }
 
-impl From<SubnetRow> for Node {
-    fn from(row: SubnetRow) -> Self {
-        Self::SameLeaf { row }
-    }
+fn to_node(ignore_lhrs: &[Ipv6Addr], row: SubnetRow) -> Node {
+    let last_hop_routers = row
+        .last_hop_routers
+        .split(";")
+        .map(|it| it.parse::<Ipv6Addr>().expect("input LHR to parse"))
+        .filter(|lhr| !ignore_lhrs.contains(lhr))
+        .collect();
+    Node::SameLeaf(Leaf {
+        net: row.subnet,
+        received_count: row.received_count,
+        last_hop_routers,
+    })
 }
 
 fn collect_recursive_into(result: &mut Vec<OutputNode>, node: Node) {
     match node {
-        Node::SameLeaf { row } => result.push(row.into()),
+        Node::SameLeaf(leaf) => result.push(leaf.into()),
         Node::Distinct { net, left, right } => {
             result.push(OutputNode {
                 net,
@@ -209,18 +243,14 @@ fn collect_recursive_into(result: &mut Vec<OutputNode>, node: Node) {
     }
 }
 
-impl From<SubnetRow> for OutputNode {
-    fn from(row: SubnetRow) -> Self {
-        let lhrs = row
-            .last_hop_routers
-            .split(";")
-            .map(|it| it.parse::<Ipv6Addr>().expect("input LHR to parse"));
-        let hash = PrefixTree::hash_lhrs(lhrs);
+impl From<Leaf> for OutputNode {
+    fn from(leaf: Leaf) -> Self {
+        let hash = PrefixTree::hash_lhrs(leaf.last_hop_routers.iter());
         Self {
-            net: row.subnet,
-            net_len: row.subnet.prefix_len(),
+            net: leaf.net,
+            net_len: leaf.net.prefix_len(),
             is_leaf: true,
-            last_hop_routers: Some(row.last_hop_routers),
+            last_hop_routers: Some(leaf.last_hop_routers.into_iter().sorted().join(";")),
             lhr_set_hash: Some(hash.to_string()),
         }
     }
