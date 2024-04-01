@@ -22,7 +22,7 @@ if which docker >/dev/null 2>&1; then
 elif which buildah >/dev/null 2>&1; then
     make "buildah-builder" || exit 2
     pushd "$MODULE" || exit 3
-    bukldah build -t "prefix-crab.local/$MODULE" . || exit 18
+    buildah build -t "prefix-crab.local/$MODULE" . || exit 18
     popd || exit 3
 else
     echo "Neither buildah nor docker seem to be installed." >&2
