@@ -152,9 +152,7 @@ fn print_subnet(
     writepfx!(&mut buf, " Last-Hop Routers:");
     for (addr, item) in subnet.iter_lhrs().sorted_by_key(|(addr, _)| *addr) {
         let percent = (item.hit_count as i64 * 100i64).div_euclid(subnet.responsive_count() as i64);
-        let is_out_of_prefix = root
-            .map(|root| !root.net.contains(addr))
-            .unwrap_or(false);
+        let is_out_of_prefix = root.map(|root| !root.net.contains(addr)).unwrap_or(false);
         let out_of_prefix_marker = if is_out_of_prefix { " 🛸" } else { "" };
         writepfx!(
             &mut buf,
@@ -210,21 +208,20 @@ fn load_as_info(
     };
     let my_net = root.net;
 
-    as_prefix::table()
+    let result: Option<(AsPrefix, Option<String>)> = as_prefix::table()
         .left_join(filter_list_dsl::as_filter_list::table().on(asn.eq(filter_list_dsl::asn)))
         .filter(asn.eq(root.asn))
         .filter(net.eq6(&root.net))
         .select((AsPrefix::as_select(), filter_list_dsl::comment.nullable()))
         .first(conn)
+        .optional()
         .fix_cause()
-        .map_err(pfxerr!(LoadAsInfo, my_net))
-        .map(|(prefix, comment)| Some(AsInfo { prefix, comment }))
+        .map_err(pfxerr!(LoadAsInfo, my_net))?;
+
+    Ok(result.map(|(prefix, comment)| AsInfo { prefix, comment }))
 }
 
-fn load_root(
-    conn: &mut PgConnection,
-    leaf: &PrefixTree,
-) -> StdResult<Option<PrefixTree>, Error> {
+fn load_root(conn: &mut PgConnection, leaf: &PrefixTree) -> StdResult<Option<PrefixTree>, Error> {
     use db_model::schema::prefix_tree::dsl::*;
 
     prefix_tree
