@@ -14,7 +14,18 @@ if [[ ! -d "$MODULE" ]]; then
     exit 6
 fi
 
-make "docker-builder" || exit 2
-pushd "$MODULE" || exit 3
-docker build -t "prefix-crab.local/$MODULE" . || exit 18
-popd || exit 3
+if which docker >/dev/null 2>&1; then
+    make "docker-builder" || exit 2
+    pushd "$MODULE" || exit 3
+    docker build -t "prefix-crab.local/$MODULE" . || exit 18
+    popd || exit 3
+elif which buildah >/dev/null 2>&1; then
+    make "bukldah-builder" || exit 2
+    pushd "$MODULE" || exit 3
+    bukldah build -t "prefix-crab.local/$MODULE" . || exit 18
+    popd || exit 3
+else
+    echo "Neither buildah nor docker seem to be installed." >&2
+    exit 45
+fi
+    

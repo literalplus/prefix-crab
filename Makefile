@@ -139,3 +139,7 @@ banner:
 .PHONY: docker-builder
 docker-builder:
 	docker build -t $(DOCKER_PREFIX)/builder .
+
+.PHONY: buildah-builder
+buildah-builder:
+	buildah build -t $(DOCKER_PREFIX)/builder .
