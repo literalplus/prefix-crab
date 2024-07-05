@@ -185,11 +185,11 @@ same_analysis_total <- merge(samesies_as, all_as_counts, by="asn") |>
 hist(same_analysis_total$same_ratio)
 
 similar_ases <- ggplot(data = same_analysis_total, aes(x = same_ratio)) + 
-  geom_histogram(aes(y = after_stat(count / sum(count))), color = "black", fill = "#d29630", bins = 10) + 
-  labs(title = NULL, x = "Similarity distribution (AS with multiple nodes)") +
-  coord_cartesian(ylim = c(0, 0.25)) + 
-  scale_y_continuous(name = "% AS", labels = scales::percent, breaks = seq(0, 0.25, 0.05)) +
-  geom_vline(aes(xintercept=median(same_ratio)), color="#34b0a7")
+  geom_histogram(aes(y = after_stat(count / sum(count))), color = "black", fill = "#58dcd2", bins = 10) + 
+  labs(title = NULL, x = "Similarity histogram (AS with multiple nodes)") +
+  coord_cartesian(ylim = c(0, 0.3)) + 
+  scale_y_continuous(name = "% AS", labels = scales::percent, breaks = seq(0, 0.3, 0.1)) +
+  geom_vline(aes(xintercept=median(same_ratio)), color="#9967bc", linewidth = 1)
 similar_ases
 
 as40980 <- dat_huge |>
